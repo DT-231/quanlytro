@@ -98,7 +98,16 @@ class ContractService:
         room_update = RoomUpdate(status=RoomStatus.OCCUPIED.value)
         self.room_repo.update(room, room_update)
         
-        # 7. Convert ORM sang Pydantic schema
+        # 7. Upgrade tenant từ CUSTOMER → TENANT (nếu là CUSTOMER)
+        from app.services.AuthService import AuthService
+        auth_service = AuthService(self.db)
+        ok, msg, upgraded_tenant = auth_service.upgrade_customer_to_tenant(data.tenant_id)
+        if ok:
+            print(f"✅ Upgraded user {data.tenant_id} to TENANT: {msg}")
+        else:
+            print(f"ℹ️ User {data.tenant_id} not upgraded: {msg}")
+        
+        # 8. Convert ORM sang Pydantic schema
         return ContractOut.model_validate(contract_orm)
     
     def get_contract(self, contract_id: UUID) -> ContractOut:

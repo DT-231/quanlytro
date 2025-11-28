@@ -46,6 +46,13 @@ class Setting(BaseSettings):
     # Environment
     ENVIRONMENT: str = "development"
 
+    # PayOS configuration
+    PAYOS_CLIENT_ID: str = ""
+    PAYOS_API_KEY: str = ""
+    PAYOS_CHECKSUM_KEY: str = ""
+    PAYOS_RETURN_URL: str = "http://localhost:3000/payment/success"
+    PAYOS_CANCEL_URL: str = "http://localhost:3000/payment/cancel"
+
     @property
     def cors_origins(self) -> List[str]:
         """Parse CORS origins từ comma-separated string."""

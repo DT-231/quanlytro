@@ -50,6 +50,7 @@ class UserRegister(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=50)
     last_name: str = Field(..., min_length=1, max_length=50)
     email: EmailStr
+    role_id : uuid.UUID
     password: str = Field(..., min_length=8, max_length=128)
     confirm_password: str = Field(..., min_length=8, max_length=128)
 
@@ -73,7 +74,7 @@ class UserCreate(UserBase):
     # Email or phone: at least one must be provided. Confirm password must match.
     password: str = Field(..., min_length=8, max_length=128)
     confirm_password: str = Field(..., min_length=8, max_length=128)
-    role_id: uuid.UUID
+    role_id: uuid.UUID = Field(None)
 
     from pydantic import model_validator
 
