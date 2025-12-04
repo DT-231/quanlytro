@@ -1,3 +1,5 @@
+from typing import Generic
+from annotated_types import T
 from fastapi import APIRouter, Depends
 
 from app.infrastructure.db.session import get_db
@@ -16,7 +18,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     """
     Đăng ký tài khoản CUSTOMER (public registration).
-    
+
     Role mặc định: CUSTOMER
     Khi ký hợp đồng thuê nhà, role sẽ tự động chuyển thành TENANT.
 
@@ -35,18 +37,12 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     return {
         "code": 201,
         "message": "Đăng ký tài khoản CUSTOMER thành công",
-        "data": {
-            "user": user,
-            "access_token": payload["access_token"],
-            "refresh_token": payload["refresh_token"],
-        },
+        "data": {},
     }
 
 
 @router.post("/login")
-async def login(
-    credentials:UserLogin, db: Session = Depends(get_db)
-):
+async def login(credentials: UserLogin, db: Session = Depends(get_db)):
     """
     Login with email/password and receive access + refresh tokens.
 
@@ -93,20 +89,20 @@ async def refresh(payload: TokenRefreshRequest, db: Session = Depends(get_db)):
 
 @router.post("/create-tenant")
 async def create_tenant(
-    tenant_data: UserCreate, 
+    tenant_data: UserCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """
     Chủ nhà tạo tài khoản cho người thuê (TENANT).
-    
+
     **Chỉ ADMIN/Landlord mới được dùng API này.**
-    
+
     Flow:
     - Nếu email đã tồn tại với role CUSTOMER → nâng cấp lên TENANT
     - Nếu email chưa tồn tại → tạo mới với role TENANT
     - Nếu đã là TENANT hoặc ADMIN → báo lỗi
-    
+
     Body:
     - **first_name**: Tên
     - **last_name**: Họ
@@ -118,23 +114,23 @@ async def create_tenant(
     """
     from app.core.Enum.userEnum import UserRole
     from app.models.role import Role
-    
+
     # Check if current user is ADMIN/Landlord
-    landlord_role = db.query(Role).filter(Role.role_code == UserRole.ADMIN.value).first()
+    landlord_role = (
+        db.query(Role).filter(Role.role_code == UserRole.ADMIN.value).first()
+    )
     if current_user.role_id != landlord_role.id:
         return {
             "code": 403,
-            "message": "Chỉ chủ nhà (ADMIN) mới có quyền tạo tài khoản người thuê"
+            "message": "Chỉ chủ nhà (ADMIN) mới có quyền tạo tài khoản người thuê",
         }
-    
+
     auth_service = AuthService(db)
-    ok, msg, user_obj = auth_service.create_tenant_by_landlord(tenant_data, current_user.id)
-    
+    ok, msg, user_obj = auth_service.create_tenant_by_landlord(
+        tenant_data, current_user.id
+    )
+
     if not ok:
         return {"code": 400, "message": msg}
-    
-    return {
-        "code": 201,
-        "message": msg,
-        "data": {"user": user_obj}
-    }
+
+    return {"code": 201, "message": msg, "data": {"user": user_obj}}
