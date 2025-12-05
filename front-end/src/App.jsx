@@ -1,74 +1,54 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from "react-router-dom";
-import Sidebar from "./components/ui/sidebar";
+import { Routes, Route } from "react-router-dom";
 import Header from "./components/Header";
+import Sidebar from "./components/Sidebar"; // Import Sidebar tự viết (Custom)
+import { useAuth } from "./context/AuthContext";
+
+// Import các Pages...
+import HomePage from "./pages/public/HomePage";
+import LoginPage from "./pages/public/LoginPage";
+import RegisterPage from "./pages/public/RegisterPage";
+import ForgotPasswordPage from "./pages/public/ForgotPasswordPage";
+import AccountManagement from "./pages/admin/AccountManagement";
 
 function App() {
-  // Trạng thái user hiện tại
-  // null = chưa load xong, false = chưa đăng nhập, object = đã đăng nhập
-  const [currentUser, setCurrentUser] = useState(null);
-
-  useEffect(() => {
-    // --- GIẢ LẬP LOGIC KIỂM TRA ĐĂNG NHẬP ---
-    // Thực tế: Bạn sẽ lấy thông tin này từ localStorage sau khi Login API trả về
-    // Ví dụ: const storedUser = JSON.parse(localStorage.getItem('user'));
-    
-    // TÌNH HUỐNG 1: Admin đăng nhập
-    const mockAdmin = { id: 1, name: "Admin Code", role: "admin" };
-    
-    // TÌNH HUỐNG 2: User đăng nhập (Bỏ comment dòng dưới để test User)
-    // const mockUser = { id: 2, name: "Nguyễn Văn A", role: "user" };
-
-    setCurrentUser(mockAdmin); // Set user vào state
-  }, []);
-
-  // Màn hình chờ khi đang tải user (tránh màn hình trắng)
-  if (!currentUser) return <div className="h-screen flex items-center justify-center">Đang tải...</div>;
+  const { user, login, logout } = useAuth();
+  const role = user?.role;
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50">
+    <div className="flex flex-col h-screen w-full bg-slate-50 overflow-hidden">
       
-      <Header user={currentUser} />
+      <div className="h-14 border-b bg-white shrink-0 z-50">
+         <Header user={user} onLogout={logout} />
+      </div>
 
       <div className="flex flex-1 overflow-hidden">
         
-        {/* Sidebar tự động nhận role từ currentUser */}
-        <Sidebar role={currentUser.role} />
+        <Sidebar role={role} />
+        <main className="flex-1 flex flex-col relative overflow-hidden">
+           <div className="flex-1 overflow-y-auto p-6 scroll-smooth">
+              <div className="mx-auto max-w-7xl pb-10">
+                 <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/register" element={<RegisterPage />} />
+                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                    <Route path="/search-rooms" element={<div>Tìm kiếm phòng</div>} />
+                    {role === 'admin' && (
+                      <>
+                        <Route path="/admin/users" element={<AccountManagement />} />
+                        <Route path="/admin/dashboard" element={<div>Dashboard</div>} />
+                        <Route path="/admin/buildings" element={<div>Quản lý Toà nhà</div>} />
+                      </>
+                    )}
 
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-6xl mx-auto">
-            <Routes>
-              {/* --- ROUTING LOGIC --- */}
-              
-              {/* Route chung */}
-              <Route path="/" element={<div>Dashboard (Dành cho {currentUser.role})</div>} />
-
-              {/* Các Route riêng cho ADMIN */}
-              {currentUser.role === 'admin' && (
-                <>
-                  <Route path="/users" element={<div>Quản lý người dùng</div>} />
-                  <Route path="/building" element={<div>Quản lý Toà nhà</div>} />
-                  <Route path="/rooms" element={<div>Quản lý Phòng</div>} />
-                  <Route path="/invoice" element={<div>Quản lý Hoá đơn</div>} />
-                  <Route path="/contract" element={<div>Quản lý Hợp đồng</div>} />
-                  <Route path="/incidents" element={<div>Xử lý sự cố</div>} />
-                </>
-              )}
-
-              {/* Các Route riêng cho USER */}
-              {currentUser.role === 'user' && (
-                <>
-                  <Route path="/profile" element={<div>Hồ sơ cá nhân</div>} />
-                  <Route path="/my-contract" element={<div>Xem hợp đồng</div>} />
-                  <Route path="/my-invoice" element={<div>Xem hoá đơn</div>} />
-                  <Route path="/report" element={<div>Báo cáo sự cố</div>} />
-                </>
-              )}
-
-              {/* Trang 404 */}
-              <Route path="*" element={<div className="text-center mt-10">Trang không tồn tại hoặc bạn không có quyền truy cập</div>} />
-            </Routes>
-          </div>
+                    {role === 'user' && (
+                      <Route path="/member/profile" element={<div>Hồ sơ cá nhân</div>} />
+                    )}
+                    <Route path="*" element={<div>404 - Trang không tồn tại</div>} />
+                 </Routes>
+              </div>
+           </div>
         </main>
       </div>
     </div>

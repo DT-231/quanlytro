@@ -1,92 +1,57 @@
-import React, { useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { LoginForm } from './LoginForm';
-import { RegisterForm } from './RegisterForm';
-import { ForgotPasswordForm } from './ForgotPasswordForm'; // 1. Import form quên mật khẩu
+import React from 'react';
+import { Link } from 'react-router-dom';
 
-export default function Header() {
-  const [open, setOpen] = useState(false);
-  // State view bây giờ sẽ quản lý 3 giá trị: 'login', 'register', 'forgot'
-  const [view, setView] = useState('login'); 
-
-  // Hàm helper để reset về login mỗi khi mở dialog
-  const handleOpenChange = (isOpen) => {
-    setOpen(isOpen);
-    if (!isOpen) setTimeout(() => setView('login'), 200); 
-  };
-
+export default function Header({ user, onLogout, onOpenLogin }) {
   return (
-    <header className="w-full bg-white border-b shadow-sm h-14 flex items-center py-1">
-      <div className="flex items-center justify-between w-full px-3">
-
-        {/* LEFT: Logo... (giữ nguyên) */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-black text-white rounded-lg flex items-center justify-center text-sm font-semibold">N1</div>
-          <div className="leading-tight">
-            <h1 className="text-base font-semibold">Nhóm 1</h1>
-            <p className="text-[12px] text-gray-500">Hệ thống phòng trọ</p>
-          </div>
+    <header className="w-full bg-white border-b shadow-sm h-14 flex items-center justify-between px-4 sticky top-0 z-20">
+      
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 bg-black text-white rounded-lg flex items-center justify-center text-sm font-bold">N1</div>
+        <div className="leading-tight">
+          <h1 className="text-xm font-bold text-gray-900">Nhóm 1</h1>
+          <p className="text-xs text-gray-500">Hệ thống phòng trọ</p>
         </div>
+      </div>
 
-        {/* RIGHT: Buttons */}
-        <div className="flex items-center gap-2 ">
-          
-          <Dialog open={open} onOpenChange={handleOpenChange}>
-            {/* Nút Đăng nhập -> Mở Dialog Login */}
-            <DialogTrigger asChild>
+      <div className="flex items-center gap-2">
+        {user ? (
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-bold text-gray-800">{user.name}</p>
+              <p className="text-[10px] text-gray-500 uppercase">{user.role}</p>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-gray-200 border overflow-hidden">
+                <img src={user.avatar || "https://github.com/shadcn.png"} alt="Avatar" className="w-full h-full object-cover"/>
+            </div>
+            <button 
+              onClick={onLogout}
+              className="px-4 py-1.5 rounded-full border border-gray-300 text-xs font-medium hover:bg-gray-100 transition"
+            >
+              Đăng xuất
+            </button>
+          </div>
+        ) : (
+          // --- KHI CHƯA ĐĂNG NHẬP ---
+          <>
+            {/* 3. Dùng Link để chuyển sang trang Login */}
+            <Link to="/login">
               <button 
-                onClick={() => setView('login')}
-                className="px-5 py-1.5 rounded-full bg-black text-white text-sm hover:opacity-90 transition"
+                className="px-5 py-1.5 rounded-full bg-black text-white text-sm hover:opacity-90 transition font-medium"
               >
                 Đăng nhập
               </button>
-            </DialogTrigger>
+            </Link>
 
-            {/* Nút Đăng ký -> Mở Dialog Register */}
-            <DialogTrigger asChild>
-               <button 
-                 onClick={() => setView('register')}
-                 className="px-5 py-1.5 rounded-full bg-gray-200 text-sm hover:bg-gray-300 transition"
-               >
+            {/* 4. Dùng Link để chuyển sang trang Register */}
+            <Link to="/register">
+              <button 
+                  className="px-5 py-1.5 rounded-full bg-gray-100 text-sm hover:bg-gray-200 transition font-medium"
+                >
                 Đăng ký
-               </button>
-            </DialogTrigger>
-            
-            {/* NỘI DUNG DIALOG */}
-            <DialogContent className="sm:max-w-[400px] bg-white text-black p-6 overflow-y-auto max-h-[90vh]">
-               
-               {/* Trường hợp 1: Form Đăng nhập */}
-               {view === 'login' && (
-                 <LoginForm 
-                    onClose={() => setOpen(false)} 
-                    onSwitchToRegister={() => setView('register')} 
-                    onSwitchToForgot={() => setView('forgot')} // Thêm dòng này
-                 />
-               )}
-
-               {/* Trường hợp 2: Form Đăng ký */}
-               {view === 'register' && (
-                 <RegisterForm 
-                    onSwitchToLogin={() => setView('login')} 
-                 />
-               )}
-
-               {/* Trường hợp 3: Form Quên mật khẩu */}
-               {view === 'forgot' && (
-                 <ForgotPasswordForm 
-                    onSwitchToLogin={() => setView('login')}
-                    onSwitchToRegister={() => setView('register')}
-                 />
-               )}
-
-            </DialogContent>
-          </Dialog>
-
-        </div>
+              </button>
+            </Link>
+          </>
+        )}
       </div>
     </header>
   );
