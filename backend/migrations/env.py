@@ -43,6 +43,7 @@ def run_migrations_offline() -> None:
 
     """
     # Use DATABASE_URL from settings instead of alembic.ini
+    
     url = settings.DATABASE_URL or config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
