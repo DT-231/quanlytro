@@ -15,7 +15,7 @@ import ForgotPasswordPage from "./pages/public/ForgotPasswordPage";
 // --- Admin Pages---
 
 import AccountManagement from "./pages/admin/AccountManagement";
-import InvoiceManagement from "./Pages/admin/InvoiceManagement";
+import InvoiceManagement from "./pages/admin/InvoiceManagement";
 
 // --- Member Pages---
 import ProfilePage from "./pages/member/ProfilePage";
