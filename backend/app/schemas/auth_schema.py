@@ -16,3 +16,11 @@ class TokenRefreshRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+
+class LoginResponse(BaseModel):
+    """Schema for login response with user and token."""
+    user: dict  # UserOut will be converted to dict
+    token: Token
+
+    model_config = {"from_attributes": True}

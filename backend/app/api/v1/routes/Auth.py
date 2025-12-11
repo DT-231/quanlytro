@@ -1,14 +1,17 @@
+import time
 from typing import Generic
 from annotated_types import T
 from fastapi import APIRouter, Depends
-
+from email_validator import validate_email
 from app.infrastructure.db.session import get_db
 from sqlalchemy.orm import Session
+from app.core import response
 
-from app.schemas.auth_schema import TokenRefreshRequest
-from app.schemas.user_schema import UserCreate, UserLogin, UserRegister
+from app.schemas.auth_schema import TokenRefreshRequest, Token
+from app.schemas.user_schema import UserCreate, UserLogin, UserRegister, UserOut
 from app.services.AuthService import AuthService
 from app.core.security import get_current_user
+from app.utils import validate
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -28,17 +31,47 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     - **password**: Mật khẩu (tối thiểu 8 ký tự)
     - **confirm_password**: Xác nhận mật khẩu
     """
+    # Validate thủ công để control error response
+    if not user_data.first_name or not user_data.first_name.strip():
+        return response.bad_request(message="Tên không được để trống")
+    if len(user_data.first_name) > 50:
+        return response.bad_request(message="Tên không được quá 50 ký tự")
+    
+    if not user_data.last_name or not user_data.last_name.strip():
+        return response.bad_request(message="Họ không được để trống")
+    if len(user_data.last_name) > 50:
+        return response.bad_request(message="Họ không được quá 50 ký tự")
+    
+    if not user_data.email or not user_data.email.strip():
+        return response.bad_request(message="Email không được để trống")
+    try:
+        validate_email(user_data.email)
+    except Exception:
+        return response.bad_request(message="Email không đúng định dạng")
+    if not user_data.password:
+        return response.bad_request(message="Mật khẩu không được để trống")
+    if not user_data.confirm_password:
+        return response.bad_request(message="Xác nhận mật khẩu không được để trống")
+    if len(user_data.password) < 8:
+        return response.bad_request(message="Mật khẩu phải có ít nhất 8 ký tự")
+    if len(user_data.password) > 16:
+        return response.bad_request(message="Mật khẩu không được quá 16 ký tự")
+    if validate.validate_password(password=user_data.password):
+        return response.bad_request(message="Mật khẩu phải có ký tự số , in hoa , thường , ký tự đặc biệt")
+    if user_data.password != user_data.confirm_password:
+        return response.bad_request(message="Mật khẩu và xác nhận mật khẩu không khớp")
+    
+    # Validate password strength
+    is_invalid, msg = validate.validate_password(user_data.password)
+    if is_invalid:
+        return response.bad_request(message=msg)
+
     auth_service = AuthService(db)
     ok, msg, payload = auth_service.register_user(user_data)
     if not ok:
-        return {"code": 400, "message": msg}
-    # return created user and tokens
-    user = payload["user"]
-    return {
-        "code": 201,
-        "message": "Đăng ký tài khoản CUSTOMER thành công",
-        "data": {},
-    }
+        return response.bad_request(message=msg)
+    
+    return response.created(message="Đăng ký tài khoản thành công", data={})
 
 
 @router.post("/login")
@@ -50,25 +83,29 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
     - **password**: Mật khẩu (tối thiểu 6 ký tự)
 
     """
-    auth_service = AuthService(db)
+    
     email = credentials.email
     password = credentials.password
     if not email or not password:
-        return {"code": 400, "message": "email and password required"}
+        return response.bad_request(message="email và mật khẩu không được để trống")
 
-    auth = auth_service.authenticate_user(email, password)
+    if not validate_email(email):
+        return response.bad_request(message="email không đúng định dạng")
+
+    # Validate password strength
+    is_invalid, msg = validate.validate_password(password)
+    if is_invalid:
+        return {"code": 400, "message": msg}
+
+    auth_service = AuthService(db)
+    auth = auth_service.login(email, password)
     if not auth:
-        return {"code": 401, "message": "Invalid credentials"}
+        return response.unauthorized(message="Sai mật khẩu hoặc email")
 
-    return {
-        "code": 200,
-        "message": "ok",
-        "data": {
-            "user": auth["user"],
-            "access_token": auth["access_token"],
-            "refresh_token": auth["refresh_token"],
-        },
-    }
+    return response.success(
+        message="Đăng nhập thành công",
+        data=auth,
+    )
 
 
 @router.post("/refresh")

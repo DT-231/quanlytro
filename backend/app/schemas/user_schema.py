@@ -9,6 +9,15 @@ import uuid
 from app.core.Enum.userEnum import UserStatus
 
 
+class RoleOut(BaseModel):
+    """Schema for Role information in user responses."""
+    role_code: str
+    role_name: str
+    description: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
 class UserBase(BaseModel):
     """Base schema for User shared properties.
 
@@ -35,7 +44,6 @@ class UserLogin(BaseModel):
 
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=128)
-
     model_config = {"from_attributes": True}
 
 
@@ -45,20 +53,16 @@ class UserRegister(BaseModel):
     This schema is intentionally small and only includes the fields
     required for the public registration endpoint so the OpenAPI
     request body doesn't expose internal or optional properties.
+    
+    Validation được xử lý thủ công trong endpoint để có control tốt hơn về error response.
     """
 
-    first_name: str = Field(..., min_length=1, max_length=50)
-    last_name: str = Field(..., min_length=1, max_length=50)
-    email: EmailStr
-    role_id : uuid.UUID
-    password: str = Field(..., min_length=8, max_length=128)
-    confirm_password: str = Field(..., min_length=8, max_length=128)
-
-    @model_validator(mode="after")
-    def check_passwords(self):
-        if self.password != self.confirm_password:
-            raise ValueError("password and confirm_password do not match")
-        return self
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None  # Dùng str thay vì EmailStr để tự validate
+    role_id: Optional[uuid.UUID] = None
+    password: Optional[str] = None
+    confirm_password: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -72,8 +76,8 @@ class UserCreate(UserBase):
 
     # Simplified create schema: require a name, email or phone, password + confirm, and role
     # Email or phone: at least one must be provided. Confirm password must match.
-    password: str = Field(..., min_length=8, max_length=128)
-    confirm_password: str = Field(..., min_length=8, max_length=128)
+    password: str = Field(..., min_length=8, max_length=16)
+    confirm_password: str = Field(..., min_length=8, max_length=16)
     role_id: uuid.UUID = Field(None)
 
     from pydantic import model_validator
@@ -109,15 +113,50 @@ class UserUpdate(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class UserOut(UserBase):
+
+class UserOut(BaseModel):
     """Schema returned by the API for User resources.
 
-    This excludes the password field but includes metadata like id and
-    timestamps so routers can directly return ORM objects.
+    This excludes the password field and role_id, but includes role object.
     """
 
     id: uuid.UUID
-    # created_at: Optional[datetime] = None
-    # updated_at: Optional[datetime] = None
+    first_name: str
+    last_name: str
+    email: EmailStr
+    phone: Optional[str] = None
+    cccd: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    status: str
+    is_temporary_residence: Optional[bool] = False
+    temporary_residence_date: Optional[date] = None
+    role_name: Optional[str] = None  # Role name thay vì role object
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
-    model_config = {"from_attributes": True}
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True
+    }
+    
+    # @classmethod
+    # def model_validate(cls, obj, **kwargs):
+    #     """Custom validation to extract role_name from role relationship."""
+    #     if hasattr(obj, 'role') and obj.role:
+    #         data = {
+    #             'id': obj.id,
+    #             'first_name': obj.first_name,
+    #             'last_name': obj.last_name,
+    #             'email': obj.email,
+    #             'phone': obj.phone,
+    #             'cccd': obj.cccd,
+    #             'date_of_birth': obj.date_of_birth,
+    #             'status': obj.status,
+    #             'is_temporary_residence': obj.is_temporary_residence,
+    #             'temporary_residence_date': obj.temporary_residence_date,
+    #             'role_name': obj.role.role_name,  # Extract role_name from role
+    #             'created_at': obj.created_at,
+    #             'updated_at': obj.updated_at,
+    #         }
+    #         return cls(**data)
+    #     return super().model_validate(obj, **kwargs)

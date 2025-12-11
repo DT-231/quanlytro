@@ -22,7 +22,7 @@ class UserRepository:
 
     def get_by_email(self, email: str) -> Optional[User]:
         """
-        Lấy user theo email
+        Lấy user theo email với eager loading role relationship.
         
         Args:
             email: Địa chỉ email
@@ -30,7 +30,12 @@ class UserRepository:
         Returns:
             User object nếu tìm thấy, None nếu không tìm thấy
         """
-        return self.db.query(User).filter(User.email == email).first() 
+        return (
+            self.db.query(User)
+            .options(joinedload(User.role))  # Eager load role để tránh N+1 query
+            .filter(User.email == email)
+            .one_or_none()
+        ) 
     def create_user(self, *, user_in: dict) -> User:
         """
         Tạo một user mới và commit vào database.

@@ -4,9 +4,9 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from passlib.context import CryptContext
-import jwt
+from jose import jwt
 
 from sqlalchemy.orm import Session
 
@@ -27,8 +27,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 	return pwd_context.verify(plain_password, hashed_password)
 
 
-# OAuth2 scheme (used by FastAPI dependencies)
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+# HTTPBearer scheme for JWT token authentication
+security = HTTPBearer()
 
 
 def _get_int_env(value: str | None, default: int) -> int:
@@ -84,8 +84,9 @@ def decode_token(token: str) -> dict[str, Any]:
 		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
 	"""FastAPI dependency that returns current user (or raises 401)."""
+	token = credentials.credentials
 	payload = decode_token(token)
 	if payload.get("type") != "access":
 		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")

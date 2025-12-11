@@ -33,8 +33,6 @@ class BuildingCreate(BuildingBase):
 
     Kế thừa từ BuildingBase, yêu cầu các trường bắt buộc.
     """
-    # cho phép 1 trong 2: address_id (nếu đã có sẵn) hoặc address (tạo mới)
-    address_id: Optional[uuid.UUID] = None
     address: Optional[AddressCreate] = None
 
     model_config = {"from_attributes": True}
@@ -49,6 +47,7 @@ class BuildingUpdate(BaseModel):
     building_code: Optional[str] = Field(None, min_length=1, max_length=20)
     building_name: Optional[str] = Field(None, min_length=1, max_length=100)
     address_id: Optional[uuid.UUID] = None
+    address: Optional[AddressCreate] = None
     description: Optional[str] = None
     status: Optional[str] = None
 
@@ -58,12 +57,16 @@ class BuildingUpdate(BaseModel):
 class BuildingOut(BuildingBase):
     """Schema returned by the API for Building resources.
 
-    Bao gồm metadata như id và timestamps.
+    Bao gồm metadata như id, timestamps và room statistics.
     """
 
     id: uuid.UUID
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    address_line: Optional[str] = None  # Địa chỉ đầy đủ
+    total_rooms: Optional[int] = 0  # Tổng số phòng
+    available_rooms: Optional[int] = 0  # Số phòng trống
+    rented_rooms: Optional[int] = 0  # Số phòng đang thuê
 
     model_config = {"from_attributes": True}
 
