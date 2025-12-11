@@ -146,7 +146,6 @@ async def create_tenant(
     - **email**: Email
     - **phone**: Số điện thoại
     - **password**: Mật khẩu
-    - **confirm_password**: Xác nhận mật khẩu
     - Các field khác (cccd, date_of_birth...)
     """
     from app.core.Enum.userEnum import UserRole
@@ -170,4 +169,4 @@ async def create_tenant(
     if not ok:
         return {"code": 400, "message": msg}
 
-    return {"code": 201, "message": msg, "data": {"user": user_obj}}
+    return {"code": 201, "message": msg, "data": {}}

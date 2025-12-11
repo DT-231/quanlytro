@@ -46,7 +46,6 @@ class BuildingUpdate(BaseModel):
 
     building_code: Optional[str] = Field(None, min_length=1, max_length=20)
     building_name: Optional[str] = Field(None, min_length=1, max_length=100)
-    address_id: Optional[uuid.UUID] = None
     address: Optional[AddressCreate] = None
     description: Optional[str] = None
     status: Optional[str] = None

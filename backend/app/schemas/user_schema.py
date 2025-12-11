@@ -77,7 +77,6 @@ class UserCreate(UserBase):
     # Simplified create schema: require a name, email or phone, password + confirm, and role
     # Email or phone: at least one must be provided. Confirm password must match.
     password: str = Field(..., min_length=8, max_length=16)
-    confirm_password: str = Field(..., min_length=8, max_length=16)
     role_id: uuid.UUID = Field(None)
 
     from pydantic import model_validator

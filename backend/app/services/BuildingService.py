@@ -241,42 +241,26 @@ class BuildingService:
 
         # Xử lý cập nhật địa chỉ
         if building_data.address is not None:
-            # Lấy địa chỉ hiện tại của building
-            current_address = self.address_repo.get_by_id(building_orm.address_id)
-
-            # Tạo full_address mới để so sánh
+            # Frontend gửi thông tin địa chỉ đầy đủ (không có address_id)
+            # Tạo full_address để kiểm tra tồn tại
             new_full_address = f"{building_data.address.address_line}, {building_data.address.ward}, {building_data.address.city}, {building_data.address.country}"
-
-            # Kiểm tra xem địa chỉ mới có khác với địa chỉ cũ không
-            if current_address and current_address.full_address != new_full_address:
-                # Kiểm tra địa chỉ mới đã tồn tại trong hệ thống chưa
-                existing_address = self.address_repo.get_by_full_address(
-                    new_full_address
+            
+            # Kiểm tra địa chỉ mới đã tồn tại trong hệ thống chưa
+            existing_address = self.address_repo.get_by_full_address(new_full_address)
+            
+            if existing_address:
+                # Nếu địa chỉ đã tồn tại, sử dụng address_id có sẵn
+                building_data.address_id = existing_address.id
+            else:
+                # Nếu địa chỉ chưa tồn tại, tạo địa chỉ mới
+                new_address = AddressCreate(
+                    address_line=building_data.address.address_line,
+                    ward=building_data.address.ward,
+                    city=building_data.address.city,
+                    country=building_data.address.country,
                 )
-
-                if existing_address:
-                    # Nếu địa chỉ đã tồn tại, sử dụng address_id có sẵn
-                    building_data.address_id = existing_address.id
-                else:
-                    # Nếu địa chỉ chưa tồn tại, tạo địa chỉ mới
-                    new_address = AddressCreate(
-                        address_line=building_data.address.address_line,
-                        ward=building_data.address.ward,
-                        city=building_data.address.city,
-                        country=building_data.address.country,
-                    )
-                    created_address = self.address_repo.create(new_address)
-                    building_data.address_id = created_address.id
-            elif current_address:
-                # Địa chỉ không thay đổi, giữ nguyên address_id hiện tại
-                building_data.address_id = building_orm.address_id
-        elif building_data.address_id is not None:
-            # Kiểm tra address_id có tồn tại không
-            address = self.address_repo.get_by_id(building_data.address_id)
-            if not address:
-                raise ValueError(
-                    f"Không tìm thấy địa chỉ với ID: {building_data.address_id}"
-                )
+                created_address = self.address_repo.create(new_address)
+                building_data.address_id = created_address.id
 
         # Update building (repository sẽ tự động loại bỏ address field)
         updated = self.building_repo.update(building_orm, building_data)

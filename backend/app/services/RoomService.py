@@ -10,8 +10,14 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.repositories.room_repository import RoomRepository
-from app.schemas.room_schema import RoomCreate, RoomOut, RoomUpdate, RoomListItem, RoomDetailOut
+from app.repositories.building_repository import BuildingRepository
+from app.repositories.contract_repository import ContractRepository
+from app.schemas.room_schema import (
+    RoomCreate, RoomOut, RoomUpdate, RoomListItem, RoomDetailOut,
+    RoomPublicDetail, RoomAdminDetail, TenantInfo, RoomSearchParams, RoomPublicListItem
+)
 from app.models.room import Room
+from app.models.building import Building
 from app.models.room_utility import RoomUtility
 from app.models.room_photo import RoomPhoto
 from app.core.Enum.roomEnum import RoomStatus
@@ -31,6 +37,8 @@ class RoomService:
     def __init__(self, db: Session):
         self.db = db
         self.room_repo = RoomRepository(db)
+        self.building_repo = BuildingRepository(db)
+        self.contract_repo = ContractRepository(db)
 
     def create_room(self, room_data: RoomCreate, user_id: Optional[UUID] = None) -> RoomDetailOut:
         """Tạo phòng mới với validation, utilities và photos.
@@ -58,6 +66,11 @@ class RoomService:
         if room_data.capacity < 1:
             raise ValueError("Sức chứa phải ít nhất 1 người")
         
+        # Validate building_id tồn tại
+        building = self.building_repo.get_by_id(room_data.building_id)
+        if not building:
+            raise ValueError(f"Không tìm thấy tòa nhà với ID: {room_data.building_id}")
+        
         # Validate status
         valid_statuses = [s.value for s in RoomStatus]
         if room_data.status not in valid_statuses:
@@ -71,12 +84,12 @@ class RoomService:
         if existing:
             raise ValueError(f"Số phòng {room_data.room_number} đã tồn tại trong tòa nhà này")
         
-        # Extract utilities và photo_urls từ room_data
+        # Extract utilities và photos từ room_data
         utilities = room_data.utilities or []
-        photo_urls = room_data.photo_urls or []
+        photos = room_data.photos or []
         
-        # Tạo dict từ room_data (exclude utilities và photo_urls)
-        room_dict = room_data.model_dump(exclude={'utilities', 'photo_urls'})
+        # Tạo dict từ room_data (exclude utilities và photos)
+        room_dict = room_data.model_dump(exclude={'utilities', 'photos'})
         
         # Tạo phòng mới
         room = self.room_repo.create_room_basic(room_dict)
@@ -92,14 +105,15 @@ class RoomService:
                 )
                 self.db.add(utility)
         
-        # Thêm photos nếu có
-        if photo_urls and user_id:
-            for idx, url in enumerate(photo_urls):
+        # Thêm photos nếu có (lưu base64 vào database)
+        if photos and user_id:
+            for photo_data in photos:
                 photo = RoomPhoto(
                     room_id=room.id,
-                    url=url,
-                    is_primary=(idx == 0),  # Ảnh đầu tiên làm primary
-                    sort_order=idx,
+                    image_base64=photo_data.get('image_base64'),
+                    url=None,  # Không có URL vì lưu base64
+                    is_primary=photo_data.get('is_primary', False),
+                    sort_order=photo_data.get('sort_order', 0),
                     uploaded_by=user_id
                 )
                 self.db.add(photo)
@@ -380,3 +394,316 @@ class RoomService:
         }
         
         return RoomDetailOut(**room_data)
+
+    def get_room_detail_by_role(self, room_id: UUID, user_role: str):
+        """Lấy thông tin chi tiết phòng theo role.
+        
+        - Admin (chủ nhà): Thấy đầy đủ thông tin bao gồm người thuê
+        - Khác (tenant, customer): Chỉ thấy thông tin cơ bản, không thấy người thuê
+        
+        Args:
+            room_id: UUID của phòng.
+            user_role: Role code của user (ADMIN, TENANT, CUSTOMER).
+            
+        Returns:
+            RoomAdminDetail nếu role=ADMIN, RoomPublicDetail nếu role khác.
+            
+        Raises:
+            ValueError: Nếu không tìm thấy phòng.
+        """
+        # Lấy room với relationships
+        room = self.room_repo.get_by_id_with_relations(room_id)
+        if not room:
+            raise ValueError(f"Không tìm thấy phòng với ID: {room_id}")
+        
+        # Lấy thông tin building
+        building = self.building_repo.get_by_id(room.building_id)
+        building_name = building.building_name if building else "N/A"
+        
+        # Lấy utilities
+        utilities = [u.utility_name for u in room.utilities] if room.utilities else []
+        
+        # Lấy photo URLs (sắp xếp theo sort_order, ưu tiên ảnh base64 nếu có)
+        photos = sorted(room.room_photos, key=lambda p: p.sort_order) if room.room_photos else []
+        photo_urls = []
+        for p in photos:
+            if p.image_base64:
+                photo_urls.append(p.image_base64)  # Trả base64 nếu có
+            elif p.url:
+                photo_urls.append(p.url)  # Hoặc URL
+        
+        # Lấy thông tin contract active (nếu có)
+        active_contract = self.contract_repo.get_active_contract_by_room(room_id)
+        current_occupants = 0
+        is_available = room.status == RoomStatus.AVAILABLE.value
+        tenant_info = None
+        
+        if active_contract:
+            # Đếm số người trong contract (có thể là số member hoặc 1 nếu chỉ có tenant)
+            current_occupants = 1  # TODO: Cập nhật nếu có bảng contract_members
+            
+            # Nếu là admin, lấy thông tin tenant
+            if user_role == "ADMIN":
+                tenant = active_contract.tenant if hasattr(active_contract, 'tenant') else None
+                if tenant:
+                    tenant_info = TenantInfo(
+                        tenant_id=tenant.id,
+                        tenant_name=f"{tenant.first_name} {tenant.last_name}",
+                        tenant_email=tenant.email,
+                        tenant_phone=tenant.phone,
+                        contract_id=active_contract.id,
+                        contract_start_date=active_contract.start_date,
+                        contract_end_date=active_contract.end_date
+                    )
+        
+        # Base data chung cho cả admin và public
+        base_data = {
+            'id': room.id,
+            'building_id': room.building_id,
+            'building_name': building_name,
+            'room_number': room.room_number,
+            'room_name': room.room_name,
+            'area': room.area,
+            'capacity': room.capacity,
+            'base_price': room.base_price,
+            'electricity_price': room.electricity_price,
+            'water_price_per_person': room.water_price_per_person,
+            'deposit_amount': room.deposit_amount,
+            'status': room.status,
+            'description': room.description,
+            'is_available': is_available,
+            'current_occupants': current_occupants,
+            'utilities': utilities,
+            'photo_urls': photo_urls,
+        }
+        
+        # Trả về schema phù hợp với role
+        if user_role == "ADMIN":
+            return RoomAdminDetail(
+                **base_data,
+                tenant_info=tenant_info,
+                created_at=room.created_at,
+                updated_at=room.updated_at
+            )
+        else:
+            return RoomPublicDetail(**base_data)
+
+    def search_rooms(
+        self,
+        building_id: Optional[UUID] = None,
+        min_price: Optional[Decimal] = None,
+        max_price: Optional[Decimal] = None,
+        min_area: Optional[float] = None,
+        max_area: Optional[float] = None,
+        capacity: Optional[int] = None,
+        status: Optional[str] = None,
+        utilities: Optional[List[str]] = None,
+        offset: int = 0,
+        limit: int = 20,
+    ) -> dict:
+        """Tìm kiếm phòng với nhiều điều kiện.
+        
+        Args:
+            building_id: Lọc theo tòa nhà.
+            min_price: Giá tối thiểu.
+            max_price: Giá tối đa.
+            min_area: Diện tích tối thiểu.
+            max_area: Diện tích tối đa.
+            capacity: Sức chứa.
+            status: Trạng thái phòng.
+            utilities: Danh sách tiện ích cần có.
+            offset: Vị trí bắt đầu.
+            limit: Số lượng tối đa.
+            
+        Returns:
+            Dict chứa items, total, offset, limit.
+        """
+        # Validate limit
+        if limit > 100:
+            limit = 100
+        if limit < 1:
+            limit = 20
+        
+        # Validate status nếu có
+        if status:
+            valid_statuses = [s.value for s in RoomStatus]
+            if status not in valid_statuses:
+                raise ValueError(f"Trạng thái không hợp lệ. Phải là một trong: {valid_statuses}")
+        
+        # Validate price range
+        if min_price and max_price and min_price > max_price:
+            raise ValueError("Giá tối thiểu không được lớn hơn giá tối đa")
+        
+        # Validate area range
+        if min_area and max_area and min_area > max_area:
+            raise ValueError("Diện tích tối thiểu không được lớn hơn diện tích tối đa")
+        
+        # TODO: Implement search logic trong repository
+        # Hiện tại tạm dùng list_with_details và filter trong Python
+        # Nên chuyển logic filter xuống repository để tối ưu query
+        
+        # Lấy danh sách phòng
+        from sqlalchemy import and_
+        query = self.db.query(Room)
+        
+        # Apply filters
+        if building_id:
+            query = query.filter(Room.building_id == building_id)
+        if min_price:
+            query = query.filter(Room.base_price >= min_price)
+        if max_price:
+            query = query.filter(Room.base_price <= max_price)
+        if min_area:
+            query = query.filter(Room.area >= min_area)
+        if max_area:
+            query = query.filter(Room.area <= max_area)
+        if capacity:
+            query = query.filter(Room.capacity >= capacity)
+        if status:
+            query = query.filter(Room.status == status)
+        
+        # Filter by utilities (cần join với RoomUtility)
+        if utilities:
+            for utility in utilities:
+                query = query.join(RoomUtility).filter(RoomUtility.utility_name == utility)
+        
+        # Get total count
+        total = query.count()
+        
+        # Apply pagination
+        rooms = query.offset(offset).limit(limit).all()
+        
+        # Convert to list items (simple version)
+        items = []
+        for room in rooms:
+            building = self.building_repo.get_by_id(room.building_id)
+            building_name = building.building_name if building else "N/A"
+            
+            # Lấy contract active để tính current_occupants
+            active_contract = self.contract_repo.get_active_contract_by_room(room.id)
+            current_occupants = 1 if active_contract else 0
+            representative = None
+            if active_contract and hasattr(active_contract, 'tenant'):
+                tenant = active_contract.tenant
+                representative = f"{tenant.first_name} {tenant.last_name}" if tenant else None
+            
+            items.append(RoomListItem(
+                id=room.id,
+                room_number=room.room_number,
+                building_name=building_name,
+                area=room.area,
+                capacity=room.capacity,
+                current_occupants=current_occupants,
+                status=room.status,
+                base_price=room.base_price,
+                representative=representative
+            ))
+        
+        return {
+            "items": items,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+        }
+
+    def list_rooms_public(
+        self,
+        building_id: Optional[UUID] = None,
+        offset: int = 0,
+        limit: int = 10,
+    ) -> dict:
+        """Lấy danh sách phòng cho khách thuê/khách vãng lai (không cần đăng nhập).
+        
+        Hiển thị:
+        - Ảnh đại diện
+        - Giá phòng
+        - Địa chỉ đầy đủ
+        - Trạng thái còn trống
+        - Sắp xếp theo thời gian tạo (mới nhất trước)
+        - Mỗi lần trả về 10 phòng
+        
+        Args:
+            building_id: Lọc theo tòa nhà (optional).
+            offset: Vị trí bắt đầu.
+            limit: Số lượng tối đa (default 10).
+            
+        Returns:
+            Dict chứa items, total, offset, limit.
+        """
+        from app.models.address import Address
+        
+        # Validate limit
+        if limit > 20:
+            limit = 20
+        if limit < 1:
+            limit = 10
+        
+        # Query rooms với joinedload để tránh N+1
+        from sqlalchemy.orm import joinedload
+        query = self.db.query(Room).options(
+            joinedload(Room.building).joinedload(Building.address),
+            joinedload(Room.room_photos)
+        )
+        
+        # Filter by building_id nếu có
+        if building_id:
+            query = query.filter(Room.building_id == building_id)
+        
+        # Sắp xếp theo created_at DESC (mới nhất trước)
+        query = query.order_by(Room.created_at.desc())
+        
+        # Count total
+        total = query.count()
+        
+        # Pagination
+        rooms = query.offset(offset).limit(limit).all()
+        
+        # Convert to RoomPublicListItem
+        items = []
+        for room in rooms:
+            # Lấy building info
+            building = room.building
+            building_name = building.building_name if building else "N/A"
+            
+            # Lấy địa chỉ đầy đủ
+            full_address = "N/A"
+            if building and building.address:
+                addr = building.address
+                full_address = f"{addr.address_line}, {addr.ward}, {addr.city}"
+            
+            # Kiểm tra phòng còn trống không
+            active_contract = self.contract_repo.get_active_contract_by_room(room.id)
+            is_available = (room.status == RoomStatus.AVAILABLE.value) and (active_contract is None)
+            
+            # Lấy ảnh đại diện (ảnh có is_primary=True hoặc ảnh đầu tiên)
+            primary_photo = None
+            if room.room_photos:
+                # Tìm ảnh primary
+                primary = next((p for p in room.room_photos if p.is_primary), None)
+                if primary:
+                    primary_photo = primary.image_base64 if primary.image_base64 else primary.url
+                else:
+                    # Lấy ảnh đầu tiên
+                    first_photo = sorted(room.room_photos, key=lambda p: p.sort_order)[0]
+                    primary_photo = first_photo.image_base64 if first_photo.image_base64 else first_photo.url
+            
+            items.append(RoomPublicListItem(
+                id=room.id,
+                room_number=room.room_number,
+                room_name=room.room_name,
+                building_name=building_name,
+                full_address=full_address,
+                base_price=room.base_price,
+                area=room.area,
+                capacity=room.capacity,
+                is_available=is_available,
+                primary_photo=primary_photo,
+                created_at=room.created_at
+            ))
+        
+        return {
+            "items": items,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+        }

@@ -136,12 +136,11 @@ class AuthService:
         hashed = get_password_hash(tenant_data.password)
         data = tenant_data.model_dump()
         data["password"] = hashed
-        data.pop("confirm_password", None)
         data["role_id"] = tenant_role.id  # Force TENANT role
 
         user_obj = self.user_repo.create_user(user_in=data)
 
-        return True, "Đã tạo tài khoản TENANT mới", user_obj
+        return True, "Đã tạo tài khoản  mới"
 
     def upgrade_customer_to_tenant(self, user_id):
         """

@@ -345,3 +345,24 @@ class ContractRepository:
             .scalar()
         )
         return count > 0
+
+    def get_active_contract_by_room(self, room_id: UUID) -> Optional[Contract]:
+        """Lấy hợp đồng đang hoạt động của phòng (nếu có).
+        
+        Args:
+            room_id: UUID của phòng
+            
+        Returns:
+            Contract ORM instance với tenant relationship hoặc None
+        """
+        return (
+            self.db.query(Contract)
+            .options(joinedload(Contract.tenant))
+            .filter(
+                and_(
+                    Contract.room_id == room_id,
+                    Contract.status == ContractStatus.ACTIVE.value
+                )
+            )
+            .first()
+        )
