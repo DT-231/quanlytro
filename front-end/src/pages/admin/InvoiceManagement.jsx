@@ -7,8 +7,11 @@ import {
   FaEllipsisH,
 } from "react-icons/fa";
 import { FiFilter, FiChevronLeft, FiChevronRight } from "react-icons/fi";
-import InvoiceDetailModal from "@/components/modals/InvoiceDetailModal";
-import AddInvoiceModal from "@/components/modals/AddInvoiceModal";
+import InvoiceDetailModal from "@/components/modals/invoice/InvoiceDetailModal";
+import AddInvoiceModal from "@/components/modals/invoice/AddInvoiceModal";
+import { Toaster, toast } from "sonner";
+
+
 
 const InvoiceManagement = () => {
   // 1. Mock Data (Giả lập dữ liệu hóa đơn)
@@ -129,6 +132,7 @@ const InvoiceManagement = () => {
     };
 
     setInvoices([newInvoice, ...invoices]);
+    toast.success(`Đã thêm hóa đơn cho phòng ${newInvoice.room}`);
   };
   // 4. Helper function màu sắc trạng thái
   const getStatusColor = (status) => {
@@ -145,7 +149,8 @@ const InvoiceManagement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50  font-sans">
+    <div className="min-h-screen bg-gray-50  font-sans relative">
+      <Toaster position="top-right" richColors />
       {/* HEADER */}
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold text-gray-800">Quản lý hóa đơn</h1>

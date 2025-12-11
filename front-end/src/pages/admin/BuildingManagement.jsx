@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   FaSearch,
   FaEdit,
@@ -7,166 +7,236 @@ import {
   FaBuilding,
 } from "react-icons/fa";
 import { FiFilter, FiChevronLeft, FiChevronRight } from "react-icons/fi";
-import AddBuildingModal from '@/components/modals/AddBuildingModal';
+
+// 1. Import Sonner
+import { Toaster, toast } from "sonner";
+
+// Import các Modal
+import AddBuildingModal from "@/components/modals/building/AddBuildingModal";
+import EditBuildingModal from "@/components/modals/building/EditBuildingModal";
+import BuildingDetailModal from "@/components/modals/building/BuildingDetailModal";
+import { buildingService } from "@/services/buildingService";
+
+// --- COMPONENT: SHADCN STYLE ALERT DIALOG (Mô phỏng cho chức năng Xóa) ---
+const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, itemName }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-lg duration-200 sm:rounded-lg md:w-full">
+        <div className="flex flex-col space-y-2 text-center sm:text-left">
+          <h2 className="text-lg font-semibold leading-none tracking-tight">
+            Bạn có chắc chắn muốn xóa?
+          </h2>
+          <p className="text-sm text-gray-500">
+            Hành động này không thể hoàn tác. Tòa nhà <strong>{itemName}</strong> sẽ bị xóa vĩnh viễn khỏi hệ thống.
+          </p>
+        </div>
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 gap-2 sm:gap-0">
+          <button
+            onClick={onClose}
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-gray-100 hover:text-accent-foreground h-10 px-4 py-2"
+          >
+            Hủy bỏ
+          </button>
+          <button
+            onClick={onConfirm}
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2"
+          >
+            Đồng ý xóa
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const BuildingManagement = () => {
-  // 1. Mock Data (Dữ liệu giả lập theo hình ảnh bạn cung cấp)
-  const mockBuildings = [
-    {
-      id: 1,
-      name: "Chung cư Hoàng Anh",
-      address: "72 Hàm Nghi, Đà Nẵng",
-      totalRooms: 15,
-      empty: 1,
-      rented: 14,
-      utilities: "Thang máy, Wifi",
-      createdDate: "10/02/2025",
-      status: "Hoạt động",
-    },
-    {
-      id: 2,
-      name: "VinHome Quận 7",
-      address: "512 Nguyễn Xiển, P. Long Thạnh Mỹ",
-      totalRooms: 5,
-      empty: 1,
-      rented: 4,
-      utilities: "Hồ bơi, Gym",
-      createdDate: "23/01/2025",
-      status: "Hoạt động",
-    },
-    {
-      id: 3,
-      name: "VinHome Quận 7 - Block B",
-      address: "512 Nguyễn Xiển, P. Long Thạnh Mỹ",
-      totalRooms: 5,
-      empty: 0,
-      rented: 5,
-      utilities: "Full nội thất",
-      createdDate: "23/01/2025",
-      status: "Đầy phòng",
-    },
-    {
-      id: 4,
-      name: "Căn hộ dịch vụ An Thượng",
-      address: "An Thượng 2, Ngũ Hành Sơn",
-      totalRooms: 10,
-      empty: 5,
-      rented: 5,
-      utilities: "Máy giặt chung",
-      createdDate: "20/01/2025",
-      status: "Bảo trì",
-    },
-    {
-      id: 5,
-      name: "Ký túc xá Bách Khoa",
-      address: "54 Nguyễn Lương Bằng",
-      totalRooms: 50,
-      empty: 12,
-      rented: 38,
-      utilities: "Căn tin, Giữ xe",
-      createdDate: "15/01/2025",
-      status: "Hoạt động",
-    },
-    {
-      id: 1,
-      name: "Chung cư Hoàng ",
-      address: "72 Hàm Nghi, Đà Nẵng",
-      totalRooms: 15,
-      empty: 1,
-      rented: 14,
-      utilities: "Thang máy, Wifi",
-      createdDate: "10/02/2025",
-      status: "Hoạt động",
-    },
-    {
-      id: 2,
-      name: "VinHome Quận 7",
-      address: "512 Nguyễn Xiển, P. Long Thạnh Mỹ",
-      totalRooms: 5,
-      empty: 1,
-      rented: 4,
-      utilities: "Hồ bơi, Gym",
-      createdDate: "23/01/2025",
-      status: "Hoạt động",
-    },
-    {
-      id: 3,
-      name: "VinHome Quận 7 - Block B",
-      address: "512 Nguyễn Xiển, P. Long Thạnh Mỹ",
-      totalRooms: 5,
-      empty: 0,
-      rented: 5,
-      utilities: "Full nội thất",
-      createdDate: "23/01/2025",
-      status: "Đầy phòng",
-    },
-    {
-      id: 4,
-      name: "Căn hộ dịch vụ An Thượng",
-      address: "An Thượng 2, Ngũ Hành Sơn",
-      totalRooms: 10,
-      empty: 5,
-      rented: 5,
-      utilities: "Máy giặt chung",
-      createdDate: "20/01/2025",
-      status: "Bảo trì",
-    },
-    {
-      id: 5,
-      name: "Ký túc xá Bách Khoa",
-      address: "54 Nguyễn Lương Bằng",
-      totalRooms: 50,
-      empty: 12,
-      rented: 38,
-      utilities: "Căn tin, Giữ xe",
-      createdDate: "15/01/2025",
-      status: "Hoạt động",
-    },
-  ];
+  const [buildings, setBuildings] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // 2. States
-  const [buildings, setBuildings] = useState(mockBuildings);
+  // Filter states
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState(""); // "" = Tất cả
+  const [filterStatus, setFilterStatus] = useState("");
 
+  // --- MODAL STATES ---
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  
-  // Pagination States (Giả lập)
+
+  // States cho Edit
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedBuilding, setSelectedBuilding] = useState(null);
+
+  // States cho Detail (Xem chi tiết)
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [detailBuildingData, setDetailBuildingData] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  // States cho Xóa (Mới thêm)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [buildingToDelete, setBuildingToDelete] = useState(null);
+
+  // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // 3. Logic Lọc dữ liệu (useMemo)
+  // --- HELPER: CHUYỂN ĐỔI TRẠNG THÁI ---
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case "ACTIVE": return "Hoạt động";
+      case "INACTIVE": return "Ngừng hoạt động";
+      case "SUSPENDED": return "Tạm dừng";
+      default: return status;
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "ACTIVE": return "text-green-600 bg-green-100";
+      case "SUSPENDED": return "text-yellow-600 bg-yellow-100";
+      case "INACTIVE": return "text-gray-600 bg-gray-300";
+      default: return "text-gray-600 bg-gray-300";
+    }
+  };
+
+  const extractUtilities = (description) => {
+    if (!description) return "---";
+    const match = description.match(/\[Tiện ích: (.*?)\]/);
+    
+    if (match && match[1]) {
+      const utilsList = match[1].split(",");
+      if (utilsList.length > 2) {
+        return utilsList.slice(0, 2).join(", ").trim() + "..."; 
+      }
+      return match[1];
+    }
+    return "---";
+  };
+
+  // --- FETCH DATA ---
+  const fetchBuildings = async () => {
+    try {
+      setLoading(true);
+      const response = await buildingService.getAll();
+      if (response && response.data && Array.isArray(response.data.items)) {
+        setBuildings(response.data.items);
+      } else {
+        setBuildings([]);
+      }
+    } catch (error) {
+      console.error("Lỗi tải dữ liệu:", error);
+      toast.error("Không thể tải danh sách tòa nhà");
+      setBuildings([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBuildings();
+  }, []);
+
+  // --- LOGIC LỌC ---
   const filteredBuildings = useMemo(() => {
+    if (!Array.isArray(buildings)) return [];
     return buildings.filter((building) => {
-      // a. Lọc theo từ khóa (Tên toà nhà, Địa chỉ)
+      const name = building.building_name || "";
+      const address = building.address_line || "";
+      const status = building.status || "";
+
       const matchesSearch =
-        building.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        building.address.toLowerCase().includes(searchTerm.toLowerCase());
+        name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        address.toLowerCase().includes(searchTerm.toLowerCase());
 
-      // b. Lọc theo trạng thái (Dropdown)
-      const matchesStatus = filterStatus
-        ? building.status === filterStatus
-        : true;
-
+      let matchesStatus = true;
+      if (filterStatus) {
+        if (filterStatus === "Hoạt động") matchesStatus = status === "ACTIVE";
+        else matchesStatus = status === filterStatus;
+      }
       return matchesSearch && matchesStatus;
     });
   }, [buildings, searchTerm, filterStatus]);
 
-const handleAddBuilding = (newBuildingData) => {
-    // Tạo ID giả ngẫu nhiên
-    const newId = Math.floor(Math.random() * 1000) + 100;
-    const buildingToAdd = {
-        id: newId,
-        ...newBuildingData
-    };
+  // --- HANDLERS (THÊM, SỬA, XÓA, CHI TIẾT) ---
 
-    // Thêm vào đầu danh sách
-    setBuildings([buildingToAdd, ...buildings]);
-    alert("Thêm toà nhà thành công!");
+  const handleAddBuilding = async (newBuildingData) => {
+    try {
+      await buildingService.create(newBuildingData);
+      await fetchBuildings();
+      // Thay alert bằng toast
+      toast.success("Thêm toà nhà thành công!");
+    } catch (error) {
+      console.error("Lỗi thêm mới:", error);
+      const msg = error.response?.data?.detail?.[0]?.msg || "Lỗi khi thêm tòa nhà!";
+      // Thay alert bằng toast
+      toast.error("Thêm thất bại: " + msg);
+    }
   };
 
-  
-  // Logic phân trang đơn giản
+  // Mở modal sửa
+  const handleEditClick = (building) => {
+    setSelectedBuilding(building);
+    setIsEditModalOpen(true);
+  };
+
+  // Thực hiện cập nhật
+  const handleUpdateBuilding = async (id, updatedData) => {
+    try {
+      await buildingService.update(id, updatedData);
+      await fetchBuildings();
+      // Thay alert bằng toast
+      toast.success("Cập nhật thành công!");
+    } catch (error) {
+      console.error("Lỗi cập nhật:", error);
+      const msg = error.response?.data?.detail?.[0]?.msg || "Lỗi khi cập nhật!";
+      // Thay alert bằng toast
+      toast.error("Cập nhật thất bại: " + msg);
+      throw error;
+    }
+  };
+
+  const handleViewDetail = async (id) => {
+    setIsDetailModalOpen(true);
+    setLoadingDetail(true);
+    setDetailBuildingData(null); 
+
+    try {
+        const response = await buildingService.getById(id);
+        console.log(response)
+        if (response && response.data) {
+            setDetailBuildingData(response.data);
+        }
+    } catch (error) {
+        console.error("Lỗi lấy chi tiết:", error);
+        toast.error("Không thể tải chi tiết tòa nhà");
+    } finally {
+        setLoadingDetail(false);
+    }
+  };
+
+  // --- LOGIC XÓA (Đã cập nhật dùng Modal + Sonner) ---
+  const handleDeleteClick = (building) => {
+    setBuildingToDelete(building);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!buildingToDelete) return;
+
+    try {
+      await buildingService.delete(buildingToDelete.id);
+      setBuildings(buildings.filter((item) => item.id !== buildingToDelete.id));
+      toast.success("Đã xóa tòa nhà thành công!");
+    } catch (error) {
+      console.error("Lỗi xóa:", error);
+      const msg = error.response?.data?.detail || "Xóa thất bại!";
+      toast.error(msg);
+    } finally {
+      setDeleteModalOpen(false);
+      setBuildingToDelete(null);
+    }
+  };
+
+  // Pagination
   const totalPages = Math.ceil(filteredBuildings.length / itemsPerPage);
   const currentData = filteredBuildings.slice(
     (currentPage - 1) * itemsPerPage,
@@ -174,8 +244,11 @@ const handleAddBuilding = (newBuildingData) => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      {/* --- HEADER --- */}
+    <div className="min-h-screen bg-gray-50 font-sans relative">
+      {/* 2. Thêm Toaster */}
+      <Toaster position="top-right" richColors />
+
+      {/* HEADER */}
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold text-gray-800">Quản lý toà nhà</h1>
         <button
@@ -186,13 +259,9 @@ const handleAddBuilding = (newBuildingData) => {
         </button>
       </div>
 
-      {/* --- KHU VỰC TÌM KIẾM & LỌC (Giống AccountManagement) --- */}
+      {/* FILTER */}
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">
-          Tìm kiếm và lọc
-        </h3>
         <div className="flex flex-col md:flex-row justify-between items-center gap-3">
-          {/* Search Input */}
           <div className="relative w-full md:w-2/3 flex items-center">
             <div className="relative w-full">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -201,7 +270,7 @@ const handleAddBuilding = (newBuildingData) => {
               <input
                 type="text"
                 className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-900 bg-gray-50"
-                placeholder="Nhập tên toà nhà, địa chỉ, tiện ích..."
+                placeholder="Nhập tên toà nhà, địa chỉ..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -210,8 +279,6 @@ const handleAddBuilding = (newBuildingData) => {
               Tìm
             </button>
           </div>
-
-          {/* Filter Dropdown */}
           <div className="flex gap-2 w-full md:w-auto justify-end">
             <div className="relative w-full md:w-48">
               <select
@@ -219,10 +286,10 @@ const handleAddBuilding = (newBuildingData) => {
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
-                <option value="">Chọn trạng thái</option>
+                <option value="">Tất cả trạng thái</option>
                 <option value="Hoạt động">Hoạt động</option>
-                <option value="Đầy phòng">Đầy phòng</option>
-                <option value="Bảo trì">Bảo trì</option>
+                <option value="SUSPENDED">Tạm dừng </option>
+                <option value="INACTIVE">Ngừng hoạt động</option>
               </select>
               <FiFilter className="absolute right-3 top-2.5 text-gray-400 w-4 h-4 pointer-events-none" />
             </div>
@@ -230,7 +297,7 @@ const handleAddBuilding = (newBuildingData) => {
         </div>
       </div>
 
-      {/* --- DANH SÁCH TOÀ NHÀ (Table) --- */}
+      {/* TABLE */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-4 border-b border-gray-100 flex justify-between items-center">
           <h3 className="text-lg font-bold text-gray-800">Danh sách toà nhà</h3>
@@ -238,58 +305,92 @@ const handleAddBuilding = (newBuildingData) => {
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
-            <thead className="bg-white  text-xs font-bold border-b border-gray-200 uppercase">
+            <thead className="bg-white text-xs font-bold border-b border-gray-200 uppercase">
               <tr>
                 <th className="p-4">Tên toà nhà</th>
                 <th className="p-4">Địa chỉ toà nhà</th>
                 <th className="p-4 text-center">Tổng phòng</th>
                 <th className="p-4 text-center">Phòng trống</th>
                 <th className="p-4 text-center">Đang thuê</th>
-                <th className="p-4">Tiện ích</th>
+                <th className="p-4 text-left">Tiện ích</th>
+                <th className="p-4 text-center">Trạng thái</th>
                 <th className="p-4">Ngày tạo</th>
                 <th className="p-4 text-center">Thao tác</th>
               </tr>
             </thead>
             <tbody className="text-sm text-gray-700 divide-y divide-gray-100">
-              {currentData.length > 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan="9" className="p-8 text-center">
+                    Đang tải dữ liệu...
+                  </td>
+                </tr>
+              ) : currentData.length > 0 ? (
                 currentData.map((item) => (
                   <tr
                     key={item.id}
                     className="hover:bg-gray-50 transition-colors group"
                   >
-                    <td className="p-4 font-semibold text-gray-900">
+                    <td 
+                        className="p-4 font-semibold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+                        onClick={() => handleViewDetail(item.id)}
+                        title="Xem chi tiết"
+                    >
                       <div className="flex items-center gap-2">
-                        <div className="bg-gray-100 p-2 rounded text-gray-500">
+                        <div className="bg-gray-100 p-2 rounded text-gray-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
                           <FaBuilding size={14} />
                         </div>
-                        {item.name}
+                        {item.building_name}
                       </div>
                     </td>
-                    <td
-                      className="p-4 text-gray-600 max-w-xs truncate"
-                      title={item.address}
-                    >
-                      {item.address}
+
+                    <td className="p-4 text-sm max-w-[200px] truncate" title={item.address_line}>
+                      {item.address_line}
                     </td>
                     <td className="p-4 text-center font-medium">
-                      {item.totalRooms}
+                      {item.total_rooms}
                     </td>
                     <td className="p-4 text-center text-red-500 font-bold">
-                      {item.empty}
+                      {item.available_rooms}
                     </td>
                     <td className="p-4 text-center text-green-600 font-bold">
-                      {item.rented}
+                      {item.rented_rooms}
                     </td>
-                    <td className="p-4 text-gray-500 truncate max-w-[150px]">
-                      {item.utilities}
+                    <td className="p-4 text-gray-500 text-sm">
+                      <span className="truncate block max-w-[150px]">
+                        {extractUtilities(item.description)}
+                      </span>
                     </td>
-                    <td className="p-4">{item.createdDate}</td>
+
+                    <td className="p-4 text-center">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-bold whitespace-nowrap ${getStatusColor(
+                          item.status
+                        )}`}
+                      >
+                        {getStatusLabel(item.status)}
+                      </span>
+                    </td>
+                    <td className="p-4 text-gray-500">
+                      {item.created_at
+                        ? new Date(item.created_at).toLocaleDateString("vi-VN")
+                        : "-"}
+                    </td>
+
                     <td className="p-4">
                       <div className="flex justify-center gap-2">
-                        <button className="p-2 border border-gray-200 rounded hover:bg-gray-900 hover:text-white text-gray-500 transition-all shadow-sm">
+                        <button
+                          onClick={() => handleEditClick(item)}
+                          className="p-2 border border-gray-200 rounded hover:bg-gray-900 hover:text-white text-gray-500 transition-all shadow-sm"
+                        >
                           <FaEdit size={14} />
                         </button>
-                        <button className="p-2 border border-red-100 rounded hover:bg-red-500 hover:text-white text-red-500 transition-all shadow-sm bg-red-50">
+
+                        <button
+                          // Thay đổi gọi hàm xóa trực tiếp bằng hàm mở Modal
+                          onClick={() => handleDeleteClick(item)}
+                          className="p-2 border border-red-100 rounded hover:bg-red-500 hover:text-white text-red-500 transition-all shadow-sm bg-red-50"
+                        >
                           <FaTrashAlt size={14} />
                         </button>
                       </div>
@@ -298,7 +399,7 @@ const handleAddBuilding = (newBuildingData) => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="p-8 text-center text-gray-500">
+                  <td colSpan="9" className="p-8 text-center text-gray-500">
                     Không tìm thấy toà nhà nào phù hợp.
                   </td>
                 </tr>
@@ -307,7 +408,7 @@ const handleAddBuilding = (newBuildingData) => {
           </table>
         </div>
 
-        {/* --- FOOTER & PAGINATION --- */}
+        {/* PAGINATION */}
         <div className="p-4 bg-white flex flex-col sm:flex-row justify-between items-center gap-4">
           <span className="text-xs text-gray-500 font-medium">
             Hiển thị {currentData.length} trên tổng số{" "}
@@ -350,10 +451,36 @@ const handleAddBuilding = (newBuildingData) => {
           </div>
         </div>
       </div>
-      <AddBuildingModal 
-        isOpen={isAddModalOpen} 
+
+      {/* --- ADD MODAL --- */}
+      <AddBuildingModal
+        isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAddSuccess={handleAddBuilding}
+      />
+
+      {/* --- EDIT MODAL --- */}
+      <EditBuildingModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        buildingData={selectedBuilding}
+        onUpdateSuccess={handleUpdateBuilding}
+      />
+
+      {/* --- DETAIL MODAL --- */}
+      <BuildingDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        building={detailBuildingData}
+        loading={loadingDetail}
+      />
+
+      {/* --- DELETE MODAL (MỚI) --- */}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        itemName={buildingToDelete?.building_name}
       />
     </div>
   );

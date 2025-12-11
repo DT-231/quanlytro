@@ -12,10 +12,15 @@ export const authService = {
 
     console.log("Payload gửi lên API:", payload);
 
-    return await api.post("/api/v1/auth/register", payload);
+    return await api.post("/auth/register", payload);
   },
 
   login: async (email, password) => {
-    return await api.post("/api/v1/auth/login", { email, password });
+    return await api.post("/auth/login", { email, password });
+  },
+
+  createTenant: async (userData) => {
+    const response = await api.post("/auth/create-tenant", userData);
+    return response.data;
   },
 };

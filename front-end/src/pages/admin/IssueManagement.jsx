@@ -2,7 +2,6 @@ import React, { useState, useMemo } from "react";
 import { 
   FaSearch, 
   FaTrashAlt, 
-  FaExternalLinkAlt, 
   FaTools,           
   FaInfoCircle,     
   FaClipboardList, 
@@ -11,8 +10,42 @@ import {
 } from "react-icons/fa";
 import { FiFilter, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
-// Giả sử bạn sẽ có Modal thêm/sửa sự cố sau này
-// import EditIssueModal from "@/components/modals/EditIssueModal"; 
+// 1. Import Sonner
+import { Toaster, toast } from "sonner";
+
+// --- COMPONENT: SHADCN STYLE ALERT DIALOG ---
+const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, itemName }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-lg duration-200 sm:rounded-lg md:w-full">
+        <div className="flex flex-col space-y-2 text-center sm:text-left">
+          <h2 className="text-lg font-semibold leading-none tracking-tight">
+            Bạn có chắc chắn muốn xóa?
+          </h2>
+          <p className="text-sm text-gray-500">
+            Hành động này không thể hoàn tác. Sự cố <strong>{itemName}</strong> sẽ bị xóa vĩnh viễn khỏi hệ thống.
+          </p>
+        </div>
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 gap-2 sm:gap-0">
+          <button
+            onClick={onClose}
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-gray-100 hover:text-accent-foreground h-10 px-4 py-2"
+          >
+            Hủy bỏ
+          </button>
+          <button
+            onClick={onConfirm}
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2"
+          >
+            Đồng ý xóa
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const IssueManagement = () => {
   // 1. Mock Data (Dựa trên hình ảnh)
@@ -94,10 +127,14 @@ const IssueManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterBuilding, setFilterBuilding] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+
+  // --- STATES CHO XÓA (MỚI) ---
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [issueToDelete, setIssueToDelete] = useState(null);
   
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5; // Giữ 5 dòng để demo giống hình
+  const itemsPerPage = 5; 
 
   // 3. Logic Lọc dữ liệu & Thống kê
   const filteredIssues = useMemo(() => {
@@ -127,6 +164,26 @@ const IssueManagement = () => {
     currentPage * itemsPerPage
   );
 
+  // --- LOGIC XÓA (MỚI) ---
+  const handleDeleteClick = (issue) => {
+    setIssueToDelete(issue);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (issueToDelete) {
+      setIssues((prev) => prev.filter((i) => i.id !== issueToDelete.id));
+      toast.success(`Đã xóa sự cố mã: ${issueToDelete.code}`);
+      setDeleteModalOpen(false);
+      setIssueToDelete(null);
+    }
+  };
+
+  const handleEditClick = (issue) => {
+      // Vì chưa có Modal Edit, hiển thị toast tạm
+      toast.info(`Chức năng sửa sự cố #${issue.code} đang phát triển`);
+  }
+
   // Thống kê cho Cards (Tính toán động từ dữ liệu)
   const stats = {
     total: issues.length,
@@ -135,27 +192,28 @@ const IssueManagement = () => {
     done: issues.filter(i => i.status === "Đã xử lý").length,
   };
 
-  // 4. Helper: Màu sắc trạng thái (Giống thiết kế: Đỏ, Vàng, Xanh)
+  // 4. Helper: Màu sắc trạng thái
   const getStatusColor = (status) => {
     switch (status) {
       case "Chưa xử lý":
-        return "bg-red-600 text-white"; // Đỏ
+        return "bg-red-600 text-white"; 
       case "Đang xử lý":
-        return "bg-yellow-400 text-gray-900"; // Vàng
+        return "bg-yellow-400 text-gray-900"; 
       case "Đã xử lý":
-        return "bg-green-500 text-white"; // Xanh lá
+        return "bg-green-500 text-white"; 
       default:
         return "bg-gray-200 text-gray-800";
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
+    <div className="min-h-screen bg-gray-50 font-sans relative">
+      {/* 2. Thêm Toaster */}
+      <Toaster position="top-right" richColors />
+
       {/* --- HEADER --- */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Quản lý sự cố</h1>
-        {/* Trang này thường ít khi có nút "Thêm" trực tiếp vì sự cố do khách báo, 
-            nhưng nếu cần có thể thêm nút ở đây giống trang Room */}
       </div>
 
       {/* --- KHU VỰC TÌM KIẾM & LỌC --- */}
@@ -284,12 +342,14 @@ const IssueManagement = () => {
                     <td className="p-4">
                       <div className="flex justify-center gap-2">
                         <button 
+                            onClick={() => handleEditClick(issue)}
                             className="p-2 border border-gray-200 rounded hover:bg-gray-900 hover:text-white text-gray-500 transition-all shadow-sm" 
-                            title="Xem chi tiết"
+                            title="Xem chi tiết / Sửa"
                         >
                           <FaEdit size={12} />
                         </button>
                         <button 
+                            onClick={() => handleDeleteClick(issue)}
                             className="p-2 border border-red-100 rounded hover:bg-red-500 hover:text-white text-red-500 transition-all shadow-sm bg-red-50" 
                             title="Xóa"
                         >
@@ -351,6 +411,14 @@ const IssueManagement = () => {
           </div>
         </div>
       </div>
+
+      {/* --- RENDER DIALOG XÁC NHẬN --- */}
+      <DeleteConfirmationModal 
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        itemName={issueToDelete?.content}
+      />
     </div>
   );
 };

@@ -3,13 +3,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Plus } from "lucide-react";
-import AddUtilityModal from "./AddUtilityModal"; // Import modal con
+import AddUtilityModal from "../utility/AddUtilityModal";
 
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,20 +23,19 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
-// Schema validation: Đã xóa district
+// Schema validation
 const buildingSchema = z.object({
   name: z.string().min(1, "Tên toà nhà là bắt buộc"),
   houseNumber: z.string().min(1, "Số nhà là bắt buộc"),
   street: z.string().min(1, "Tên đường là bắt buộc"),
   ward: z.string().min(1, "Phường/Xã là bắt buộc"),
-  city: z.string().min(1, "Thành phố là bắt buộc"), // City vẫn giữ validation
+  city: z.string().min(1, "Thành phố là bắt buộc"),
   description: z.string().optional(),
 });
 
 export default function AddBuildingModal({ isOpen, onClose, onAddSuccess }) {
   const [isUtilityModalOpen, setIsUtilityModalOpen] = useState(false);
 
-  // Mặc định không tick tiện ích nào
   const [utilities, setUtilities] = useState([
     { id: "pool", label: "Hồ bơi", checked: false },
     { id: "elevator", label: "Thang máy", checked: false },
@@ -52,7 +52,7 @@ export default function AddBuildingModal({ isOpen, onClose, onAddSuccess }) {
       houseNumber: "",
       street: "",
       ward: "",
-      city: "", 
+      city: "",
       description: "",
     },
   });
@@ -71,46 +71,72 @@ export default function AddBuildingModal({ isOpen, onClose, onAddSuccess }) {
     ]);
   };
 
- const onSubmit = (values) => {
-    // 1. Lấy danh sách tiện ích đã check
+  const onSubmit = (values) => {
+    // 1. Xử lý tiện ích (Gộp vào description vì API chưa có trường riêng)
     const selectedUtils = utilities.filter((u) => u.checked);
+    const utilitiesString = selectedUtils.map((u) => u.label).join(", ");
     
-    // 2. Chuyển thành chuỗi (Ví dụ: "Hồ bơi, Gym") để hiển thị trên bảng
-    const utilitiesString = selectedUtils.map(u => u.label).join(", ");
-    const submitData = {
-      ...values,
-      utilities: utilitiesString, 
-      address: `${values.houseNumber} ${values.street}, ${values.ward}`, 
-      totalRooms: 0,
-      empty: 0,
-      rented: 0,
-      status: "Hoạt động",
-      createdDate: new Date().toLocaleDateString('en-GB')
+    let finalDescription = values.description || "";
+    if (utilitiesString) {
+        finalDescription += `\n[Tiện ích: ${utilitiesString}]`;
+    }
+
+    // 2. Xử lý địa chỉ
+    const addressLine = `${values.houseNumber} ${values.street}`;
+    const fullAddress = `${addressLine}, ${values.ward}, ${values.city}`;
+
+    // 3. Tạo mã tòa nhà tự động (Backend yêu cầu bắt buộc)
+    // Ví dụ: BLD-171513... (dùng timestamp để đảm bảo duy nhất)
+    const autoCode = `BLD-${Date.now().toString().slice(-6)}`;
+
+    // 4. Tạo payload đúng chuẩn Swagger API (Quan trọng nhất để fix lỗi 422)
+    const apiPayload = {
+      building_code: autoCode,
+      building_name: values.name,      // Map 'name' -> 'building_name'
+      description: finalDescription.trim(),
+      status: "ACTIVE",                // Bắt buộc phải là "ACTIVE" (viết hoa), không phải "Hoạt động"
+      address_id: null,                // null để Backend tự tạo địa chỉ mới
+      address: {                       // Object address lồng nhau
+        address_line: addressLine,
+        ward: values.ward,
+        city: values.city,
+        country: "Vietnam",
+        full_address: fullAddress
+      }
     };
 
-    console.log("Dữ liệu gửi đi:", submitData);
+    console.log("Dữ liệu gửi đi (Đã sửa):", apiPayload);
 
-    if (onAddSuccess) onAddSuccess(submitData);
+    if (onAddSuccess) onAddSuccess(apiPayload);
+    
+    // Reset form
     onClose();
     form.reset();
-    
-    // Reset checkbox về false
-    setUtilities(utilities.map(u => ({...u, checked: false})));
+    setUtilities(utilities.map((u) => ({ ...u, checked: false })));
   };
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden bg-white text-black max-h-[90vh] overflow-y-auto">
           {/* HEADER */}
           <DialogHeader className="p-6 pb-0">
-            <DialogTitle className="text-2xl font-bold">Thêm tòa nhà mới</DialogTitle>
+            <DialogTitle className="text-2xl font-bold">
+              Thêm tòa nhà mới
+            </DialogTitle>
+            {/* Thêm DialogDescription và ẩn đi để fix Warning vàng */}
+            <DialogDescription className="hidden">
+              Điền thông tin để tạo mới tòa nhà vào hệ thống
+            </DialogDescription>
           </DialogHeader>
 
           {/* FORM */}
           <div className="p-6 pt-4">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
                 {/* Tên toà nhà */}
                 <FormField
                   control={form.control}
@@ -118,7 +144,9 @@ export default function AddBuildingModal({ isOpen, onClose, onAddSuccess }) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tên toà nhà mới</FormLabel>
-                      <FormControl><Input placeholder="Tên toà nhà mới" {...field} /></FormControl>
+                      <FormControl>
+                        <Input placeholder="Tên toà nhà mới" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -132,7 +160,9 @@ export default function AddBuildingModal({ isOpen, onClose, onAddSuccess }) {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Số nhà</FormLabel>
-                        <FormControl><Input placeholder="123" {...field} /></FormControl>
+                        <FormControl>
+                          <Input placeholder="123" {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -143,14 +173,16 @@ export default function AddBuildingModal({ isOpen, onClose, onAddSuccess }) {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Tên đường</FormLabel>
-                        <FormControl><Input placeholder="Trần phú,..." {...field} /></FormControl>
+                        <FormControl>
+                          <Input placeholder="Trần phú,..." {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
 
-                {/* Phường & Thành Phố (Thành phố thế chỗ Quận/Huyện) */}
+                {/* Phường & Thành Phố */}
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -158,7 +190,9 @@ export default function AddBuildingModal({ isOpen, onClose, onAddSuccess }) {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Phường / Xã</FormLabel>
-                        <FormControl><Input placeholder="Hải Châu 1" {...field} /></FormControl>
+                        <FormControl>
+                          <Input placeholder="Hải Châu 1" {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -169,7 +203,9 @@ export default function AddBuildingModal({ isOpen, onClose, onAddSuccess }) {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Thành phố</FormLabel>
-                        <FormControl><Input placeholder="Đà Nẵng" {...field} /></FormControl>
+                        <FormControl>
+                          <Input placeholder="Đà Nẵng" {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -187,7 +223,7 @@ export default function AddBuildingModal({ isOpen, onClose, onAddSuccess }) {
                         <textarea
                           {...field}
                           className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px]"
-                          placeholder="Type your message here."
+                          placeholder="Nhập mô tả..."
                         />
                       </FormControl>
                       <FormMessage />
@@ -200,7 +236,10 @@ export default function AddBuildingModal({ isOpen, onClose, onAddSuccess }) {
                   <FormLabel>Tiện ích</FormLabel>
                   <div className="grid grid-cols-3 gap-y-3 gap-x-2">
                     {utilities.map((util) => (
-                      <div key={util.id} className="flex items-center space-x-2">
+                      <div
+                        key={util.id}
+                        className="flex items-center space-x-2"
+                      >
                         <input
                           type="checkbox"
                           id={util.id}
@@ -208,22 +247,26 @@ export default function AddBuildingModal({ isOpen, onClose, onAddSuccess }) {
                           onChange={() => toggleUtility(util.id)}
                           className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black accent-black cursor-pointer"
                         />
-                        <label htmlFor={util.id} className="text-sm font-medium leading-none cursor-pointer">
+                        <label
+                          htmlFor={util.id}
+                          className="text-sm font-medium leading-none cursor-pointer"
+                        >
                           {util.label}
                         </label>
                       </div>
                     ))}
-                    
-                    {/* Nút thêm tiện ích - Thẳng hàng với checkbox */}
+
                     <button
                       type="button"
                       onClick={() => setIsUtilityModalOpen(true)}
                       className="flex items-center space-x-2 text-black hover:text-gray-700 transition-colors col-span-1"
                     >
-                        <div className="h-4 w-4 border border-black rounded flex items-center justify-center">
-                            <Plus size={12} />
-                        </div>
-                        <span className="text-sm font-medium leading-none">Thêm tiện ích</span>
+                      <div className="h-4 w-4 border border-black rounded flex items-center justify-center">
+                        <Plus size={12} />
+                      </div>
+                      <span className="text-sm font-medium leading-none">
+                        Thêm tiện ích
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -233,7 +276,10 @@ export default function AddBuildingModal({ isOpen, onClose, onAddSuccess }) {
                   <Button type="button" variant="outline" onClick={onClose}>
                     Huỷ
                   </Button>
-                  <Button type="submit" className="bg-black text-white hover:bg-gray-800">
+                  <Button
+                    type="submit"
+                    className="bg-black text-white hover:bg-gray-800"
+                  >
                     Chấp nhận
                   </Button>
                 </div>
@@ -249,7 +295,6 @@ export default function AddBuildingModal({ isOpen, onClose, onAddSuccess }) {
         onClose={() => setIsUtilityModalOpen(false)}
         onAddSuccess={handleAddNewUtility}
       />
-      
     </>
   );
 }

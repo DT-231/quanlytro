@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   FaSearch,
   FaTrashAlt,
@@ -7,168 +7,196 @@ import {
   FaCheckCircle,
   FaExclamationCircle,
   FaTimesCircle,
-  FaExternalLinkAlt,
   FaEdit
 } from "react-icons/fa";
 import { FiFilter, FiChevronLeft, FiChevronRight } from "react-icons/fi";
-import AddContractModal from "@/components/modals/AddContractModal";
+
+// 1. Import Sonner & Service
+import { Toaster, toast } from "sonner";
+import AddContractModal from "@/components/modals/contract/AddContractModal";
+import { contractService } from "@/services/contractService";
+import { buildingService } from "@/services/buildingService"; 
+// --- COMPONENT: Modal Xóa ---
+const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, itemName }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-lg duration-200 sm:rounded-lg md:w-full">
+        <div className="flex flex-col space-y-2 text-center sm:text-left">
+          <h2 className="text-lg font-semibold leading-none tracking-tight">
+            Bạn có chắc chắn muốn xóa?
+          </h2>
+          <p className="text-sm text-gray-500">
+            Hành động này không thể hoàn tác. Hợp đồng <strong>{itemName}</strong> sẽ bị xóa vĩnh viễn khỏi hệ thống.
+          </p>
+        </div>
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 gap-2 sm:gap-0">
+          <button
+            onClick={onClose}
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-gray-100 h-10 px-4 py-2"
+          >
+            Hủy bỏ
+          </button>
+          <button
+            onClick={onConfirm}
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2"
+          >
+            Đồng ý xóa
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const ContractManagement = () => {
-  // 1. Mock Data (Dựa trên hình ảnh Quản lý hợp đồng)
-  const mockContracts = [
-    {
-      id: 1,
-      code: "HD01",
-      room: "111",
-      tenant: "Phan Mạnh Quỳnh",
-      building: "Chung cư Hoàng Anh Gia Lai",
-      startDate: "15/02/2025",
-      endDate: "14/12/2025",
-      price: 2000000,
-      status: "Đã hết hạn",
-    },
-    {
-      id: 2,
-      code: "HD02",
-      room: "118",
-      tenant: "Lâm Minh Phú",
-      building: "VinHome quận 7",
-      startDate: "15/02/2025",
-      endDate: "14/12/2025",
-      price: 2000000,
-      status: "Đang hoạt động",
-    },
-    {
-      id: 3,
-      code: "HD03",
-      room: "200",
-      tenant: "Lý Thành Ân",
-      building: "VinHome quận 7",
-      startDate: "15/02/2025",
-      endDate: "14/12/2025",
-      price: 2000000,
-      status: "Đang hoạt động",
-    },
-    {
-      id: 4,
-      code: "HD04",
-      room: "202",
-      tenant: "Đinh Bảo Toàn",
-      building: "VinHome quận 7",
-      startDate: "15/02/2025",
-      endDate: "14/12/2025",
-      price: 2000000,
-      status: "Sắp hết hạn",
-    },
-    {
-      id: 5,
-      code: "HD05",
-      room: "405",
-      tenant: "Nguyễn Việt Dũng",
-      building: "Chung cư Hoàng Anh Gia Lai",
-      startDate: "15/02/2025",
-      endDate: "14/12/2025",
-      price: 2000000,
-      status: "Đang hoạt động",
-    },
-    {
-      id: 6,
-      code: "HD06",
-      room: "508",
-      tenant: "Bùi Phú Hùng",
-      building: "Chung cư Hoàng Anh Gia Lai",
-      startDate: "15/02/2025",
-      endDate: "14/12/2025",
-      price: 2000000,
-      status: "Đang hoạt động",
-    },
-    {
-      id: 7,
-      code: "HD07",
-      room: "608",
-      tenant: "Nguyễn Tấn Hoàng",
-      building: "VinHome quận 7",
-      startDate: "15/02/2025",
-      endDate: "14/12/2025",
-      price: 2000000,
-      status: "Đang hoạt động",
-    },
-  ];
+  // --- 1. STATES QUẢN LÝ DỮ LIỆU ---
+  const [contracts, setContracts] = useState([]); 
+  const [buildings, setBuildings] = useState([]); 
+  const [statsData, setStatsData] = useState({    
+    total_contracts: 0,
+    active_contracts: 0,
+    expiring_soon: 0,
+    expired_contracts: 0
+  });
+  const [loading, setLoading] = useState(true);
 
-  // 2. States
-  const [contracts, setContracts] = useState(mockContracts);
+  // Filter & Pagination States
   const [searchTerm, setSearchTerm] = useState("");
   const [filterBuilding, setFilterBuilding] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-
-  // Pagination States
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 5; 
 
-  // 3. Logic Lọc dữ liệu & Thống kê
-  const filteredContracts = useMemo(() => {
-    return contracts.filter((contract) => {
-      const matchesSearch =
-        contract.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contract.tenant.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contract.room.includes(searchTerm);
+  // Modal States
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [contractToDelete, setContractToDelete] = useState(null);
 
-      const matchesBuilding = filterBuilding
-        ? contract.building === filterBuilding
-        : true;
-
-      const matchesStatus = filterStatus
-        ? contract.status === filterStatus
-        : true;
-
-      return matchesSearch && matchesBuilding && matchesStatus;
-    });
-  }, [contracts, searchTerm, filterBuilding, filterStatus]);
-
-  // Logic phân trang
-  const totalPages = Math.ceil(filteredContracts.length / itemsPerPage);
-  const currentData = filteredContracts.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  //Logic: Xử lý thêm mới từ Modal
-  const handleAddNewContract = (newData) => {
-    // Helper format ngày từ YYYY-MM-DD sang DD/MM/YYYY
-    const formatDate = (dateString) => {
-      if (!dateString) return "";
-      const [year, month, day] = dateString.split("-");
-      return `${day}/${month}/${year}`;
-    };
-
-    const newContract = {
-      id: Date.now(), // Tạo ID ngẫu nhiên
-      code: newData.contractCode,
-      room: newData.roomName,
-      tenant: newData.customerName,
-      building: newData.buildingName || "Chưa cập nhật",
-      startDate: formatDate(newData.startDate),
-      endDate: formatDate(newData.endDate),
-      price: Number(newData.rentPrice),
-      status: newData.status,
-    };
-
-    // Thêm vào đầu danh sách
-    setContracts([newContract, ...contracts]);
-    // Reset về trang 1 để thấy dữ liệu mới
-    setCurrentPage(1);
+  // --- 2. HELPER: MAP UI STATUS -> API STATUS ---
+  const mapStatusToApi = (uiStatus) => {
+    switch (uiStatus) {
+      case "Đang hoạt động": return "ACTIVE";
+      case "Đã hết hạn": return "EXPIRED";
+      case "Đã thanh lý": return "TERMINATED";
+      default: return null; 
+    }
   };
 
-  // Thống kê cho Cards
-  const stats = {
-    total: contracts.length,
-    active: contracts.filter((c) => c.status === "Đang hoạt động").length,
-    expiringSoon: contracts.filter((c) => c.status === "Sắp hết hạn").length,
-    expired: contracts.filter((c) => c.status === "Đã hết hạn").length,
+  // --- 3. API CALLS ---
+
+  // A. Lấy danh sách hợp đồng
+  const fetchContracts = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      const params = {
+        page: currentPage,
+        size: itemsPerPage,
+        search: searchTerm || null,
+        building: filterBuilding || null,
+        status: mapStatusToApi(filterStatus),
+      };
+
+      const response = await contractService.getAll(params);
+
+      if (response && response.data) {
+        const { items, pages } = response.data;
+        setContracts(items || []);
+        setTotalPages(pages || 1);
+      } else {
+        setContracts([]);
+      }
+
+    } catch (error) {
+      console.error("Failed to fetch contracts:", error);
+      toast.error("Không thể tải danh sách hợp đồng.");
+      setContracts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, searchTerm, filterBuilding, filterStatus]);
+
+  // B. Lấy thống kê
+  const fetchStats = async () => {
+    try {
+      const response = await contractService.getStats();
+      if (response && response.data) {
+        setStatsData(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch stats:", error);
+    }
   };
 
-  // 4. Helper: Format tiền tệ
+  // C. Lấy danh sách tòa nhà (MỚI)
+  const fetchBuildings = async () => {
+    try {
+      const response = await buildingService.getAll();
+      if (response?.data?.items) {
+        setBuildings(response.data.items);
+      }
+    } catch (error) {
+      console.error("Lỗi tải tòa nhà:", error);
+    }
+  };
+
+  // --- 4. USE EFFECT ---
+  
+  // Khi mount: Gọi stats và buildings
+  useEffect(() => {
+    fetchStats();
+    fetchBuildings(); 
+  }, []);
+
+  // Khi filter/page đổi: Gọi contracts (Debounce search)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchContracts();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [fetchContracts]);
+
+
+  // --- 5. HANDLERS ---
+  const handleAddNewContract = async (newData) => {
+    try {
+      const response = await contractService.create(newData);
+      if (response) {
+        toast.success("Tạo hợp đồng thành công!");
+        setIsAddModalOpen(false);
+        fetchContracts();
+        fetchStats();
+      }
+    } catch (error) {
+      console.error("Error creating contract:", error);
+      toast.error("Tạo hợp đồng thất bại, vui lòng kiểm tra lại.");
+    }
+  };
+
+  const handleDeleteClick = (contract) => {
+    setContractToDelete(contract);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!contractToDelete) return;
+    try {
+      await contractService.delete(contractToDelete.id);
+      toast.success(`Đã xóa hợp đồng: ${contractToDelete.contract_number}`);
+      fetchContracts();
+      fetchStats();
+    } catch (error) {
+      console.error("Error deleting contract:", error);
+      toast.error("Xóa hợp đồng thất bại.");
+    } finally {
+      setDeleteModalOpen(false);
+      setContractToDelete(null);
+    }
+  };
+
+  // --- 6. FORMATTERS ---
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -176,22 +204,36 @@ const ContractManagement = () => {
     }).format(amount);
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN');
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
-      case "Đang hoạt động":
-        return "bg-green-500 text-white";
-      case "Sắp hết hạn":
-        return "bg-yellow-400 text-gray-900";
-      case "Đã hết hạn":
-        return "bg-red-600 text-white";
-      default:
-        return "bg-gray-200 text-gray-800";
+      case "ACTIVE": return "bg-green-500 text-white";
+      case "EXPIRING_SOON": return "bg-yellow-400 text-gray-900";
+      case "EXPIRED": return "bg-red-600 text-white";
+      case "TERMINATED": return "bg-gray-500 text-white";
+      default: return "bg-gray-200 text-gray-800";
     }
   };
 
+  const getStatusLabel = (status) => {
+     switch (status) {
+      case "ACTIVE": return "Đang hoạt động";
+      case "EXPIRED": return "Đã hết hạn";
+      case "TERMINATED": return "Đã thanh lý";
+      default: return status;
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      {/* --- HEADER --- */}
+    <div className="min-h-screen bg-gray-50 font-sans relative">
+      <Toaster position="top-right" richColors />
+
+      {/* HEADER */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Quản lý hợp đồng</h1>
         <button
@@ -202,11 +244,11 @@ const ContractManagement = () => {
         </button>
       </div>
 
-      {/* --- KHU VỰC TÌM KIẾM & LỌC --- */}
+      {/* FILTER SECTION */}
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Tìm kiếm và lọc</h3>
         <div className="flex flex-col md:flex-row justify-between items-center gap-3">
-          {/* Search Input */}
+          {/* Search */}
           <div className="relative w-full md:w-1/2 flex items-center gap-2">
             <div className="relative w-full">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -217,41 +259,52 @@ const ContractManagement = () => {
                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-900 bg-gray-50 transition-all"
                 placeholder="Mã hợp đồng, tên khách hàng, phòng..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1); 
+                }}
               />
             </div>
-            <button className="bg-gray-900 text-white px-5 py-2 rounded-md text-sm hover:bg-gray-800 font-medium whitespace-nowrap transition-colors">
-              Tìm
-            </button>
           </div>
 
-          {/* Filter Dropdowns */}
+          {/* Dropdowns */}
           <div className="flex gap-2 w-full md:w-auto justify-end">
+            
+            {/* Filter Building - ĐÃ CẬP NHẬT DYNAMIC */}
             <div className="relative w-full md:w-48">
               <select
                 className="w-full appearance-none border border-gray-200 px-3 py-2 pr-8 rounded-md bg-white hover:bg-gray-50 text-sm focus:outline-none cursor-pointer text-gray-700 transition-all"
                 value={filterBuilding}
-                onChange={(e) => setFilterBuilding(e.target.value)}
+                onChange={(e) => {
+                  setFilterBuilding(e.target.value);
+                  setCurrentPage(1);
+                }}
               >
                 <option value="">Tất cả tòa nhà</option>
-                <option value="Chung cư Hoàng Anh Gia Lai">
-                  Chung cư Hoàng Anh Gia Lai
-                </option>
-                <option value="VinHome quận 7">VinHome quận 7</option>
+                {/* Map dữ liệu từ API */}
+                {buildings.map((b) => (
+                  <option key={b.id} value={b.building_name}>
+                    {b.building_name}
+                  </option>
+                ))}
               </select>
               <FiFilter className="absolute right-3 top-2.5 text-gray-400 w-4 h-4 pointer-events-none" />
             </div>
 
+            {/* Filter Status */}
             <div className="relative w-full md:w-40">
               <select
                 className="w-full appearance-none border border-gray-200 px-3 py-2 pr-8 rounded-md bg-white hover:bg-gray-50 text-sm focus:outline-none cursor-pointer text-gray-700 transition-all"
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                onChange={(e) => {
+                  setFilterStatus(e.target.value);
+                  setCurrentPage(1);
+                }}
               >
-                <option value="">Trạng thái</option>
+                <option value="">Tất cả trạng thái</option>
                 <option value="Đang hoạt động">Đang hoạt động</option>
-                <option value="Sắp hết hạn">Sắp hết hạn</option>
                 <option value="Đã hết hạn">Đã hết hạn</option>
+                <option value="Đã thanh lý">Đã thanh lý</option>
               </select>
               <FiFilter className="absolute right-3 top-2.5 text-gray-400 w-4 h-4 pointer-events-none" />
             </div>
@@ -259,38 +312,35 @@ const ContractManagement = () => {
         </div>
       </div>
 
-      {/* --- STATS CARDS --- */}
+      {/* STATS CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         {[
           {
             title: "Tổng hợp đồng",
-            value: stats.total,
+            value: statsData.total_contracts,
             icon: FaFileContract,
             color: "text-gray-600",
           },
           {
             title: "Đang hoạt động",
-            value: stats.active,
+            value: statsData.active_contracts,
             icon: FaCheckCircle,
             color: "text-green-500",
           },
           {
-            title: "Sắp hết hạn",
-            value: stats.expiringSoon,
+            title: "Sắp hết hạn (30 ngày)",
+            value: statsData.expiring_soon,
             icon: FaExclamationCircle,
             color: "text-yellow-500",
           },
           {
             title: "Đã hết hạn",
-            value: stats.expired,
+            value: statsData.expired_contracts,
             icon: FaTimesCircle,
             color: "text-red-500",
           },
         ].map((stat, index) => (
-          <div
-            key={index}
-            className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"
-          >
+          <div key={index} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
             <div className="flex justify-between items-start">
               <h3 className="text-sm font-medium mb-1">{stat.title}</h3>
               <stat.icon className={`w-4 h-4 ${stat.color} opacity-80`} />
@@ -300,12 +350,10 @@ const ContractManagement = () => {
         ))}
       </div>
 
-      {/* --- DANH SÁCH HỢP ĐỒNG (Table) --- */}
+      {/* TABLE */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-5 border-b border-gray-100">
-          <h3 className="text-lg font-bold text-gray-800">
-            Danh sách hợp đồng
-          </h3>
+          <h3 className="text-lg font-bold text-gray-800">Danh sách hợp đồng</h3>
         </div>
 
         <div className="overflow-x-auto">
@@ -323,60 +371,40 @@ const ContractManagement = () => {
               </tr>
             </thead>
             <tbody className="text-sm text-gray-700 divide-y divide-gray-100">
-              {currentData.length > 0 ? (
-                currentData.map((contract) => (
-                  <tr
-                    key={contract.id}
-                    className="hover:bg-gray-50 transition-colors group"
-                  >
-                    <td className="p-4 font-bold text-gray-900">
-                      {contract.code}
-                    </td>
-                    <td className="p-4 font-bold text-gray-800">
-                      {contract.room}
-                    </td>
-                    <td className="p-4 font-medium">{contract.tenant}</td>
-                    <td
-                      className="p-4 text-gray-600 max-w-[150px] truncate"
-                      title={contract.building}
-                    >
-                      {contract.building}
+              {loading ? (
+                 <tr>
+                  <td colSpan="8" className="p-8 text-center text-gray-500">
+                    Đang tải dữ liệu...
+                  </td>
+                </tr>
+              ) : contracts.length > 0 ? (
+                contracts.map((contract) => (
+                  <tr key={contract.id} className="hover:bg-gray-50 transition-colors group">
+                    <td className="p-4 font-bold text-gray-900">{contract.contract_number}</td>
+                    <td className="p-4 font-bold text-gray-800">{contract.room_number}</td>
+                    <td className="p-4 font-medium">{contract.tenant_name}</td>
+                    <td className="p-4 text-gray-600 max-w-[150px] truncate" title={contract.building_name}>
+                      {contract.building_name}
                     </td>
                     <td className="p-4 text-sm font-medium">
-                      <div>
-                        Từ:{" "}
-                        <span className="text-gray-900">
-                          {contract.startDate}
-                        </span>
-                      </div>
-                      <div>
-                        Đến:{" "}
-                        <span className="text-gray-900">
-                          {contract.endDate}
-                        </span>
-                      </div>
+                      <div>Từ: <span className="text-gray-900">{formatDate(contract.start_date)}</span></div>
+                      <div>Đến: <span className="text-gray-900">{formatDate(contract.end_date)}</span></div>
                     </td>
                     <td className="p-4 font-medium text-gray-900">
-                      {formatCurrency(contract.price)}
+                      {formatCurrency(contract.rental_price)}
                     </td>
                     <td className="p-4 text-center">
-                      <span
-                        className={`${getStatusColor(
-                          contract.status
-                        )} px-2 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap`}
-                      >
-                        {contract.status}
+                      <span className={`${getStatusColor(contract.status)} px-2 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap`}>
+                        {getStatusLabel(contract.status)}
                       </span>
                     </td>
                     <td className="p-4">
                       <div className="flex justify-center gap-2">
-                        <button
-                          className="p-2 border border-gray-200 rounded hover:bg-gray-900 hover:text-white text-gray-500 transition-all shadow-sm"
-                          title="Xem chi tiết"
-                        >
+                        <button className="p-2 border border-gray-200 rounded hover:bg-gray-900 hover:text-white text-gray-500 transition-all shadow-sm" title="Xem chi tiết">
                           <FaEdit size={12} />
                         </button>
                         <button
+                          onClick={() => handleDeleteClick(contract)}
                           className="p-2 border border-red-100 rounded hover:bg-red-500 hover:text-white text-red-500 transition-all shadow-sm bg-red-50"
                           title="Xóa"
                         >
@@ -388,10 +416,7 @@ const ContractManagement = () => {
                 ))
               ) : (
                 <tr>
-                  <td
-                    colSpan="8"
-                    className="p-8 text-center text-gray-500 italic"
-                  >
+                  <td colSpan="8" className="p-8 text-center text-gray-500 italic">
                     Không tìm thấy hợp đồng nào phù hợp.
                   </td>
                 </tr>
@@ -400,45 +425,48 @@ const ContractManagement = () => {
           </table>
         </div>
 
-        {/* --- FOOTER & PAGINATION --- */}
+        {/* PAGINATION */}
         <div className="p-4 bg-white flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-gray-100">
           <span className="text-xs text-gray-500 font-medium">
-            Hiển thị {currentData.length} trên tổng số{" "}
-            {filteredContracts.length} hợp đồng
+            Trang {currentPage} / {totalPages}
           </span>
 
           <div className="flex items-center gap-1">
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="px-3 py-1.5 rounded-md text-sm font-medium transition-colors 
-                text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+              className="px-3 py-1.5 rounded-md text-sm font-medium transition-colors text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
             >
               <FiChevronLeft /> Prev
             </button>
 
-            {[...Array(totalPages)].map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentPage(idx + 1)}
-                className={`px-3 py-1 rounded text-sm transition-allpx-3 py-1 rounded text-sm transition-all ${
-                  currentPage === idx + 1
-                   ? "bg-gray-100 text-black font-medium"
-                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-                }`}
-              >
-                {idx + 1}
-              </button>
-            ))}
+            {[...Array(Math.min(5, totalPages))].map((_, idx) => {
+               let pageNum = idx + 1;
+               if (totalPages > 5 && currentPage > 3) {
+                 pageNum = currentPage - 2 + idx;
+                 if (pageNum > totalPages) return null;
+               }
+               if (!pageNum) return null;
 
-            {/* Dấu ... nếu cần, ở đây hardcode theo ảnh mẫu là 1, 2, 3 ... Next */}
-            {totalPages > 3 && <span className="px-1 text-gray-400">...</span>}
+               return (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`px-3 py-1 rounded text-sm transition-all ${
+                    currentPage === pageNum
+                      ? "bg-gray-100 text-black font-medium"
+                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+               )
+            })}
 
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages || totalPages === 0}
-              className="px-3 py-1.5 rounded-md text-sm font-medium transition-colors text-gray-600 hover:bg-gray-100 
-                 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+              className="px-3 py-1.5 rounded-md text-sm font-medium transition-colors text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
             >
               Next <FiChevronRight />
             </button>
@@ -450,6 +478,13 @@ const ContractManagement = () => {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAddSuccess={handleAddNewContract}
+      />
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        itemName={contractToDelete?.contract_number}
       />
     </div>
   );
