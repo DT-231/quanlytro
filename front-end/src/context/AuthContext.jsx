@@ -3,34 +3,74 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
-
-
+  
+  // Chỉ load từ localStorage 1 lần khi app khởi động
   useEffect(() => {
-    const stored = localStorage.getItem('user');
-    if (stored) {
-      setUser(JSON.parse(stored));
+    try {
+      const storedUser = localStorage.getItem('user');
+      const storedToken = localStorage.getItem('token');
+      
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
+      if (storedToken) {
+        setToken(JSON.parse(storedToken));
+      }
+    } catch (error) {
+      console.error('Error loading auth data from localStorage:', error);
+      // Xóa dữ liệu lỗi
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, []);
+  }, []); // Chỉ chạy 1 lần khi mount
 
-  const login = (userData) => {
-    setUser(userData);
+  const login = (userData, tokenData) => {
+    // Set state ngay lập tức - không cần đợi useEffect
+    setUser(JSON.parse(userData));
+    setToken(JSON.parse(tokenData));
+    // Lưu vào localStorage
     localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('token', JSON.stringify(tokenData));
   };
 
   const logout = () => {
     setUser(null);
+    setToken(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
+  };
+
+  // Helper function để lấy access token
+  const getAccessToken = () => {
+    return token?.access_token || null;
+  };
+
+  // Helper function để lấy refresh token
+  const getRefreshToken = () => {
+    return token?.refresh_token || null;
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      token, 
+      login, 
+      logout, 
+      loading, 
+      getAccessToken, 
+      getRefreshToken 
+    }}>
       {!loading && children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = () => useContext(AuthContext);
+export function useAuth() {
+  return useContext(AuthContext);
+}

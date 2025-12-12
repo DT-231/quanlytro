@@ -19,19 +19,20 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { authService } from "@/services/authService";
 
 // --- SCHEMA VALIDATION ---
 const formSchema = z.object({
   email: z.string().email({ message: "Email không hợp lệ." }),
-  password: z.string().min(6, { message: "Mật khẩu phải có ít nhất 6 ký tự." }),
+  password: z.string().min(8, { message: "Mật khẩu phải có ít nhất 8 ký tự." }).max(16, { message: "Mật khẩu phải có ít hơn 16 ký tự." }),
 });
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const [loginError, setLoginError] = useState(""); 
-  const [isLoading, setIsLoading] = useState(false); 
+  const [loginError, setLoginError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   // Khởi tạo Form
   const form = useForm({
@@ -39,67 +40,47 @@ export default function LoginPage() {
     defaultValues: { email: "", password: "" },
   });
 
-  // --- DỮ LIỆU GIẢ LẬP (MOCK DATA) ---
-  const fakeUsers = [
-    {
-      id: 1,
-      email: "admin@gmail.com",
-      password: "12341234", 
-      role: "admin",
-      name: "Quản trị viên",
-      avatar: "https://github.com/shadcn.png"
-    },
-    {
-      id: 2,
-      email: "user@gmail.com",
-      password: "12341234", 
-      role: "user",
-      name: "Khách thuê",
-      avatar: "https://github.com/shadcn.png"
-    }
-  ];
-
   // --- XỬ LÝ SUBMIT VỚI DỮ LIỆU GIẢ ---
-  function onSubmit(values) {
-    setLoginError(""); 
+  const onSubmit = async (values) => {
+    setLoginError("");
     setIsLoading(true);
-
-    setTimeout(() => {
-      // 1. Tìm user trong danh sách fakeUsers khớp email và password
-      const foundUser = fakeUsers.find(
-        (user) => user.email === values.email && user.password === values.password
-      );
-
-      if (foundUser) {
-        // --- TRƯỜNG HỢP ĐĂNG NHẬP THÀNH CÔNG ---
-        console.log("Đăng nhập giả lập thành công:", foundUser);
-
-        localStorage.setItem("accessToken", "fake-jwt-token-xyz");
-
-        login(foundUser);
-
-        // Hiển thị thông báo thành công bằng Sonner
-        toast.success(`Chào mừng ${foundUser.name} quay trở lại!`, {
-            description: "Đăng nhập thành công",
-            position: "top-center", 
+    try {
+      const res = await authService.login(values.email, values.password)
+      // console.log(res);
+      if (res.status === 200) {
+        let data = res.data.data
+        let user = data.user
+        let token = data.token
+        
+        // Lưu vào localStorage và context
+        login(user, token);
+        
+        toast.success(`Chào mừng ${user.first_name} ${user.last_name} quay trở lại!`, {
+          description: "Đăng nhập thành công",
+          position: "top-center",
         });
-        setTimeout(() => {
-             if (foundUser.role === "admin") {
-                navigate("/admin/dashboard");
-             } else {
-                navigate("/");
-             }
-        }, 1000); 
 
+        setTimeout(() => {
+          if (user.role === "ADMIN") {
+            navigate("/admin/dashboard");
+          } else {
+            navigate("/");
+          }
+        }, 1000);
       } else {
-        // --- TRƯỜNG HỢP SAI EMAIL HOẶC PASSWORD ---
-        // Có thể dùng toast.error thay vì setLoginError nếu muốn thống nhất UI
-        // toast.error("Đăng nhập thất bại", { description: "Email hoặc mật khẩu không chính xác" });
-        setLoginError("Email hoặc mật khẩu không chính xác (Mock Data)");
+        toast.error("Đăng nhập thất bại", { description: res.data.message });
+        setLoginError(res.data.message);
       }
 
-      setIsLoading(false); 
-    }, 1000); 
+    } catch (error) {
+      console.log(error);
+      toast.error("Đăng nhập thất bại", { description: "Lỗi đăng nhập" });
+      setLoginError("Lỗi đăng nhập");
+
+    } finally {
+      setIsLoading(false);
+    }
+    
   }
 
   return (
@@ -187,10 +168,10 @@ export default function LoginPage() {
               className="w-full h-11 bg-black hover:bg-gray-800 text-white font-bold text-base shadow-md transition-all active:scale-[0.98]"
             >
               {isLoading ? (
-                  <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                      <span>Đang xử lý...</span>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <span>Đang xử lý...</span>
+                </div>
               ) : "Đăng nhập"}
             </Button>
           </form>

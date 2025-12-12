@@ -25,22 +25,22 @@ const tenantMenu = [
 ];
 
 const guestMenu = [
-    { name: "Trang chủ", icon: Home, href: "/" },
+  { name: "Trang chủ", icon: Home, href: "/" },
 ]
 
 export default function Sidebar({ role }) {
   const location = useLocation();
-  
+
   let menuItems = guestMenu;
-  if (role === 'admin') menuItems = adminMenu;
-  if (role === 'user') menuItems = tenantMenu;
+  if (role === 'ADMIN') menuItems = adminMenu;
+  if (['TENANT', 'CUSTOMER'].includes(role)) menuItems = tenantMenu;
 
   return (
     <div className="w-[250px] h-full border-r bg-white py-4 flex flex-col shrink-0">
-      
+
       {/* Label vai trò */}
       <div className="px-5 mb-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-        {role === "admin" ? "Quản trị viên" : (role === "user" ? "Người dùng" : "Khách vãng lai")}
+        {role === "ADMIN" ? "Quản trị viên" : (role === "USER" ? "Người dùng" : "Khách vãng lai")}
       </div>
 
       {/* MENU */}
@@ -56,7 +56,7 @@ export default function Sidebar({ role }) {
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition font-medium",
                 active
-                  ? "bg-black text-white shadow-sm" 
+                  ? "bg-black text-white shadow-sm"
                   : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
               )}
             >

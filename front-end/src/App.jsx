@@ -31,7 +31,8 @@ import AccountChangePhone from "./pages/member/account/AccountChangePhone";
 
 function App() {
   const { user, logout } = useAuth();
-  const role = user?.role;
+
+  const currentRole = user?.role || 'CUSTOMER';
 
   return (
     <div className="flex flex-col h-screen w-full bg-slate-50 overflow-hidden">

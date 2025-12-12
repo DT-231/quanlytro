@@ -37,7 +37,7 @@ export default function Header({ user, onLogout, onOpenLogin }) {
           <div className="flex items-center gap-3 relative" ref={dropdownRef}>
             {/* Thông tin user (Hiển thị trên màn hình lớn) */}
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold text-gray-800">{user.name}</p>
+              <p className="text-sm font-bold text-gray-800">{user.first_name} {user.last_name}</p>
               <p className="text-[10px] text-gray-500 uppercase">{user.role}</p>
             </div>
 
@@ -47,7 +47,7 @@ export default function Header({ user, onLogout, onOpenLogin }) {
               className="w-8 h-8 rounded-full bg-gray-200 border overflow-hidden hover:ring-2 hover:ring-gray-300 transition focus:outline-none"
             >
                 <img 
-                  src={user.avatar || "https://github.com/shadcn.png"} 
+                  src="https://github.com/shadcn.png"
                   alt="Avatar" 
                   className="w-full h-full object-cover"
                 />
@@ -57,7 +57,7 @@ export default function Header({ user, onLogout, onOpenLogin }) {
             {isDropdownOpen && (
               <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-50 animate-in fade-in zoom-in-95 duration-200">
                 <div className="sm:hidden px-4 py-2 border-b border-gray-100">
-                   <p className="text-sm font-bold text-gray-900 truncate">{user.name}</p>
+                   <p className="text-sm font-bold text-gray-900 truncate">{user.first_name} {user.last_name}</p>
                    <p className="text-xs text-gray-500">{user.role}</p>
                 </div>
 
