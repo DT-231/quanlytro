@@ -239,7 +239,9 @@ class BuildingService:
                     f"Trạng thái không hợp lệ. Phải là một trong: {valid_statuses}"
                 )
 
-        # Xử lý cập nhật địa chỉ
+        # Xử lý cập nhật địa chỉ và chuẩn bị data dict
+        update_data = building_data.model_dump(exclude_unset=True, exclude={"address"})
+        
         if building_data.address is not None:
             # Frontend gửi thông tin địa chỉ đầy đủ (không có address_id)
             # Tạo full_address để kiểm tra tồn tại
@@ -250,7 +252,7 @@ class BuildingService:
             
             if existing_address:
                 # Nếu địa chỉ đã tồn tại, sử dụng address_id có sẵn
-                building_data.address_id = existing_address.id
+                update_data["address_id"] = existing_address.id
             else:
                 # Nếu địa chỉ chưa tồn tại, tạo địa chỉ mới
                 new_address = AddressCreate(
@@ -260,10 +262,10 @@ class BuildingService:
                     country=building_data.address.country,
                 )
                 created_address = self.address_repo.create(new_address)
-                building_data.address_id = created_address.id
+                update_data["address_id"] = created_address.id
 
-        # Update building (repository sẽ tự động loại bỏ address field)
-        updated = self.building_repo.update(building_orm, building_data)
+        # Update building với dict data (không dùng schema trực tiếp)
+        updated = self.building_repo.update_from_dict(building_orm, update_data)
 
         # Convert ORM model sang Pydantic schema
         return BuildingOut.model_validate(updated)

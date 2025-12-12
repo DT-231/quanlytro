@@ -50,7 +50,7 @@ class BuildingUpdate(BaseModel):
     description: Optional[str] = None
     status: Optional[str] = None
 
-    model_config = {"from_attributes": True}
+    
 
 
 class BuildingOut(BuildingBase):

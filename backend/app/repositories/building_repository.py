@@ -315,6 +315,24 @@ class BuildingRepository:
         self.db.refresh(building)
         return building
 
+    def update_from_dict(self, building: Building, data: dict) -> Building:
+        """Cập nhật thông tin tòa nhà từ dict.
+        
+        Args:
+            building: Building instance cần update.
+            data: Dict chứa dữ liệu mới (đã xử lý address_id).
+            
+        Returns:
+            Building instance đã được cập nhật.
+        """
+        for field, value in data.items():
+            if hasattr(building, field):
+                setattr(building, field, value)
+            
+        self.db.commit()
+        self.db.refresh(building)
+        return building
+
     def delete(self, building: Building) -> None:
         """Xóa tòa nhà khỏi database.
         
