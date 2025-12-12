@@ -9,18 +9,10 @@ const MemberLayout = () => {
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 overflow-hidden">
-      <div className="h-14 border-b bg-white shrink-0 z-50">
-         <Header user={user} onLogout={logout} />
-      </div>
-
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar role="user" />
-
         <main className="flex-1 overflow-y-auto p-6">
            <Outlet />
         </main>
       </div>
-    </div>
   );
 };
 

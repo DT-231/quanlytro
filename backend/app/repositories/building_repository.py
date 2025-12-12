@@ -39,6 +39,87 @@ class BuildingRepository:
             Building instance hoặc None nếu không tìm thấy.
         """
         return self.db.query(Building).filter(Building.id == building_id).first()
+    
+    def get_by_id_with_stats(self, building_id: UUID) -> Optional[dict]:
+        """Lấy Building theo ID kèm thống kê phòng.
+        
+        Args:
+            building_id: UUID của tòa nhà cần tìm.
+            
+        Returns:
+            Dict chứa thông tin building và room statistics, hoặc None nếu không tìm thấy.
+        """
+        # Subquery đếm tổng số phòng
+        total_rooms_subq = (
+            self.db.query(
+                Room.building_id,
+                func.count(Room.id).label('total_rooms')
+            )
+            .group_by(Room.building_id)
+            .subquery()
+        )
+        
+        # Subquery đếm phòng trống (AVAILABLE)
+        available_rooms_subq = (
+            self.db.query(
+                Room.building_id,
+                func.count(Room.id).label('available_rooms')
+            )
+            .filter(Room.status == RoomStatus.AVAILABLE.value)
+            .group_by(Room.building_id)
+            .subquery()
+        )
+        
+        # Subquery đếm phòng đang thuê (OCCUPIED)
+        rented_rooms_subq = (
+            self.db.query(
+                Room.building_id,
+                func.count(Room.id).label('rented_rooms')
+            )
+            .filter(Room.status == RoomStatus.OCCUPIED.value)
+            .group_by(Room.building_id)
+            .subquery()
+        )
+        
+        # Main query
+        result = (
+            self.db.query(
+                Building.id,
+                Building.building_code,
+                Building.building_name,
+                Building.description,
+                Building.status,
+                Building.created_at,
+                Building.updated_at,
+                Address.full_address.label('address_line'),
+                func.coalesce(total_rooms_subq.c.total_rooms, 0).label('total_rooms'),
+                func.coalesce(available_rooms_subq.c.available_rooms, 0).label('available_rooms'),
+                func.coalesce(rented_rooms_subq.c.rented_rooms, 0).label('rented_rooms'),
+            )
+            .join(Address, Building.address_id == Address.id)
+            .outerjoin(total_rooms_subq, Building.id == total_rooms_subq.c.building_id)
+            .outerjoin(available_rooms_subq, Building.id == available_rooms_subq.c.building_id)
+            .outerjoin(rented_rooms_subq, Building.id == rented_rooms_subq.c.building_id)
+            .filter(Building.id == building_id)
+            .first()
+        )
+        
+        if not result:
+            return None
+        
+        return {
+            'id': result.id,
+            'building_code': result.building_code,
+            'building_name': result.building_name,
+            'description': result.description,
+            'status': result.status,
+            'created_at': result.created_at,
+            'updated_at': result.updated_at,
+            'address_line': result.address_line or '',
+            'total_rooms': result.total_rooms,
+            'available_rooms': result.available_rooms,
+            'rented_rooms': result.rented_rooms,
+        }
 
     def get_by_code(self, building_code: str) -> Optional[Building]:
         """Lấy Building theo code.
@@ -225,8 +306,8 @@ class BuildingRepository:
         Returns:
             Building instance đã được cập nhật.
         """
-        # Chỉ update các field được set trong request
-        update_data = data.model_dump(exclude_unset=True)
+        # Chỉ update các field được set trong request, loại bỏ field 'address'
+        update_data = data.model_dump(exclude_unset=True, exclude={"address"})
         for field, value in update_data.items():
             setattr(building, field, value)
             

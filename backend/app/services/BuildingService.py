@@ -12,7 +12,12 @@ from sqlalchemy.orm import Session
 from app.repositories.building_repository import BuildingRepository
 from app.repositories.address_respository import AddressRepository
 from app.schemas.address_schema import AddressCreate
-from app.schemas.building_schema import BuildingCreate, BuildingUpdate, BuildingOut, BuildingListItem
+from app.schemas.building_schema import (
+    BuildingCreate,
+    BuildingUpdate,
+    BuildingOut,
+    BuildingListItem,
+)
 from app.models.building import Building
 from app.core.Enum.base_enum import StatusEnum
 
@@ -50,7 +55,6 @@ class BuildingService:
         Raises:
             ValueError: Nếu vi phạm business rules.
         """
-        print(building_data)
         # Validate building_code không rỗng
         if not building_data.building_code.strip():
             raise ValueError("Mã tòa nhà không được để trống")
@@ -71,45 +75,48 @@ class BuildingService:
                 f"Trạng thái không hợp lệ. Phải là một trong: {valid_statuses}"
             )
 
-        # Kiểm tra address_id có tồn tại không
+        # Xử lý địa chỉ và tạo building data
+        address_id = None
         if building_data.address is not None:
             address_building = building_data.address
-            address = self.address_repo.get_by_full_address(address_building.full_address)
-            if not address:
-                new_address = AddressCreate(
-                    address_line=address_building.address_line,
-                    ward=address_building.ward,
-                    city=address_building.city,
-                    country=address_building.country,
-                )
-                address = self.address_repo.create(new_address)
-            building_data.address_id = address.id
-            data = building_data.dict(exclude={"address"})
-        
+
+            new_address = AddressCreate(
+                address_line=address_building.address_line,
+                ward=address_building.ward,
+                city=address_building.city,
+                country=address_building.country,
+            )
+            address = self.address_repo.create(new_address)
+            address_id = address.id
+
+        # Tạo dict từ building_data và thêm address_id
+        data = building_data.model_dump(exclude={"address"})
+        data["address_id"] = address_id
+
         # Tạo tòa nhà mới
         building = self.building_repo.create(data)
-        
+
         # Convert ORM model sang Pydantic schema để serialize
         return BuildingOut.model_validate(building)
 
     def get_building(self, building_id: UUID) -> BuildingOut:
-        """Lấy thông tin chi tiết tòa nhà.
+        """Lấy thông tin chi tiết tòa nhà kèm thống kê phòng.
 
         Args:
             building_id: UUID của tòa nhà cần lấy.
 
         Returns:
-            BuildingOut schema.
+            BuildingOut schema với room statistics (total_rooms, available_rooms, rented_rooms).
 
         Raises:
             ValueError: Nếu không tìm thấy tòa nhà.
         """
-        building = self.building_repo.get_by_id(building_id)
-        if not building:
+        building_data = self.building_repo.get_by_id_with_stats(building_id)
+        if not building_data:
             raise ValueError(f"Không tìm thấy tòa nhà với ID: {building_id}")
-        
-        # Convert ORM model sang Pydantic schema
-        return BuildingOut.model_validate(building)
+
+        # Convert dict sang Pydantic schema
+        return BuildingOut(**building_data)
 
     def list_buildings(
         self,
@@ -128,7 +135,7 @@ class BuildingService:
 
         Returns:
             Dict chứa items (danh sách tòa nhà với stats), total, offset, limit.
-            
+
             Response format:
             {
                 "items": [
@@ -166,7 +173,7 @@ class BuildingService:
         items_data = self.building_repo.list_with_room_stats(
             address_id=address_id, status=status, offset=offset, limit=limit
         )
-        
+
         # Lấy tổng số
         total = self.building_repo.count(address_id=address_id, status=status)
 
@@ -232,17 +239,32 @@ class BuildingService:
                     f"Trạng thái không hợp lệ. Phải là một trong: {valid_statuses}"
                 )
 
-        # Kiểm tra address_id có tồn tại không
-        if building_data.address_id is not None:
-            address = self.address_repo.get_by_id(building_data.address_id)
-            if not address:
-                raise ValueError(
-                    f"Không tìm thấy địa chỉ với ID: {building_data.address_id}"
+        # Xử lý cập nhật địa chỉ
+        if building_data.address is not None:
+            # Frontend gửi thông tin địa chỉ đầy đủ (không có address_id)
+            # Tạo full_address để kiểm tra tồn tại
+            new_full_address = f"{building_data.address.address_line}, {building_data.address.ward}, {building_data.address.city}, {building_data.address.country}"
+            
+            # Kiểm tra địa chỉ mới đã tồn tại trong hệ thống chưa
+            existing_address = self.address_repo.get_by_full_address(new_full_address)
+            
+            if existing_address:
+                # Nếu địa chỉ đã tồn tại, sử dụng address_id có sẵn
+                building_data.address_id = existing_address.id
+            else:
+                # Nếu địa chỉ chưa tồn tại, tạo địa chỉ mới
+                new_address = AddressCreate(
+                    address_line=building_data.address.address_line,
+                    ward=building_data.address.ward,
+                    city=building_data.address.city,
+                    country=building_data.address.country,
                 )
+                created_address = self.address_repo.create(new_address)
+                building_data.address_id = created_address.id
 
-        # Update building
+        # Update building (repository sẽ tự động loại bỏ address field)
         updated = self.building_repo.update(building_orm, building_data)
-        
+
         # Convert ORM model sang Pydantic schema
         return BuildingOut.model_validate(updated)
 

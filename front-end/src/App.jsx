@@ -39,7 +39,6 @@ function App() {
       <div className="h-14 border-b bg-white shrink-0 z-50">
         <Header user={user} onLogout={logout} />
       </div>
-
       <div className="flex flex-1 overflow-hidden">
         {/* ========== SIDEBAR ========== */}
         <Sidebar role={role} />

@@ -19,7 +19,6 @@ const adminMenu = [
 const tenantMenu = [
   { name: "Trang chủ", icon: Home, href: "/" },
   { name: "Hồ sơ của tôi", icon: UserCircle, href: "/member/profile" },
-  { name: "Tìm kiếm phòng", icon: Search, href: "/search-rooms" },
   { name: "Hợp đồng của tôi", icon: ScrollText, href: "/member/my-contracts" },
   { name: "Hoá đơn cần đóng", icon: FileText, href: "/member/my-invoices" },
   { name: "Báo cáo sự cố", icon: AlertTriangle, href: "/member/incidents" },
@@ -27,7 +26,6 @@ const tenantMenu = [
 
 const guestMenu = [
     { name: "Trang chủ", icon: Home, href: "/" },
-    { name: "Tìm kiếm phòng", icon: Search, href: "/search-rooms" },
 ]
 
 export default function Sidebar({ role }) {

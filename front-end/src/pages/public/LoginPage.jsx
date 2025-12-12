@@ -4,7 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { authService } from "@/services/authService";
+
+// 1. Import Sonner
+import { Toaster, toast } from "sonner";
 
 // Import UI components
 import { Button } from "@/components/ui/button";
@@ -28,8 +30,8 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const [loginError, setLoginError] = useState(""); // State báo lỗi
-  const [isLoading, setIsLoading] = useState(false); // State loading khi gọi API
+  const [loginError, setLoginError] = useState(""); 
+  const [isLoading, setIsLoading] = useState(false); 
 
   // Khởi tạo Form
   const form = useForm({
@@ -42,7 +44,7 @@ export default function LoginPage() {
     {
       id: 1,
       email: "admin@gmail.com",
-      password: "12341234", // Mật khẩu giả lập
+      password: "12341234", 
       role: "admin",
       name: "Quản trị viên",
       avatar: "https://github.com/shadcn.png"
@@ -50,7 +52,7 @@ export default function LoginPage() {
     {
       id: 2,
       email: "user@gmail.com",
-      password: "12341234", // Mật khẩu giả lập
+      password: "12341234", 
       role: "user",
       name: "Khách thuê",
       avatar: "https://github.com/shadcn.png"
@@ -60,9 +62,8 @@ export default function LoginPage() {
   // --- XỬ LÝ SUBMIT VỚI DỮ LIỆU GIẢ ---
   function onSubmit(values) {
     setLoginError(""); 
-    setIsLoading(true); // Bật loading để trải nghiệm giống thật
+    setIsLoading(true);
 
-    // Dùng setTimeout để giả lập độ trễ của mạng (1 giây)
     setTimeout(() => {
       // 1. Tìm user trong danh sách fakeUsers khớp email và password
       const foundUser = fakeUsers.find(
@@ -73,67 +74,41 @@ export default function LoginPage() {
         // --- TRƯỜNG HỢP ĐĂNG NHẬP THÀNH CÔNG ---
         console.log("Đăng nhập giả lập thành công:", foundUser);
 
-        // Lưu token giả vào localStorage
         localStorage.setItem("accessToken", "fake-jwt-token-xyz");
 
-        // Cập nhật context (giả lập payload từ API)
         login(foundUser);
 
-        // Điều hướng dựa trên role
-        if (foundUser.role === "admin") {
-            navigate("/admin/dashboard"); // Nếu có trang admin
-        } else {
-            navigate("/"); // Trang chủ cho user thường
-        }
-        
-        alert(`Xin chào ${foundUser.name}!`);
+        // Hiển thị thông báo thành công bằng Sonner
+        toast.success(`Chào mừng ${foundUser.name} quay trở lại!`, {
+            description: "Đăng nhập thành công",
+            position: "top-center", 
+        });
+        setTimeout(() => {
+             if (foundUser.role === "admin") {
+                navigate("/admin/dashboard");
+             } else {
+                navigate("/");
+             }
+        }, 1000); 
+
       } else {
         // --- TRƯỜNG HỢP SAI EMAIL HOẶC PASSWORD ---
+        // Có thể dùng toast.error thay vì setLoginError nếu muốn thống nhất UI
+        // toast.error("Đăng nhập thất bại", { description: "Email hoặc mật khẩu không chính xác" });
         setLoginError("Email hoặc mật khẩu không chính xác (Mock Data)");
       }
 
-      setIsLoading(false); // Tắt loading
+      setIsLoading(false); 
     }, 1000); 
   }
-  // Xử lý Submit
-  // async function onSubmit(values) {
-  //   setLoginError(""); // Reset lỗi cũ
-  //   setIsLoading(true); // Bật trạng thái loading
-
-  //   try {
-  //     const response = await authService.login(values.email, values.password);
-
-  //     const api = response.data;
-
-  //     if (api.code !== 200) {
-  //       throw new Error(api.message || "Đăng nhập thất bại");
-  //     }
-
-  //     const payload = api.data;
-
-  //     // Lưu token
-  //     localStorage.setItem("accessToken", payload.access_token);
-  //     localStorage.setItem("refreshToken", payload.refresh_token);
-
-  //     // Cập nhật context
-  //     login(payload.user);
-
-  //     navigate("/");
-  //   } catch (error) {
-  //     console.error("Login Error:", error);
-
-  //     const msg =
-  //       error.response?.data?.message || error.message || "Lỗi đăng nhập!";
-  //     setLoginError(msg);
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // }
 
   return (
-    <div className="flex items-center justify-center min-h-[85vh] bg-slate-50 px-4">
+    <div className="flex items-center justify-center min-h-[85vh] bg-slate-50 px-4 relative">
+      {/* 2. Thêm Toaster để hiển thị thông báo */}
+      <Toaster richColors />
+
       {/* Card Container */}
-      <div className="w-full  max-w-md bg-white p-6 rounded-xl shadow-xl border border-gray-100 ">
+      <div className="w-full max-w-md bg-white p-6 rounded-xl shadow-xl border border-gray-100 ">
         {/* Header */}
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-gray-900">Đăng nhập</h2>
@@ -147,7 +122,7 @@ export default function LoginPage() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             {/* Error Alert */}
             {loginError && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-md text-center">
+              <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-md text-center animate-in fade-in zoom-in-95 duration-200">
                 {loginError}
               </div>
             )}
@@ -165,7 +140,7 @@ export default function LoginPage() {
                     <Input
                       placeholder="m@example.com"
                       {...field}
-                      className="h-11 bg-slate-50"
+                      className="h-11 bg-slate-50 focus:bg-white transition-colors"
                     />
                   </FormControl>
                   <FormMessage />
@@ -187,7 +162,7 @@ export default function LoginPage() {
                       type="password"
                       placeholder="••••••••"
                       {...field}
-                      className="h-11 bg-slate-50"
+                      className="h-11 bg-slate-50 focus:bg-white transition-colors"
                     />
                   </FormControl>
                   <FormMessage />
@@ -208,10 +183,15 @@ export default function LoginPage() {
             {/* Submit Button */}
             <Button
               type="submit"
-              disabled={isLoading} // Disable khi đang call API
-              className="w-full h-11 bg-black hover:bg-gray-800 text-white font-bold text-base shadow-md transition-all"
+              disabled={isLoading}
+              className="w-full h-11 bg-black hover:bg-gray-800 text-white font-bold text-base shadow-md transition-all active:scale-[0.98]"
             >
-              {isLoading ? "Đang xử lý..." : "Đăng nhập"}
+              {isLoading ? (
+                  <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      <span>Đang xử lý...</span>
+                  </div>
+              ) : "Đăng nhập"}
             </Button>
           </form>
         </Form>

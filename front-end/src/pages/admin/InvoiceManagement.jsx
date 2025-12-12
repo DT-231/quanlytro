@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   FaSearch,
   FaEdit,
@@ -7,8 +7,11 @@ import {
   FaEllipsisH,
 } from "react-icons/fa";
 import { FiFilter, FiChevronLeft, FiChevronRight } from "react-icons/fi";
-import InvoiceDetailModal from "@/components/modals/InvoiceDetailModal";
-import AddInvoiceModal from "@/components/modals/AddInvoiceModal";
+import InvoiceDetailModal from "@/components/modals/invoice/InvoiceDetailModal";
+import AddInvoiceModal from "@/components/modals/invoice/AddInvoiceModal";
+import { Toaster, toast } from "sonner";
+import { roomService } from "@/services/roomService";
+import { buildingService } from "@/services/buildingService";
 
 const InvoiceManagement = () => {
   // 1. Mock Data (Giả lập dữ liệu hóa đơn)
@@ -76,6 +79,8 @@ const InvoiceManagement = () => {
   ];
 
   // 2. States
+  const [buildings, setBuildings] = useState([]);
+  const [rooms, setRooms] = useState([]);
   const [invoices, setInvoices] = useState(mockInvoices);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRoom, setFilterRoom] = useState("");
@@ -93,6 +98,40 @@ const InvoiceManagement = () => {
   };
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
+  useEffect(() => {
+    const fetchData = async () => {
+        try {
+            // Lấy danh sách tòa nhà
+            const bRes = await buildingService.getAll();
+            console.log("Check API Tòa nhà:", bRes); // <--- KIỂM TRA DÒNG NÀY TRONG CONSOLE WEB
+
+            // Logic xử lý linh hoạt hơn cho nhiều dạng API
+            if (Array.isArray(bRes)) {
+                setBuildings(bRes);
+            } else if (Array.isArray(bRes?.data)) { 
+                setBuildings(bRes.data); // Trường hợp phổ biến: response.data
+            } else if (Array.isArray(bRes?.items)) {
+                setBuildings(bRes.items);
+            } else if (Array.isArray(bRes?.data?.items)) {
+                setBuildings(bRes.data.items);
+            } else {
+                setBuildings([]); // Fallback nếu không đúng định dạng
+            }
+            const rRes = await roomService.getAll();
+            console.log("Check API Phòng:", rRes);
+            
+            if (Array.isArray(rRes)) setRooms(rRes);
+            else if (Array.isArray(rRes?.data)) setRooms(rRes.data);
+            else if (Array.isArray(rRes?.items)) setRooms(rRes.items);
+            else if (Array.isArray(rRes?.data?.items)) setRooms(rRes.data.items);
+            else setRooms([]);
+
+        } catch (error) {
+            console.error("Lỗi lấy dữ liệu:", error);
+        }
+    };
+    fetchData();
+}, []);
   // 3. Logic Lọc dữ liệu
   const filteredInvoices = useMemo(() => {
     return invoices.filter((invoice) => {
@@ -117,11 +156,11 @@ const InvoiceManagement = () => {
     console.log("Dữ liệu hóa đơn mới:", data);
 
     // Tạo object mới phù hợp với cấu trúc bảng hiện tại
-    const newInvoice = {
+   const newInvoice = {
       id: Math.floor(Math.random() * 1000) + 100,
-      room: data.room,
+      room: data.roomName || data.room || "N/A", // Ưu tiên lấy tên phòng từ Modal trả về
       tenant: data.customerName,
-      date: data.invoiceDate.split("-").reverse().join("/"), // Chuyển yyyy-mm-dd -> dd/mm/yyyy
+      date: data.invoiceDate ? data.invoiceDate.split("-").reverse().join("/") : "", 
       electricity: data.elecUsed,
       water: data.waterUsed,
       deadline: data.dueDate ? data.dueDate.split("-").reverse().join("/") : "",
@@ -129,8 +168,9 @@ const InvoiceManagement = () => {
     };
 
     setInvoices([newInvoice, ...invoices]);
+    toast.success(`Đã thêm hóa đơn cho phòng ${newInvoice.room}`);
   };
-  // 4. Helper function màu sắc trạng thái
+
   const getStatusColor = (status) => {
     switch (status) {
       case "Chưa thanh toán":
@@ -145,7 +185,8 @@ const InvoiceManagement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50  font-sans">
+    <div className="min-h-screen bg-gray-50  font-sans relative">
+      <Toaster position="top-right" richColors />
       {/* HEADER */}
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold text-gray-800">Quản lý hóa đơn</h1>
@@ -179,9 +220,8 @@ const InvoiceManagement = () => {
             </button>
           </div>
 
-          {/* Filter Dropdowns */}
           <div className="flex gap-2 w-full md:w-auto justify-end">
-            {/* Lọc Phòng */}
+            {/* Lọc Phòng: Dùng dữ liệu thực từ state rooms */}
             <div className="relative">
               <select
                 className="w-full appearance-none border border-gray-200 px-3 py-1 pr-8 rounded-md bg-white hover:bg-gray-50 text-sm focus:outline-none cursor-pointer text-gray-700"
@@ -189,7 +229,9 @@ const InvoiceManagement = () => {
                 onChange={(e) => setFilterRoom(e.target.value)}
               >
                 <option value="">Tất cả phòng</option>
-                {/* Thêm các phòng khác nếu cần */}
+                {rooms.map(r => (
+                    <option key={r.id} value={r.room_number}>{r.room_number}</option>
+                ))}
               </select>
               <FiFilter className="absolute right-3 top-2.5 text-gray-400 w-3 h-3 pointer-events-none" />
             </div>
@@ -321,6 +363,8 @@ const InvoiceManagement = () => {
           isOpen={isAddModalOpen}
           onClose={() => setIsAddModalOpen(false)}
           onAddSuccess={handleAddInvoice}
+          buildings={buildings}
+          rooms={rooms}
         />
         {/* --- FOOTER & PAGINATION (Đã sửa lỗi) --- */}
         <div className="p-4 bg-white flex flex-col sm:flex-row justify-between items-center gap-4">

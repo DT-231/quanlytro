@@ -26,7 +26,6 @@ router = APIRouter(prefix="/buildings", tags=["Building Management"])
 
 @router.get(
     "",
-    response_model=Response[dict],
     status_code=status.HTTP_200_OK,
     summary="Lấy danh sách tòa nhà với thống kê phòng",
     description="Lấy danh sách tòa nhà kèm thông tin tổng số phòng, phòng trống, phòng đang thuê",
@@ -118,7 +117,6 @@ def list_buildings(
 
 @router.post(
     "",
-    response_model=Response[BuildingOut],
     status_code=status.HTTP_201_CREATED,
     summary="Tạo tòa nhà mới",
     description="Tạo tòa nhà mới trong hệ thống",
@@ -144,7 +142,7 @@ def create_building(
     try:
         building_service = BuildingService(db)
         building = building_service.create_building(building_data)
-        return response.created(data=building, message="Tạo tòa nhà thành công")
+        return response.created( message="Tạo tòa nhà thành công")
     except ValueError as e:
         # Business rule violations
         return response.conflict(message=str(e))
@@ -154,7 +152,6 @@ def create_building(
 
 @router.get(
     "/{building_id}",
-    response_model=Response[BuildingOut],
     status_code=status.HTTP_200_OK,
     summary="Xem chi tiết tòa nhà",
     description="Lấy thông tin chi tiết của một tòa nhà",
@@ -183,7 +180,6 @@ def get_building(
 
 @router.put(
     "/{building_id}",
-    response_model=Response[BuildingOut],
     status_code=status.HTTP_200_OK,
     summary="Cập nhật tòa nhà",
     description="Cập nhật thông tin tòa nhà (partial update)",
@@ -225,7 +221,6 @@ def update_building(
 
 @router.delete(
     "/{building_id}",
-    response_model=Response,
     status_code=status.HTTP_200_OK,
     summary="Xóa tòa nhà",
     description="Xóa tòa nhà khỏi hệ thống",
@@ -257,3 +252,4 @@ def delete_building(
             return response.conflict(message=str(e))
     except Exception as e:
         return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+

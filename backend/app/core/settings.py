@@ -66,8 +66,3 @@ class Setting(BaseSettings):
 
 # Khởi tạo settings toàn cục
 settings = Setting()
-# print(f"\n=== Final Settings ===")
-# print(f"DATABASE_URL: {settings.DATABASE_URL[:50] if settings.DATABASE_URL else 'EMPTY'}...")
-# print(f"SECRET_KEY: {'***' + settings.SECRET_KEY[-4:] if settings.SECRET_KEY else 'EMPTY'}")
-# print(f"ACCESS_TOKEN_EXPIRE: {settings.ACCESS_TOKEN_EXPIRE}")
-# print(f"ALGORITHM: {settings.ALGORITHM}")

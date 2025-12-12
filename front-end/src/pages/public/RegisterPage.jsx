@@ -5,6 +5,9 @@ import * as z from "zod";
 import { useNavigate, Link } from "react-router-dom";
 import { authService } from "@/services/authService";
 
+// 1. Import Sonner
+import { Toaster, toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -17,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 
 // --- SCHEMA VALIDATION ---
+// Giữ nguyên camelCase để khớp với logic của authService của bạn
 const formSchema = z.object({
   lastName: z.string().min(1, { message: "Họ không được để trống." }),
   firstName: z.string().min(1, { message: "Tên không được để trống." }),
@@ -35,18 +39,33 @@ export default function RegisterPage() {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      lastName: "", firstName: "", email: "", password: "", confirmPassword: "",
+      lastName: "", 
+      firstName: "", 
+      email: "", 
+      password: "", 
+      confirmPassword: "",
     },
   });
 
   async function onSubmit(values) {
     setIsLoading(true);
+    toast.dismiss();
+
     try {
-      // Gọi API Đăng ký
+      // --- SỬA Ở ĐÂY: KHÔNG MAP DỮ LIỆU THỦ CÔNG NỮA ---
+      // Gửi thẳng values (chứa firstName, lastName...) vào service
+      // authService của bạn đã có code để chuyển đổi chúng thành first_name, last_name rồi.
       await authService.register(values);
       
-      alert("Đăng ký thành công! Vui lòng đăng nhập.");
-      navigate('/login');
+      toast.success("Đăng ký thành công!", {
+        description: "Vui lòng đăng nhập để tiếp tục.",
+        duration: 3000, 
+      });
+
+      setTimeout(() => {
+        navigate('/login');
+      }, 1500);
+
     } catch (error) {
       console.error("Chi tiết lỗi:", error);
 
@@ -55,33 +74,39 @@ export default function RegisterPage() {
       if (error.response && error.response.data) {
         const { detail } = error.response.data;
 
-        // Xử lý nếu detail là mảng lỗi (FastAPI standard)
         if (Array.isArray(detail)) {
-          // Lấy ra msg của từng lỗi và nối lại
-          message = detail.map(err => 
-            `- ${err.msg.replace('value is not a valid email address', 'Email không hợp lệ')
-                        .replace('ensure this value has at least 8 characters', 'Mật khẩu phải ít nhất 8 ký tự')}`
-          ).join("\n");
+          message = detail.map(err => {
+             // Map lỗi tiếng Việt
+             if (err.loc.includes('email')) return `- Email không hợp lệ hoặc đã tồn tại`;
+             if (err.loc.includes('password')) return `- Mật khẩu không đủ mạnh`;
+             return `- ${err.msg}`;
+          }).join("\n");
         } 
         else if (typeof detail === "string") {
           message = detail;
         }
       }
 
-      alert(message);
+      toast.error("Đăng ký thất bại", {
+        description: message,
+        duration: 5000, 
+      });
+    } finally {
+      setIsLoading(false);
     }
   }
+
   return (
-    <div className="flex items-center justify-center min-h-[85vh] bg-slate-50 px-4">
+    <div className="flex items-center justify-center min-h-[85vh] bg-slate-50 px-4 relative">
+      <Toaster richColors position="top-right" />
+
       <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg border border-gray-100">
         
-        {/* Header */}
         <div className="text-center mb-6">
           <h2 className="text-3xl font-bold text-gray-900">Đăng ký</h2>
           <p className="text-sm text-gray-500 mt-2">Tạo tài khoản để kết nối với chúng tôi</p>
         </div>
 
-        {/* Form */}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             
@@ -150,7 +175,6 @@ export default function RegisterPage() {
               )}
             />
 
-            {/* Submit Button */}
             <Button 
               type="submit" 
               disabled={isLoading} 
@@ -161,7 +185,6 @@ export default function RegisterPage() {
           </form>
         </Form>
 
-        {/* Footer */}
         <div className="text-center mt-6 text-sm text-gray-600">
           Bạn đã có tài khoản?{" "}
           <Link to="/login" className="font-bold text-black hover:underline ml-1">

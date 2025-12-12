@@ -34,7 +34,6 @@ export default function AddUtilityModal({ isOpen, onClose, onAddSuccess }) {
   });
 
   const onSubmit = (values) => {
-    // Trả dữ liệu về cho modal cha
     onAddSuccess(values.name);
     form.reset();
     onClose();
@@ -65,7 +64,7 @@ export default function AddUtilityModal({ isOpen, onClose, onAddSuccess }) {
 
             <div className="flex justify-between pt-2">
               <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
+                Hủy
               </Button>
               <Button type="submit" className="bg-black text-white hover:bg-gray-800">
                 Chấp nhận
