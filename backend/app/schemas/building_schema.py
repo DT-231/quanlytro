@@ -46,11 +46,26 @@ class BuildingUpdate(BaseModel):
 
     building_code: Optional[str] = Field(None, min_length=1, max_length=20)
     building_name: Optional[str] = Field(None, min_length=1, max_length=100)
-    address: Optional[AddressCreate] = None
+    address: Optional[AddressCreate] = Field(None, alias="address_data")  # Hỗ trợ cả "address" và "address_data"
     description: Optional[str] = None
     status: Optional[str] = None
 
-    
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,  # Cho phép dùng cả tên field và alias
+        "json_schema_extra": {
+            "example": {
+                "building_name": "Chung cư Hoàng Anh - Cập nhật",
+                "address_data": {
+                    "address_line": "99 Hùng Vương",
+                    "ward": "Hải Châu 1",
+                    "city": "Đà Nẵng",
+                    "country": "Vietnam"
+                },
+                "status": "ACTIVE"
+            }
+        }
+    }
 
 
 class BuildingOut(BuildingBase):

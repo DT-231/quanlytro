@@ -243,25 +243,40 @@ class BuildingService:
         update_data = building_data.model_dump(exclude_unset=True, exclude={"address"})
         
         if building_data.address is not None:
-            # Frontend gửi thông tin địa chỉ đầy đủ (không có address_id)
-            # Tạo full_address để kiểm tra tồn tại
-            new_full_address = f"{building_data.address.address_line}, {building_data.address.ward}, {building_data.address.city}, {building_data.address.country}"
+            new_addr = building_data.address
+            current_address = (
+                self.address_repo.get_by_id(building_orm.address_id)
+                if building_orm.address_id
+                else None
+            )
             
-            # Kiểm tra địa chỉ mới đã tồn tại trong hệ thống chưa
-            existing_address = self.address_repo.get_by_full_address(new_full_address)
-            
-            if existing_address:
-                # Nếu địa chỉ đã tồn tại, sử dụng address_id có sẵn
-                update_data["address_id"] = existing_address.id
+            if current_address:
+                # Kiểm tra có thay đổi không
+                if (
+                    current_address.address_line != new_addr.address_line
+                    or current_address.ward != new_addr.ward
+                    or current_address.city != new_addr.city
+                    or current_address.country != new_addr.country
+                ):
+                    # Update address hiện tại
+                    from app.schemas.address_schema import AddressUpdate
+                    address_update = AddressUpdate(
+                        address_line=new_addr.address_line,
+                        ward=new_addr.ward,
+                        city=new_addr.city,
+                        country=new_addr.country,
+                    )
+                    self.address_repo.update(current_address, address_update)
             else:
-                # Nếu địa chỉ chưa tồn tại, tạo địa chỉ mới
-                new_address = AddressCreate(
-                    address_line=building_data.address.address_line,
-                    ward=building_data.address.ward,
-                    city=building_data.address.city,
-                    country=building_data.address.country,
+                # Tạo address mới (building chưa có hoặc address cũ không tồn tại)
+                created_address = self.address_repo.create(
+                    AddressCreate(
+                        address_line=new_addr.address_line,
+                        ward=new_addr.ward,
+                        city=new_addr.city,
+                        country=new_addr.country,
+                    )
                 )
-                created_address = self.address_repo.create(new_address)
                 update_data["address_id"] = created_address.id
 
         # Update building với dict data (không dùng schema trực tiếp)

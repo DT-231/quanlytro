@@ -30,7 +30,7 @@ class BuildingRepository:
         self.db = db
 
     def get_by_id(self, building_id: UUID) -> Optional[Building]:
-        """Lấy Building theo ID.
+        """Lấy Building theo ID với eager loading address.
         
         Args:
             building_id: UUID của tòa nhà cần tìm.
@@ -38,7 +38,12 @@ class BuildingRepository:
         Returns:
             Building instance hoặc None nếu không tìm thấy.
         """
-        return self.db.query(Building).filter(Building.id == building_id).first()
+        return (
+            self.db.query(Building)
+            .options(joinedload(Building.address))  # Eager load relationship 'address'
+            .filter(Building.id == building_id)
+            .first()
+        )
     
     def get_by_id_with_stats(self, building_id: UUID) -> Optional[dict]:
         """Lấy Building theo ID kèm thống kê phòng.
