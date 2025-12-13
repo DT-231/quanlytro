@@ -1,4 +1,3 @@
-// src/context/AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
@@ -7,34 +6,41 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
-  
-  // Chỉ load từ localStorage 1 lần khi app khởi động
+
   useEffect(() => {
-    try {
+    const initAuth = () => {
       const storedUser = localStorage.getItem('user');
       const storedToken = localStorage.getItem('token');
-      
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+
+      if (!storedUser || !storedToken) {
+        setLoading(false);
+        return; 
       }
-      if (storedToken) {
-        setToken(JSON.parse(storedToken));
+
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        const parsedToken = JSON.parse(storedToken);
+        if (parsedUser && parsedToken) {
+          setUser(parsedUser);
+          setToken(parsedToken);
+        }
+      } catch (error) {
+        console.warn('Phát hiện dữ liệu đăng nhập lỗi, tiến hành reset session.');
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        setUser(null);
+        setToken(null);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error loading auth data from localStorage:', error);
-      // Xóa dữ liệu lỗi
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
-    } finally {
-      setLoading(false);
-    }
-  }, []); // Chỉ chạy 1 lần khi mount
+    };
+
+    initAuth();
+  }, []); 
 
   const login = (userData, tokenData) => {
-    // Set state ngay lập tức - không cần đợi useEffect
     setUser(userData);
     setToken(tokenData);
-    // Lưu vào localStorage
     localStorage.setItem('user', JSON.stringify(userData));
     localStorage.setItem('token', JSON.stringify(tokenData));
   };
@@ -44,17 +50,11 @@ export function AuthProvider({ children }) {
     setToken(null);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    window.location.href = '/'; 
   };
 
-  // Helper function để lấy access token
-  const getAccessToken = () => {
-    return token?.access_token || null;
-  };
-
-  // Helper function để lấy refresh token
-  const getRefreshToken = () => {
-    return token?.refresh_token || null;
-  };
+  const getAccessToken = () => token?.access_token || null;
+  const getRefreshToken = () => token?.refresh_token || null;
 
   return (
     <AuthContext.Provider value={{ 

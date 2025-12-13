@@ -35,9 +35,8 @@ export default function Header({ user, onLogout, onOpenLogin }) {
       <div className="flex items-center gap-2">
         {user ? (
           <div className="flex items-center gap-3 relative" ref={dropdownRef}>
-            {/* Thông tin user (Hiển thị trên màn hình lớn) */}
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold text-gray-800">{user.first_name} {user.last_name}</p>
+              <p className="text-sm font-bold text-gray-800"> {user.last_name} {user.first_name}</p>
               <p className="text-[10px] text-gray-500 uppercase">{user.role}</p>
             </div>
 

@@ -11,43 +11,13 @@ import {
 } from "react-icons/fa";
 import { FiFilter, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
-// 1. Import Sonner & Service
+
 import { Toaster, toast } from "sonner";
 import AddContractModal from "@/components/modals/contract/AddContractModal";
 import { contractService } from "@/services/contractService";
 import { buildingService } from "@/services/buildingService"; 
 // --- COMPONENT: Modal Xóa ---
-const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, itemName }) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-lg duration-200 sm:rounded-lg md:w-full">
-        <div className="flex flex-col space-y-2 text-center sm:text-left">
-          <h2 className="text-lg font-semibold leading-none tracking-tight">
-            Bạn có chắc chắn muốn xóa?
-          </h2>
-          <p className="text-sm text-gray-500">
-            Hành động này không thể hoàn tác. Hợp đồng <strong>{itemName}</strong> sẽ bị xóa vĩnh viễn khỏi hệ thống.
-          </p>
-        </div>
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 gap-2 sm:gap-0">
-          <button
-            onClick={onClose}
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-gray-100 h-10 px-4 py-2"
-          >
-            Hủy bỏ
-          </button>
-          <button
-            onClick={onConfirm}
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2"
-          >
-            Đồng ý xóa
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+import DeleteConfirmationModal from "@/components/modals/DeleteConfirmationModal";
 
 const ContractManagement = () => {
   // --- 1. STATES QUẢN LÝ DỮ LIỆU ---
@@ -61,6 +31,7 @@ const ContractManagement = () => {
   });
   const [loading, setLoading] = useState(true);
 
+  
   // Filter & Pagination States
   const [searchTerm, setSearchTerm] = useState("");
   const [filterBuilding, setFilterBuilding] = useState("");
@@ -179,18 +150,19 @@ const ContractManagement = () => {
     setContractToDelete(contract);
     setDeleteModalOpen(true);
   };
-
   const confirmDelete = async () => {
     if (!contractToDelete) return;
     try {
       await contractService.delete(contractToDelete.id);
       toast.success(`Đã xóa hợp đồng: ${contractToDelete.contract_number}`);
+
       fetchContracts();
       fetchStats();
     } catch (error) {
       console.error("Error deleting contract:", error);
       toast.error("Xóa hợp đồng thất bại.");
     } finally {
+      // Đóng modal và reset state
       setDeleteModalOpen(false);
       setContractToDelete(null);
     }
@@ -485,6 +457,7 @@ const ContractManagement = () => {
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={confirmDelete}
         itemName={contractToDelete?.contract_number}
+        itemType="Hợp đồng"
       />
     </div>
   );
