@@ -32,8 +32,8 @@ import AccountChangePhone from "./pages/member/account/AccountChangePhone";
 function App() {
   const { user, logout } = useAuth();
 
-  const currentRole = user?.role || 'CUSTOMER';
-  
+  const currentRole = user?.role || "CUSTOMER";
+
   return (
     <div className="flex flex-col h-screen w-full bg-slate-50 overflow-hidden">
       {/* ========== HEADER ========== */}
@@ -94,7 +94,7 @@ function App() {
                 )}
 
                 {/* ===== MEMBER ROUTES ===== */}
-                {['TENANT', 'CUSTOMER'].includes(currentRole)  && (
+                {["TENANT", "CUSTOMER"].includes(currentRole) && (
                   <>
                     <Route path="/member/profile" element={<ProfilePage />} />
                     <Route

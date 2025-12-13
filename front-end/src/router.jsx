@@ -1,6 +1,5 @@
 import { createBrowserRouter } from "react-router-dom";
 
-
 import App from "./App";
 import AdminLayout from "./components/layouts/AdminLayout";
 import MemberLayout from "./components/layouts/MemberLayout";
@@ -58,7 +57,7 @@ const router = createBrowserRouter([
   {
     path: "/member",
     element: (
-      <ProtectedRoute allowedRoles={['TENANT', 'CUSTOMER']}>
+      <ProtectedRoute allowedRoles={["TENANT", "CUSTOMER"]}>
         <MemberLayout />
       </ProtectedRoute>
     ),
@@ -81,7 +80,11 @@ const router = createBrowserRouter([
   // ----- ADMIN ROUTES -----
   {
     path: "/admin",
-    element: <ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout /></ProtectedRoute>,
+    element: (
+      <ProtectedRoute allowedRoles={["ADMIN"]}>
+        <AdminLayout />
+      </ProtectedRoute>
+    ),
     children: [
       { index: true, element: <DashboardAdmin /> },
       { path: "dashboard", element: <DashboardAdmin /> },
@@ -91,7 +94,7 @@ const router = createBrowserRouter([
       { path: "invoices", element: <InvoiceManagement /> },
       { path: "contracts", element: <ContractManagement /> },
       { path: "incidents", element: <IssueManagement /> },
-    ]
+    ],
   },
 
   // ----- 404 -----
