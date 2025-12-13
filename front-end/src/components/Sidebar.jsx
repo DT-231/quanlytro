@@ -29,6 +29,7 @@ const guestMenu = [
 ]
 
 export default function Sidebar({ role }) {
+
   const location = useLocation();
 
   let menuItems = guestMenu;

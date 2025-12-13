@@ -33,7 +33,7 @@ function App() {
   const { user, logout } = useAuth();
 
   const currentRole = user?.role || 'CUSTOMER';
-
+  
   return (
     <div className="flex flex-col h-screen w-full bg-slate-50 overflow-hidden">
       {/* ========== HEADER ========== */}
@@ -63,7 +63,7 @@ function App() {
                 />
 
                 {/* ===== ADMIN ROUTES ===== */}
-                {currentRole === "admin" && (
+                {currentRole === "ADMIN" && (
                   <>
                     <Route
                       path="/admin/dashboard"
@@ -94,7 +94,7 @@ function App() {
                 )}
 
                 {/* ===== MEMBER ROUTES ===== */}
-                {currentRole === "user" && (
+                {['TENANT', 'CUSTOMER'].includes(currentRole)  && (
                   <>
                     <Route path="/member/profile" element={<ProfilePage />} />
                     <Route
