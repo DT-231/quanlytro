@@ -159,3 +159,30 @@ class UserOut(BaseModel):
     #         }
     #         return cls(**data)
     #     return super().model_validate(obj, **kwargs)
+
+
+class UserListItem(BaseModel):
+    """Schema cho danh sách người thuê trong dashboard admin.
+    
+    Hiển thị thông tin cơ bản để quản lý.
+    """
+    id: uuid.UUID
+    code: str  # Mã người thuê (101, 110, 220...)
+    full_name: str  # Tên đầy đủ
+    phone: Optional[str] = None
+    email: EmailStr
+    gender: Optional[str] = None  # "Nam" hoặc "Nữ"
+    district: Optional[str] = None  # Quận/quận
+    status: str  # "Đang thuê", "Chưa thuê", "Đã trả phòng"
+    
+    model_config = {"from_attributes": True}
+
+
+class UserStats(BaseModel):
+    """Schema thống kê tổng quan người thuê."""
+    total_tenants: int = 0  # Tổng người thuê
+    active_tenants: int = 0  # Đang thuê
+    returned_rooms: int = 0  # Đã trả phòng
+    not_rented: int = 0  # Chưa thuê
+    
+    model_config = {"from_attributes": True}
