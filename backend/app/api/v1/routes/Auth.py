@@ -56,8 +56,10 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
         return response.bad_request(message="Mật khẩu phải có ít nhất 8 ký tự")
     if len(user_data.password) > 16:
         return response.bad_request(message="Mật khẩu không được quá 16 ký tự")
-    if validate.validate_password(password=user_data.password):
-        return response.bad_request(message="Mật khẩu phải có ký tự số , in hoa , thường , ký tự đặc biệt")
+    
+    is_valid ,mess = validate.validate_password(password=user_data.password)
+    if is_valid:
+        return response.bad_request(message=mess)
     if user_data.password != user_data.confirm_password:
         return response.bad_request(message="Mật khẩu và xác nhận mật khẩu không khớp")
     
