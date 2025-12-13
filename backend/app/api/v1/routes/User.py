@@ -16,7 +16,7 @@ from app.infrastructure.db.session import get_db
 from app.core.security import get_current_user
 from app.models.user import User
 from app.schemas.user_schema import UserUpdate, UserOut, UserListItem, UserStats
-from app.services.UserServuce import UserService
+from app.services.UserService import UserService
 
 router = APIRouter(prefix="/users", tags=["Users Management"])
 

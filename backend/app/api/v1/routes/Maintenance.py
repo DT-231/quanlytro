@@ -38,37 +38,63 @@ def is_admin(current_user: User) -> bool:
     "/stats",
     response_model=Response[List[MaintenanceListItem]],
     status_code=status.HTTP_200_OK,
-    # responses={
-    #     200: {
-    #         "description": "Successful Response",
-    #         "content": {
-    #             "application/json": {
-    #                 "example": {
-    #                     "code": 200,
-    #                     "message": "Lấy thống kê thành công",
-    #                     "data": {
-    #                         "total_requests": 175,
-    #                         "pending": 70,
-    #                         "not_processed": 100,
-    #                         "processed": 5
-    #                     }
-    #                 }
-    #             }
-    #         }
-    #     }
-    # }
+    responses={
+        200: {
+            "description": "Successful Response",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": 200,
+                        "message": "Lấy thống kê thành công",
+                        "data": {
+                            "total_requests": 175,
+                            "pending": 70,
+                            "not_processed": 100,
+                            "processed": 5,
+                        },
+                    }
+                }
+            },
+        },
+        400: {
+            "description": "Successful Response",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": 400,
+                        "message": "Lấy thống kê thất bại",
+                        "data": {},
+                    }
+                }
+            },
+        },
+        401: {
+            "description": "Successful Response",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": 401,
+                        "message": "Bạn chưa đăng nhập hoặc hết phiên đăng nhập",
+                        "data": {},
+                    }
+                }
+            },
+        },
+    },
 )
 def get_maintenance_stats(
-    building_id: Optional[UUID] = Query(None, description="Lọc theo tòa nhà (admin only)"),
+    building_id: Optional[UUID] = Query(
+        None, description="Lọc theo tòa nhà (admin only)"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Lấy thống kê tổng quan về sự cố.
-    
+
     **Quyền**:
     - Admin: Xem thống kê tất cả hoặc theo building_id
     - Tenant: Xem thống kê sự cố của mình
-    
+
     Returns:
         - total_requests: Tổng số sự cố
         - pending: Đang xử lý (IN_PROGRESS)
@@ -111,7 +137,7 @@ def get_maintenance_stats(
                                     "request_date": "2025-02-15T10:30:00",
                                     "content": "Bóng đèn cháy",
                                     "building_name": "Chung cư hoàng anh gia lai",
-                                    "status": "PENDING"
+                                    "status": "PENDING",
                                 },
                                 {
                                     "id": "550e8400-e29b-41d4-a716-446655440001",
@@ -121,25 +147,27 @@ def get_maintenance_stats(
                                     "request_date": "2025-09-14T14:20:00",
                                     "content": "Cúp điện",
                                     "building_name": "Chung cư hoàng anh gia lai",
-                                    "status": "IN_PROGRESS"
-                                }
+                                    "status": "IN_PROGRESS",
+                                },
                             ],
                             "total": 175,
                             "offset": 0,
-                            "limit": 20
-                        }
+                            "limit": 20,
+                        },
                     }
                 }
-            }
+            },
         }
-    }
+    },
 )
 def get_list_maintenances(
     search: Optional[str] = Query(
         None, description="Tìm kiếm theo tên khách thuê, nội dung, mã phòng..."
     ),
     status_filter: Optional[str] = Query(
-        None, alias="status", description="Lọc theo trạng thái: PENDING, IN_PROGRESS, COMPLETED, CANCELLED"
+        None,
+        alias="status",
+        description="Lọc theo trạng thái: PENDING, IN_PROGRESS, COMPLETED, CANCELLED",
     ),
     priority: Optional[str] = Query(
         None, description="Lọc theo mức độ ưu tiên: LOW, MEDIUM, HIGH, URGENT"
@@ -147,7 +175,9 @@ def get_list_maintenances(
     request_type: Optional[str] = Query(
         None, description="Lọc theo loại: PLUMBING, ELECTRICAL, AC, FURNITURE, etc."
     ),
-    building_id: Optional[UUID] = Query(None, description="Lọc theo tòa nhà (admin only)"),
+    building_id: Optional[UUID] = Query(
+        None, description="Lọc theo tòa nhà (admin only)"
+    ),
     room_id: Optional[UUID] = Query(None, description="Lọc theo phòng"),
     offset: int = Query(0, ge=0, description="Vị trí bắt đầu (pagination)"),
     limit: int = Query(20, ge=1, le=100, description="Số lượng tối đa mỗi trang"),
@@ -155,11 +185,11 @@ def get_list_maintenances(
     current_user: User = Depends(get_current_user),
 ):
     """Lấy danh sách yêu cầu sự cố với filter và pagination.
-    
+
     **Quyền**:
     - Admin: Xem tất cả yêu cầu, có thể filter theo building, room
     - Tenant: Chỉ xem yêu cầu của mình
-    
+
     **Filters**:
     - search: Tìm theo tên, nội dung, mã phòng
     - status: PENDING (Chưa xử lý), IN_PROGRESS (Đang xử lý), COMPLETED, CANCELLED
@@ -167,7 +197,7 @@ def get_list_maintenances(
     - request_type: PLUMBING, ELECTRICAL, AC, FURNITURE, CLEANING, INTERNET, SECURITY, OTHER
     - building_id: Filter theo tòa nhà
     - room_id: Filter theo phòng
-    
+
     **Response format**:
     ```json
     {
@@ -246,15 +276,15 @@ def get_list_maintenances(
                                     "url": "https://example.com/photo1.jpg",
                                     "is_before": True,
                                     "uploaded_by": "850e8400-e29b-41d4-a716-446655440000",
-                                    "created_at": "2025-12-13T10:30:00"
+                                    "created_at": "2025-12-13T10:30:00",
                                 }
-                            ]
-                        }
+                            ],
+                        },
                     }
                 }
-            }
+            },
         }
-    }
+    },
 )
 def create_maintenance(
     maintenance_data: MaintenanceCreate,
@@ -262,9 +292,9 @@ def create_maintenance(
     current_user: User = Depends(get_current_user),
 ):
     """Tạo yêu cầu sự cố mới (người thuê).
-    
+
     **Quyền**: Tenant (người thuê)
-    
+
     **Business rules**:
     - room_id phải tồn tại
     - Chỉ tạo cho phòng đang thuê
@@ -272,10 +302,10 @@ def create_maintenance(
     - priority: LOW, MEDIUM, HIGH, URGENT (mặc định: MEDIUM)
     - photos: Tối đa 5 ảnh
     - Status tự động = PENDING
-    
+
     Args:
         maintenance_data: Thông tin yêu cầu sự cố
-        
+
     Returns:
         Thông tin yêu cầu vừa tạo
     """
@@ -332,7 +362,7 @@ def create_maintenance(
                                     "url": "https://example.com/before1.jpg",
                                     "is_before": True,
                                     "uploaded_by": "850e8400-e29b-41d4-a716-446655440000",
-                                    "created_at": "2025-12-13T10:30:00"
+                                    "created_at": "2025-12-13T10:30:00",
                                 },
                                 {
                                     "id": "950e8400-e29b-41d4-a716-446655440001",
@@ -340,13 +370,13 @@ def create_maintenance(
                                     "url": "https://example.com/before2.jpg",
                                     "is_before": True,
                                     "uploaded_by": "850e8400-e29b-41d4-a716-446655440000",
-                                    "created_at": "2025-12-13T10:30:00"
-                                }
-                            ]
-                        }
+                                    "created_at": "2025-12-13T10:30:00",
+                                },
+                            ],
+                        },
                     }
                 }
-            }
+            },
         },
         404: {
             "description": "Not Found",
@@ -355,12 +385,12 @@ def create_maintenance(
                     "example": {
                         "code": 404,
                         "message": "Không tìm thấy yêu cầu với ID: 550e8400-e29b-41d4-a716-446655440000",
-                        "data": {}
+                        "data": {},
                     }
                 }
-            }
-        }
-    }
+            },
+        },
+    },
 )
 def get_maintenance_detail(
     maintenance_id: UUID,
@@ -368,14 +398,14 @@ def get_maintenance_detail(
     current_user: User = Depends(get_current_user),
 ):
     """Lấy thông tin chi tiết yêu cầu sự cố.
-    
+
     **Quyền**:
     - Admin: Xem tất cả
     - Tenant: Chỉ xem yêu cầu của mình
-    
+
     Args:
         maintenance_id: UUID của yêu cầu sự cố
-        
+
     Returns:
         Thông tin chi tiết bao gồm:
         - Thông tin request đầy đủ
@@ -427,11 +457,11 @@ def get_maintenance_detail(
                             "completed_at": "2025-12-13T15:30:00",
                             "created_at": "2025-12-13T10:30:00",
                             "updated_at": "2025-12-13T15:30:00",
-                            "photos": []
-                        }
+                            "photos": [],
+                        },
                     }
                 }
-            }
+            },
         },
         400: {
             "description": "Bad Request",
@@ -440,12 +470,12 @@ def get_maintenance_detail(
                     "example": {
                         "code": 400,
                         "message": "Chỉ có thể cập nhật yêu cầu khi trạng thái là 'Chưa xử lý'",
-                        "data": {}
+                        "data": {},
                     }
                 }
-            }
-        }
-    }
+            },
+        },
+    },
 )
 def update_maintenance(
     maintenance_id: UUID,
@@ -454,20 +484,20 @@ def update_maintenance(
     current_user: User = Depends(get_current_user),
 ):
     """Cập nhật yêu cầu sự cố.
-    
+
     **Quyền**:
     - Admin: Update tất cả field (title, description, priority, status, cost)
     - Tenant: Chỉ update title, description, priority khi status=PENDING
-    
+
     **Business rules**:
     - Tenant không thể update status, estimated_cost, actual_cost
     - Tenant chỉ update được khi status=PENDING (Chưa xử lý)
     - Admin có thể update status: PENDING → IN_PROGRESS → COMPLETED/CANCELLED
-    
+
     Args:
         maintenance_id: UUID của yêu cầu cần update
         maintenance_data: Dữ liệu cập nhật (các field optional)
-        
+
     Returns:
         Thông tin yêu cầu đã cập nhật
     """
@@ -498,10 +528,10 @@ def update_maintenance(
                     "example": {
                         "code": 200,
                         "message": "Xóa yêu cầu thành công",
-                        "data": {}
+                        "data": {},
                     }
                 }
-            }
+            },
         },
         400: {
             "description": "Bad Request",
@@ -510,10 +540,10 @@ def update_maintenance(
                     "example": {
                         "code": 400,
                         "message": "Chỉ có thể xóa yêu cầu khi trạng thái là 'Chưa xử lý'",
-                        "data": {}
+                        "data": {},
                     }
                 }
-            }
+            },
         },
         404: {
             "description": "Not Found",
@@ -522,12 +552,12 @@ def update_maintenance(
                     "example": {
                         "code": 404,
                         "message": "Không tìm thấy yêu cầu với ID: 550e8400-e29b-41d4-a716-446655440000",
-                        "data": {}
+                        "data": {},
                     }
                 }
-            }
-        }
-    }
+            },
+        },
+    },
 )
 def delete_maintenance(
     maintenance_id: UUID,
@@ -535,18 +565,18 @@ def delete_maintenance(
     current_user: User = Depends(get_current_user),
 ):
     """Xóa yêu cầu sự cố.
-    
+
     **Quyền**:
     - Admin: Xóa tất cả (không khuyến khích, nên CANCEL)
     - Tenant: Chỉ xóa yêu cầu của mình khi status=PENDING
-    
+
     **Business rules**:
     - Tenant chỉ xóa được khi status=PENDING (Chưa xử lý)
     - Admin nên CANCEL thay vì DELETE để giữ lịch sử
-    
+
     Args:
         maintenance_id: UUID của yêu cầu cần xóa
-        
+
     Returns:
         204 No Content nếu xóa thành công
     """

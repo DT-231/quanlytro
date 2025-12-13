@@ -5,8 +5,9 @@ Service xử lý các use case và business rules liên quan đến Room.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
+from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.repositories.room_repository import RoomRepository
@@ -125,28 +126,12 @@ class RoomService:
         # Convert sang RoomDetailOut
         return self._room_to_detail_out(room)
 
-    def get_room(self, room_id: UUID) -> RoomDetailOut:
-        """Lấy thông tin chi tiết phòng với utilities và photos.
-        
-        Args:
-            room_id: UUID của phòng cần lấy.
-            
-        Returns:
-            RoomDetailOut schema với utilities và photos.
-            
-        Raises:
-            ValueError: Nếu không tìm thấy phòng.
-        """
-        room = self.room_repo.get_by_id_with_relations(room_id)
-        if not room:
-            raise ValueError(f"Không tìm thấy phòng với ID: {room_id}")
-        
-        return self._room_to_detail_out(room)
-
     def list_rooms(
         self,
         building_id: Optional[UUID] = None,
         status: Optional[str] = None,
+        search: Optional[str] = None,
+        sort_by: Optional[str] = None,
         offset: int = 0,
         limit: int = 100,
     ) -> dict:
@@ -155,6 +140,8 @@ class RoomService:
         Args:
             building_id: Lọc theo tòa nhà (optional).
             status: Lọc theo trạng thái (optional).
+            search: Tìm kiếm theo tên phòng, số phòng, hoặc tên tòa nhà (optional).
+            sort_by: Sắp xếp (price_asc, price_desc), mặc định created_at desc.
             offset: Vị trí bắt đầu.
             limit: Số lượng tối đa (max 100).
             
@@ -197,12 +184,18 @@ class RoomService:
         items_data = self.room_repo.list_with_details(
             building_id=building_id,
             status=status,
+            search=search,
+            sort_by=sort_by,
             offset=offset,
             limit=limit
         )
         
         # Lấy tổng số
-        total = self.room_repo.count(building_id=building_id, status=status)
+        total = self.room_repo.count(
+            building_id=building_id,
+            status=status,
+            search=search,
+        )
         
         # Convert dict sang Pydantic schemas
         items_out = [RoomListItem(**item) for item in items_data]
@@ -609,6 +602,11 @@ class RoomService:
     def list_rooms_public(
         self,
         building_id: Optional[UUID] = None,
+        search: Optional[str] = None,
+        min_price: Optional[int] = None,
+        max_price: Optional[int] = None,
+        max_capacity: Optional[int] = None,
+        sort_by: Optional[str] = None,
         offset: int = 0,
         limit: int = 10,
     ) -> dict:
@@ -618,12 +616,17 @@ class RoomService:
         - Ảnh đại diện
         - Giá phòng
         - Địa chỉ đầy đủ
-        - Trạng thái còn trống
-        - Sắp xếp theo thời gian tạo (mới nhất trước)
+        - Trạng thái còn trống (chỉ lấy phòng AVAILABLE và không có contract ACTIVE)
+        - Sắp xếp theo thời gian tạo (mới nhất trước) hoặc theo giá
         - Mỗi lần trả về 10 phòng
         
         Args:
             building_id: Lọc theo tòa nhà (optional).
+            search: Tìm kiếm theo tên phòng, số phòng, hoặc tên tòa nhà (optional).
+            min_price: Giá thuê tối thiểu (optional).
+            max_price: Giá thuê tối đa (optional).
+            max_capacity: Số người tối đa (optional).
+            sort_by: Sắp xếp (price_asc, price_desc), mặc định created_at desc.
             offset: Vị trí bắt đầu.
             limit: Số lượng tối đa (default 10).
             
@@ -640,17 +643,58 @@ class RoomService:
         
         # Query rooms với joinedload để tránh N+1
         from sqlalchemy.orm import joinedload
+        from sqlalchemy import and_, not_, exists
+        from app.models.contract import Contract
+        from app.core.Enum.contractEnum import ContractStatus
+        
         query = self.db.query(Room).options(
             joinedload(Room.building).joinedload(Building.address),
             joinedload(Room.room_photos)
         )
         
+        # PUBLIC: Chỉ lấy phòng AVAILABLE và KHÔNG có contract ACTIVE
+        query = query.filter(Room.status == RoomStatus.AVAILABLE.value)
+        
+        # Filter out rooms với active contracts
+        active_contract_exists = exists().where(
+            and_(
+                Contract.room_id == Room.id,
+                Contract.status == ContractStatus.ACTIVE.value
+            )
+        )
+        query = query.filter(not_(active_contract_exists))
+        
         # Filter by building_id nếu có
         if building_id:
             query = query.filter(Room.building_id == building_id)
         
-        # Sắp xếp theo created_at DESC (mới nhất trước)
-        query = query.order_by(Room.created_at.desc())
+        # Apply search filter - join với Building để search theo building_name
+        if search:
+            query = query.join(Building, Room.building_id == Building.id)
+            search_pattern = f"%{search}%"
+            query = query.filter(
+                (Room.room_number.ilike(search_pattern)) |
+                (Room.room_name.ilike(search_pattern)) |
+                (Building.building_name.ilike(search_pattern))
+            )
+        
+        # Apply price filters
+        if min_price is not None:
+            query = query.filter(Room.base_price >= min_price)
+        if max_price is not None:
+            query = query.filter(Room.base_price <= max_price)
+        
+        # Apply capacity filter
+        if max_capacity is not None:
+            query = query.filter(Room.capacity <= max_capacity)
+        
+        # Sắp xếp - mặc định theo created_at DESC (mới nhất trước)
+        if sort_by == "price_asc":
+            query = query.order_by(Room.base_price.asc())
+        elif sort_by == "price_desc":
+            query = query.order_by(Room.base_price.desc())
+        else:
+            query = query.order_by(Room.created_at.desc())
         
         # Count total
         total = query.count()

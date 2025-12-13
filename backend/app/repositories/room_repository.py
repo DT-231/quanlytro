@@ -107,22 +107,53 @@ class RoomRepository:
         self,
         building_id: Optional[UUID] = None,
         status: Optional[str] = None,
+        search: Optional[str] = None,
+        min_price: Optional[int] = None,
+        max_price: Optional[int] = None,
+        max_capacity: Optional[int] = None,
     ) -> int:
         """Đếm tổng số phòng theo filter.
         
         Args:
             building_id: Lọc theo tòa nhà (optional).
             status: Lọc theo trạng thái (optional).
+            search: Tìm kiếm theo tên phòng, số phòng hoặc tên tòa nhà (optional).
+            min_price: Giá thuê tối thiểu (optional).
+            max_price: Giá thuê tối đa (optional).
+            max_capacity: Số người tối đa (optional).
             
         Returns:
             Tổng số phòng.
         """
         query = self.db.query(Room)
         
+        # Join với Building nếu cần search theo building_name
+        if search:
+            query = query.join(Building, Room.building_id == Building.id)
+        
         if building_id:
             query = query.filter(Room.building_id == building_id)
         if status:
             query = query.filter(Room.status == status)
+        
+        # Apply search filter - tìm kiếm theo tên phòng, số phòng hoặc tên tòa nhà
+        if search:
+            search_pattern = f"%{search}%"
+            query = query.filter(
+                (Room.room_number.ilike(search_pattern)) |
+                (Room.room_name.ilike(search_pattern)) |
+                (Building.building_name.ilike(search_pattern))
+            )
+        
+        # Apply price filters
+        if min_price is not None:
+            query = query.filter(Room.base_price >= min_price)
+        if max_price is not None:
+            query = query.filter(Room.base_price <= max_price)
+        
+        # Apply capacity filter
+        if max_capacity is not None:
+            query = query.filter(Room.capacity <= max_capacity)
             
         return query.count()
 
@@ -204,6 +235,9 @@ class RoomRepository:
         self,
         building_id: Optional[UUID] = None,
         status: Optional[str] = None,
+        search: Optional[str] = None,
+ 
+        sort_by: Optional[str] = None,
         offset: int = 0,
         limit: int = 100,
     ) -> list[dict]:
@@ -212,6 +246,9 @@ class RoomRepository:
         Args:
             building_id: Lọc theo tòa nhà (optional).
             status: Lọc theo trạng thái phòng (optional).
+            search: Tìm kiếm theo tên phòng, số phòng hoặc tên tòa nhà (optional).
+   
+            sort_by: Sắp xếp (price_asc, price_desc), mặc định created_at desc.
             offset: Vị trí bắt đầu lấy dữ liệu.
             limit: Số lượng tối đa trả về.
             
@@ -261,6 +298,24 @@ class RoomRepository:
             query = query.filter(Room.building_id == building_id)
         if status:
             query = query.filter(Room.status == status)
+        
+        # Apply search filter - tìm kiếm theo tên phòng, số phòng hoặc tên tòa nhà
+        if search:
+            search_pattern = f"%{search}%"
+            query = query.filter(
+                (Room.room_number.ilike(search_pattern)) |
+                (Room.room_name.ilike(search_pattern)) |
+                (Building.building_name.ilike(search_pattern))
+            )
+        
+        
+        # Apply sorting - mặc định theo created_at DESC (mới nhất trước)
+        if sort_by == "price_asc":
+            query = query.order_by(Room.base_price.asc())
+        elif sort_by == "price_desc":
+            query = query.order_by(Room.base_price.desc())
+        else:
+            query = query.order_by(Room.created_at.desc())
         
         # Apply pagination
         results = query.offset(offset).limit(limit).all()

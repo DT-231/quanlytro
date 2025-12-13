@@ -118,3 +118,38 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 	return user
 
+
+def get_current_user_optional(
+	credentials: HTTPAuthorizationCredentials | None = Depends(HTTPBearer(auto_error=False)),
+	db: Session = Depends(get_db)
+):
+	"""FastAPI dependency trả về current user hoặc None nếu không có token.
+	
+	Dùng cho các endpoint cho phép cả authenticated và unauthenticated users.
+	
+	Returns:
+		User instance nếu có token hợp lệ, None nếu không có token hoặc token invalid.
+	"""
+	if credentials is None:
+		return None
+	
+	try:
+		token = credentials.credentials
+		payload = decode_token(token)
+		
+		if payload.get("type") != "access":
+			return None
+		
+		sub = payload.get("sub")
+		if not sub:
+			return None
+		
+		repo = UserRepository(db)
+		user = repo.get_by_id(sub)
+		return user
+	except HTTPException:
+		# Token invalid/expired - trả None thay vì raise exception
+		return None
+	except Exception:
+		return None
+

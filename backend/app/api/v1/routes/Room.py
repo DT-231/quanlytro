@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, get_current_user_optional
 from app.models.user import User
 from app.schemas.room_schema import (
     RoomCreate,
@@ -37,38 +37,82 @@ router = APIRouter(prefix="/rooms", tags=["Room Management"])
 
 
 @router.get(
-    "/public",
+    "",
     response_model=Response[dict],
     status_code=status.HTTP_200_OK,
-    summary="Lấy danh sách phòng công khai (không cần đăng nhập)",
-    description="Danh sách phòng cho khách thuê/khách vãng lai: ảnh đại diện, giá, địa chỉ, trạng thái. Sắp xếp mới nhất trước.",
+    summary="Lấy danh sách phòng (tự động phân quyền)",
+    description="""
+    API thống nhất cho cả Public (khách) và Admin (chủ nhà):
+    
+    **Khách/Chưa đăng nhập (Public)**:
+    - Xem phòng còn trống (is_available)
+    - Ảnh đại diện, giá, địa chỉ
+    - Limit max 20
+    - Sắp xếp mới nhất trước
+    
+    **Admin (Chủ nhà - có token)**:
+    - Xem tất cả phòng (kể cả đã thuê)
+    - Thông tin đầy đủ: người thuê, số người ở
+    - Filter theo status, building
+    - Limit max 100
+    """,
     responses={
         200: {
             "description": "Successful Response",
             "content": {
                 "application/json": {
-                    "example": {
-                        "code": 200,
-                        "message": "Lấy danh sách phòng thành công",
-                        "data": {
-                            "items": [
-                                {
-                                    "id": "uuid",
-                                    "room_number": "A101",
-                                    "room_name": "Studio Premium",
-                                    "building_name": "Chung cư Hoàng Anh",
-                                    "full_address": "123 Đường ABC, Phường XYZ, Đà Nẵng",
-                                    "base_price": 5000000,
-                                    "area": 35.0,
-                                    "capacity": 2,
-                                    "is_available": True,
-                                    "primary_photo": "data:image/png;base64,...",
-                                    "created_at": "2025-01-23T10:30:00"
+                    "examples": {
+                        "public": {
+                            "summary": "Public response (chưa login)",
+                            "value": {
+                                "code": 200,
+                                "message": "Lấy danh sách phòng thành công",
+                                "data": {
+                                    "items": [
+                                        {
+                                            "id": "uuid",
+                                            "room_number": "A101",
+                                            "room_name": "Studio Premium",
+                                            "building_name": "Chung cư Hoàng Anh",
+                                            "full_address": "123 Đường ABC, Phường XYZ, Đà Nẵng",
+                                            "base_price": 5000000,
+                                            "area": 35.0,
+                                            "capacity": 2,
+                                            "is_available": True,
+                                            "primary_photo": "data:image/png;base64,...",
+                                            "created_at": "2025-01-23T10:30:00"
+                                        }
+                                    ],
+                                    "total": 50,
+                                    "offset": 0,
+                                    "limit": 10
                                 }
-                            ],
-                            "total": 50,
-                            "offset": 0,
-                            "limit": 10
+                            }
+                        },
+                        "admin": {
+                            "summary": "Admin response (có login)",
+                            "value": {
+                                "code": 200,
+                                "message": "Lấy danh sách phòng thành công",
+                                "data": {
+                                    "items": [
+                                        {
+                                            "id": "123e4567-e89b-12d3-a456-426614174000",
+                                            "room_number": "101",
+                                            "building_name": "Chung cư Hoàng Anh",
+                                            "area": 50.0,
+                                            "capacity": 4,
+                                            "current_occupants": 2,
+                                            "status": "OCCUPIED",
+                                            "base_price": 7000000,
+                                            "representative": "Phan Mạnh Quỳnh"
+                                        }
+                                    ],
+                                    "total": 50,
+                                    "offset": 0,
+                                    "limit": 20
+                                }
+                            }
                         }
                     }
                 }
@@ -76,135 +120,78 @@ router = APIRouter(prefix="/rooms", tags=["Room Management"])
         }
     }
 )
-def list_rooms_public(
-    building_id: Optional[UUID] = Query(None, description="Lọc theo tòa nhà"),
-    offset: int = Query(0, ge=0, description="Vị trí bắt đầu"),
-    limit: int = Query(10, ge=1, le=20, description="Số lượng (default 10, max 20)"),
-    db: Session = Depends(get_db),
-    # Không có current_user - API công khai
-):
-    """Lấy danh sách phòng công khai cho khách thuê/khách vãng lai.
-    
-    Hiển thị:
-    - Ảnh đại diện (primary_photo)
-    - Giá phòng (base_price)
-    - Địa chỉ đầy đủ (full_address)
-    - Trạng thái còn trống (is_available)
-    - Sắp xếp theo thời gian tạo (mới nhất trước)
-    - Mỗi lần trả về 10 phòng (default)
-    
-    Query params:
-    - building_id: Lọc theo tòa nhà (optional)
-    - offset: Vị trí bắt đầu (default 0)
-    - limit: Số lượng (default 10, max 20)
-    """
-    try:
-        room_service = RoomService(db)
-        result = room_service.list_rooms_public(
-            building_id=building_id,
-            offset=offset,
-            limit=limit,
-        )
-        return response.success(data=result, message="Lấy danh sách phòng thành công")
-    except ValueError as e:
-        return response.bad_request(message=str(e))
-    except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
-
-
-@router.get(
-    "",
-    response_model=Response[dict],
-    status_code=status.HTTP_200_OK,
-    summary="Lấy danh sách phòng đầy đủ (Admin - Chủ nhà)",
-    description="Danh sách phòng cho admin với thông tin đầy đủ: người thuê, số người ở, trạng thái",
-    responses={
-        200: {
-            "description": "Successful Response",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "code": 200,
-                        "message": "Lấy danh sách phòng thành công",
-                        "data": {
-                            "items": [
-                                {
-                                    "id": "123e4567-e89b-12d3-a456-426614174000",
-                                    "room_number": "101",
-                                    "building_name": "Chung cư Hoàng Anh",
-                                    "area": 50.0,
-                                    "capacity": 4,
-                                    "current_occupants": 2,
-                                    "status": "OCCUPIED",
-                                    "base_price": 7000000,
-                                    "representative": "Phan Mạnh Quỳnh",
-                                }
-                            ],
-                            "total": 50,
-                            "offset": 0,
-                            "limit": 20,
-                        },
-                    }
-                }
-            },
-        }
-    },
-)
-def list_rooms_admin(
+def list_rooms(
+    search: Optional[str] = Query(
+        None, description="Tìm kiếm theo tên phòng, tên tòa nhà, tiện ích"
+    ),
     building_id: Optional[UUID] = Query(None, description="Lọc theo tòa nhà"),
     room_status: Optional[str] = Query(
-        None, description="Lọc theo trạng thái phòng", alias="status"
+        None, description="Lọc theo trạng thái (Admin only)", alias="status"
+    ),
+    min_price: Optional[int] = Query(None, ge=0, description="Giá thuê tối thiểu"),
+    max_price: Optional[int] = Query(None, ge=0, description="Giá thuê tối đa"),
+    max_capacity: Optional[int] = Query(None, ge=1, description="Số người tối đa"),
+    sort_by: Optional[str] = Query(
+        None, 
+        description="Sắp xếp theo (price_asc, price_desc). Mặc định: phòng mới nhất trước (created_at desc)",
+        regex="^(price_asc|price_desc)$"
     ),
     offset: int = Query(0, ge=0, description="Vị trí bắt đầu"),
-    limit: int = Query(20, ge=1, le=100, description="Số lượng tối đa (max 100)"),
+    limit: int = Query(20, ge=1, le=100, description="Số lượng (Public max 20, Admin max 100)"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),  # Optional - không bắt buộc login
 ):
-    """Lấy danh sách phòng đầy đủ cho Admin (chủ nhà).
-
-    Query params:
-    - building_id: UUID của tòa nhà (optional)
-    - status: Trạng thái phòng (AVAILABLE, OCCUPIED, MAINTENANCE, RESERVED)
-    - offset: Vị trí bắt đầu (default 0)
-    - limit: Số lượng tối đa (default 20, max 100)
-
-    Response format:
-    {
-        "code": 200,
-        "message": "success",
-        "data": {
-            "items": [
-                {
-                    "id": "uuid",
-                    "room_number": "101",
-                    "building_name": "Chung cư hoàng anh",
-                    "area": 50.0,
-                    "capacity": 4,
-                    "current_occupants": 2,
-                    "status": "OCCUPIED",
-                    "base_price": 7000000,
-                    "representative": "Phan Mạnh Quỳnh"
-                }
-            ],
-            "total": 50,
-            "offset": 0,
-            "limit": 20
-        }
-    }
+    """API thống nhất lấy danh sách phòng - tự động phân quyền.
+    
+    **Logic phân quyền tự động**:
+    - Nếu KHÔNG có token (current_user = None) → Trả public view (chỉ phòng trống)
+    - Nếu CÓ token + role = ADMIN → Trả admin view (tất cả phòng + filter)
+    - Nếu CÓ token + role ≠ ADMIN → Trả public view
+    
+    **Query params**:
+    - search: Tìm kiếm theo tên phòng/tòa nhà/tiện ích (all)
+    - building_id: Lọc theo tòa nhà (all)
+    - status: Lọc theo trạng thái (admin only)
+    - min_price: Giá thuê tối thiểu (all)
+    - max_price: Giá thuê tối đa (all)
+    - max_capacity: Số người tối đa (all)
+    - sort_by: price_asc (giá tăng dần), price_desc (giá giảm dần), mặc định là mới nhất
+    - offset, limit: Pagination
     """
     try:
-        # Kiểm tra role (chỉ ADMIN mới dùng được endpoint này)
-        user_role = current_user.role.role_code if current_user.role else "CUSTOMER"
-        if user_role != "ADMIN":
-            return response.forbidden(message="Chỉ chủ nhà mới có quyền xem danh sách đầy đủ")
-        
         room_service = RoomService(db)
-        result = room_service.list_rooms(
-            building_id=building_id,
-            status=room_status,
-            offset=offset,
-            limit=limit,
-        )
+        
+        # Xác định user role
+        is_admin = False
+        if current_user and current_user.role:
+            is_admin = current_user.role.role_code == "ADMIN"
+        
+        # Admin: trả full data với filter
+        if is_admin:
+            result = room_service.list_rooms(
+                search=search,
+                building_id=building_id,
+                status=room_status,
+                min_price=min_price,
+                max_price=max_price,
+                max_capacity=max_capacity,
+                sort_by=sort_by,
+                offset=offset,
+                limit=min(limit, 100),  # Max 100 cho admin
+            )
+        else:
+            # Public/Customer: chỉ phòng available, limit max 20
+            result = room_service.list_rooms_public(
+                search=search,
+                building_id=building_id,
+                min_price=min_price,
+                max_price=max_price,
+                max_capacity=max_capacity,
+                sort_by=sort_by,
+                offset=offset,
+                limit=min(limit, 20),  # Max 20 cho public
+            )
+        
         return response.success(data=result, message="Lấy danh sách phòng thành công")
     except ValueError as e:
         return response.bad_request(message=str(e))
