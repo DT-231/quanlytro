@@ -45,24 +45,41 @@ const BuildingManagement = () => {
   // --- API HANDLERS ---
 
   // 1. Fetch List
-  const fetchBuildings = async () => {
-    try {
-      setLoading(true);
-      const response = await buildingService.getAll();
-      if (response && response.data && response.data.success && Array.isArray(response.data.items)) {
-        setBuildings(response.data.items);
-      } else {
-        setBuildings([]);
-      }
-    } catch (error) {
-      console.error("Lỗi tải dữ liệu:", error);
-      toast.error("Không thể tải danh sách tòa nhà");
-      setBuildings([]);
-    } finally {
-      setLoading(false);
+const fetchBuildings = async (priorityId = null) => {
+  try {
+    setLoading(true);
+    const response = await buildingService.getAll();
+    
+    let listData = [];
+    if (response?.data?.data && Array.isArray(response.data.data.items)) {
+       listData = response.data.data.items;
+    } else if (response?.data?.items && Array.isArray(response.data.items)) {
+       listData = response.data.items;
+    } else if (response?.items && Array.isArray(response.items)) {
+       listData = response.items;
     }
-  };
+    listData.sort((a, b) => {
+      const dateA = new Date(a.created_at || 0).getTime();
+      const dateB = new Date(b.created_at || 0).getTime();
+      return dateB - dateA; 
+    })
+    if (priorityId) {
+      const index = listData.findIndex(item => item.id === priorityId);
+      if (index > -1) {
+        const [item] = listData.splice(index, 1); 
+        listData.unshift(item); 
+      }
+    }
 
+    setBuildings(listData);
+  } catch (error) {
+    console.error("Lỗi tải dữ liệu:", error);
+    toast.error("Không thể tải danh sách tòa nhà");
+    setBuildings([]);
+  } finally {
+    setLoading(false);
+  }
+};
   useEffect(() => {
     fetchBuildings();
   }, []);
@@ -103,8 +120,9 @@ const BuildingManagement = () => {
       const response = await buildingService.update(id, updatedData);
       if (response && (response.code === 200 || response.data)) {
         toast.success("Cập nhật thành công!");
-        await fetchBuildings();
+       await fetchBuildings(id); 
         setIsEditModalOpen(false);
+        setCurrentPage(1);
       } else {
         toast.error("Cập nhật thất bại");
       }

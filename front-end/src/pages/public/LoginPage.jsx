@@ -84,7 +84,6 @@ export default function LoginPage() {
 
   return (
     <div className="flex items-center justify-center min-h-[85vh] bg-slate-50 px-4 relative">
-      {/* <Toaster richColors /> */}
 
       {/* Card Container */}
       <div className="w-full max-w-md bg-white p-6 rounded-xl shadow-xl border border-gray-100 ">

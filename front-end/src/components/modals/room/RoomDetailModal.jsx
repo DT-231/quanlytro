@@ -11,7 +11,7 @@ import {
   FaTint,
   FaImage 
 } from "react-icons/fa";
-import { Image as LucideImage, FileImage } from "lucide-react"; 
+import { Image as LucideImage } from "lucide-react"; 
 
 import {
   Dialog,
@@ -25,22 +25,33 @@ import { Label } from "@/components/ui/label";
 
 const RoomDetailModal = ({ isOpen, onClose, room, loading }) => {
   const [activeTab, setActiveTab] = useState("info");
-
-
-
-  // Xử lý tiện ích
   const activeAmenities = useMemo(() => {
     if (!room || !room.utilities) return [];
     if (Array.isArray(room.utilities)) return room.utilities; 
+    if (typeof room.utilities === 'string') return room.utilities.split(',').map(u => u.trim());
     return []; 
   }, [room]);
 
   const roomImages = useMemo(() => {
     if (!room) return [];
-    if (room.images && Array.isArray(room.images)) return room.images;
-    if (room.photo_urls && Array.isArray(room.photo_urls)) return room.photo_urls;
 
-    return [];
+    // Tìm mảng ảnh từ các tên trường phổ biến của Backend
+    // Ưu tiên 'photos' (theo payload AddRoom), sau đó đến 'photo_urls', 'images'
+    const rawData = room.photos || room.photo_urls || room.images || room.photo || [];
+
+    if (!Array.isArray(rawData)) return [];
+
+    // Map dữ liệu về dạng mảng String URL/Base64
+    return rawData.map(item => {
+        // Nếu là string (URL hoặc Base64 sẵn) -> Dùng luôn
+        if (typeof item === 'string') return item;
+        
+        // Nếu là object -> Trích xuất trường chứa ảnh
+        if (typeof item === 'object' && item !== null) {
+            return item.image_base64 || item.image_url || item.url || item.link || null;
+        }
+        return null;
+    }).filter(url => url !== null); // Loại bỏ các ảnh null/undefined
   }, [room]);
 
   if (!isOpen) return null;
@@ -68,17 +79,11 @@ const RoomDetailModal = ({ isOpen, onClose, room, loading }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px] p-0 bg-white text-black max-h-[90vh] flex flex-col gap-0 shadow-lg overflow-hidden">
-        
-        {/* --- HEADER --- */}
         <div className="p-5 pb-0 border-b border-gray-100">
           <DialogHeader className="mb-4">
             <DialogTitle className="text-xl font-bold flex items-center gap-2 text-gray-800">
-              
               Chi tiết phòng {room?.room_number}
             </DialogTitle>
-            <DialogDescription className="text-xs text-gray-500 mt-1">
-              Thông tin chi tiết và hình ảnh phòng trọ
-            </DialogDescription>
           </DialogHeader>
 
           {/* TABS HEADER */}
@@ -101,7 +106,12 @@ const RoomDetailModal = ({ isOpen, onClose, room, loading }) => {
                   : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
             >
-              <FaImage /> Hình ảnh <span className="ml-1 bg-gray-100 px-1.5 rounded-full text-xs">{roomImages.length}</span>
+              <FaImage /> Hình ảnh 
+              {roomImages.length > 0 && (
+                <span className="ml-1 bg-gray-100 px-2 py-0.5 rounded-full text-xs font-bold text-gray-600">
+                    {roomImages.length}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -118,8 +128,8 @@ const RoomDetailModal = ({ isOpen, onClose, room, loading }) => {
               {/* === TAB 1: THÔNG TIN === */}
               {activeTab === "info" && (
                 <div className="space-y-5 animate-in fade-in zoom-in-95 duration-200">
-                    {/* 1. Thông tin chung */}
-                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm space-y-3">
+                   {/* 1. Thông tin chung */}
+                   <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm space-y-3">
                         <div className="flex justify-between items-start">
                         <div>
                             <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1 block">Tòa nhà</label>
@@ -133,7 +143,7 @@ const RoomDetailModal = ({ isOpen, onClose, room, loading }) => {
                             <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1 block">Loại phòng</label>
                             <div className="flex items-center gap-2 text-gray-700">
                             <FaDoorOpen className="text-gray-400" size={12} />
-                            <span className="text-sm font-medium">{room.room_type}</span>
+                            <span className="text-sm font-medium">{room.room_type || "N/A"}</span>
                             </div>
                         </div>
                         <div>
@@ -143,12 +153,23 @@ const RoomDetailModal = ({ isOpen, onClose, room, loading }) => {
                             <span className="text-sm font-medium">{room.area} m²</span>
                             </div>
                         </div>
+                        <div>
+                            <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1 block">Sức chứa</label>
+                            <div className="flex items-center gap-2 text-gray-700">
+                            <FaBed className="text-gray-400" size={12} />
+                            <span className="text-sm font-medium">{room.capacity} người</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1 block">Đang ở</label>
+                            <span className="text-sm font-bold text-blue-600">{room.current_occupants || 0} người</span>
+                        </div>
                         </div>
                     </div>
 
                     {/* 2. Chi phí */}
                     <div>
-                        <Label className="text-xs font-bold text-gray-800 mb-2 block uppercase">Bảng giá</Label>
+                        <Label className="text-xs font-bold text-gray-800 mb-2 block uppercase">Bảng giá & Chi phí</Label>
                         <div className="grid grid-cols-2 gap-3">
                         <div className="p-3 bg-white rounded border border-gray-200 flex justify-between items-center shadow-sm">
                             <span className="text-xs text-gray-500 flex items-center gap-1"><FaMoneyBillWave className="text-green-600"/> Giá thuê</span>
@@ -160,18 +181,18 @@ const RoomDetailModal = ({ isOpen, onClose, room, loading }) => {
                         </div>
                         <div className="p-3 bg-white rounded border border-gray-200 flex justify-between items-center shadow-sm">
                             <span className="text-xs text-gray-500 flex items-center gap-1"><FaBolt className="text-yellow-500"/> Điện</span>
-                            <span className="text-sm font-bold text-gray-900">{formatMoney(room.electricity_cost)}</span>
+                            <span className="text-sm font-bold text-gray-900">{formatMoney(room.electricity_cost || room.electricity_price)}</span>
                         </div>
                         <div className="p-3 bg-white rounded border border-gray-200 flex justify-between items-center shadow-sm">
                             <span className="text-xs text-gray-500 flex items-center gap-1"><FaTint className="text-blue-500"/> Nước</span>
-                            <span className="text-sm font-bold text-gray-900">{formatMoney(room.water_cost)}</span>
+                            <span className="text-sm font-bold text-gray-900">{formatMoney(room.water_cost || room.water_price_per_person)}</span>
                         </div>
                         </div>
                     </div>
 
                     {/* 3. Tiện ích */}
                     <div>
-                        <Label className="text-xs font-bold text-gray-800 mb-2 block uppercase">Tiện ích có sẵn</Label>
+                        <Label className="text-xs font-bold text-gray-800 mb-2 block uppercase">Tiện ích</Label>
                         {activeAmenities.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                             {activeAmenities.map((item, idx) => (
@@ -185,52 +206,55 @@ const RoomDetailModal = ({ isOpen, onClose, room, loading }) => {
                         <div className="text-xs text-gray-400 italic">Không có tiện ích nào.</div>
                         )}
                     </div>
-
-                    {/* 4. Mô tả */}
-                    {room.description && (
-                        <div>
-                        <Label className="text-xs font-bold text-gray-800 mb-1 block uppercase">Mô tả</Label>
-                        <p className="text-sm text-gray-600 leading-relaxed bg-white p-3 rounded border border-gray-200 shadow-sm">
-                            {room.description}
-                        </p>
-                        </div>
-                    )}
+                     {/* 4. Thông tin người thuê (nếu có) */}
+                     {room.tenant_info && (
+                         <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                            <Label className="text-xs font-bold text-blue-800 mb-2 block uppercase">Người thuê hiện tại</Label>
+                            <div className="text-sm">
+                                <p><span className="font-medium">Tên:</span> {room.tenant_info.tenant_name}</p>
+                                <p><span className="font-medium">Email:</span> {room.tenant_info.tenant_email}</p>
+                            </div>
+                         </div>
+                     )}
                 </div>
               )}
 
-              {/* === TAB 2: HÌNH ẢNH === */}
+              {/* === TAB 2: HÌNH ẢNH (UPDATED) === */}
               {activeTab === "images" && (
                 <div className="animate-in fade-in zoom-in-95 duration-200 min-h-[300px]">
                     {roomImages.length > 0 ? (
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            {roomImages.slice(0, 10).map((imgUrl, index) => (
-                                <div key={index} className="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                        <div className="grid grid-cols-2 gap-4">
+                            {roomImages.map((imgUrl, index) => (
+                                <div key={index} className="group relative aspect-video bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
                                     <img 
                                         src={imgUrl} 
-                                        alt={`Room ${index + 1}`} 
-                                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                        alt={`Room Image ${index + 1}`} 
+                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                         onError={(e) => {
                                             e.target.onerror = null;
-                                            e.target.src = "https://placehold.co/400x400?text=No+Image"; // Placeholder nếu ảnh lỗi
+                                            e.target.src = "https://placehold.co/600x400?text=Error+Loading+Image";
                                         }}
                                     />
-                                    {/* Overlay khi hover */}
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+                                    {/* Hiệu ứng mờ khi hover */}
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 pointer-events-none" />
                                 </div>
                             ))}
                         </div>
                     ) : (
+                        // Empty State cho hình ảnh
                         <div className="flex flex-col items-center justify-center h-64 text-gray-400 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
                             <LucideImage size={48} className="opacity-20 mb-2" />
                             <p className="text-sm font-medium">Chưa có hình ảnh nào</p>
-                            <p className="text-xs">Vui lòng cập nhật ảnh cho phòng này</p>
+                            <p className="text-xs text-center mt-1 max-w-[200px]">
+                                Phòng này chưa được cập nhật hình ảnh hoặc API không trả về dữ liệu ảnh.
+                            </p>
                         </div>
                     )}
                 </div>
               )}
             </>
           ) : (
-            <div className="text-center py-8 text-red-500 text-sm">Không tìm thấy dữ liệu.</div>
+            <div className="text-center py-8 text-red-500 text-sm">Không tìm thấy dữ liệu phòng.</div>
           )}
         </div>
 

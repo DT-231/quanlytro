@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react"; // Thêm useRef
+import React, { useState, useEffect, useRef } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -9,7 +9,7 @@ import {
   Plus,
   X,
   Upload,
-  Trash2, // Thêm icon xóa
+  Star, 
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -41,7 +41,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// --- VALIDATION SCHEMA ---
+const fileToBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (error) => reject(error);
+  });
+};
+
 const roomSchema = z.object({
   // Tab 1: Thông tin
   room_number: z.string().min(1, "Số phòng không được để trống"),
@@ -77,16 +85,13 @@ const roomSchema = z.object({
       price: z.coerce.number().min(0, "Giá không được âm"),
     })
   ),
-
-  images: z.any().optional(),
 });
 
 export default function AddRoomModal({ isOpen, onClose, onAddSuccess }) {
   const [activeTab, setActiveTab] = useState("info");
   const [isUtilityModalOpen, setIsUtilityModalOpen] = useState(false);
   const [buildings, setBuildings] = useState([]);
-
-  // State quản lý ảnh upload
+  const [isSubmitting, setIsSubmitting] = useState(false); 
   const [selectedImages, setSelectedImages] = useState([]);
   const fileInputRef = useRef(null);
 
@@ -117,7 +122,6 @@ export default function AddRoomModal({ isOpen, onClose, onAddSuccess }) {
       electricity_cost: 3500,
       water_cost: 20000,
       extraCosts: [{ name: "Tiền rác", price: 0 }],
-      images: [],
     },
   });
 
@@ -198,39 +202,60 @@ export default function AddRoomModal({ isOpen, onClose, onAddSuccess }) {
     }
   };
 
-  const onSubmit = (values) => {
-    const selectedAmenities = availableAmenities
-      .filter((item) => item.checked)
-      .map((item) => item.label);
+  // --- UPDATED SUBMIT LOGIC ---
+  const onSubmit = async (values) => {
+    setIsSubmitting(true);
+    try {
+      const selectedAmenities = availableAmenities
+        .filter((item) => item.checked)
+        .map((item) => item.label);
+      const processedPhotos = await Promise.all(
+        selectedImages.map(async (img, index) => {
+          const base64String = await fileToBase64(img.file);
+          return {
+            is_primary: index === 0,
+            sort_order: index,
+            image_base64: base64String,
+          };
+        })
+      );
 
-    const finalData = {
-      // ... copy fields
-      room_number: values.room_number,
-      building_id: values.building_id,
-      room_type: values.room_type,
-      area: values.area,
-      capacity: values.capacity,
-      description: values.description,
-      status: values.status,
-      base_price: values.base_price,
-      deposit_amount: values.deposit_amount,
-      electricity_cost: values.electricity_cost,
-      water_cost: values.water_cost,
-      utilities: selectedAmenities,
-      photo_urls: [],
-      files: selectedImages.map((img) => img.file),
-    };
+      const finalData = {
+        building_id: values.building_id,
+        room_number: values.room_number,
+        room_name: values.room_number,
+        area: values.area,
+        capacity: values.capacity,
+        base_price: values.base_price,
+        electricity_price: values.electricity_cost, 
+        water_price_per_person: values.water_cost, 
+        deposit_amount: values.deposit_amount,
+        status: values.status,
+        description: values.description || "",
+        utilities: selectedAmenities,
+        photos: processedPhotos, 
+      };
 
-    console.log("Room Payload:", finalData);
-    if (onAddSuccess) onAddSuccess(finalData);
-
-    onClose();
-    form.reset();
-    setSelectedImages([]); // Reset ảnh
-    setActiveTab("info");
-    setAvailableAmenities((prev) =>
-      prev.map((item) => ({ ...item, checked: false }))
-    );
+      console.log("Room Payload:", finalData);
+      
+      if (onAddSuccess) {
+        await onAddSuccess(finalData);
+      }
+      
+      // Reset form
+      onClose();
+      form.reset();
+      setSelectedImages([]);
+      setActiveTab("info");
+      setAvailableAmenities((prev) =>
+        prev.map((item) => ({ ...item, checked: false }))
+      );
+    } catch (error) {
+      console.error("Lỗi xử lý form:", error);
+      toast.error("Có lỗi xảy ra khi xử lý dữ liệu");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const TabButton = ({ id, label, icon: Icon }) => (
@@ -278,11 +303,10 @@ export default function AddRoomModal({ isOpen, onClose, onAddSuccess }) {
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="space-y-4"
               >
+                {/* --- TAB 1: THÔNG TIN --- */}
                 {activeTab === "info" && (
                   <div className="space-y-4">
-                    {/* ... (Các field thông tin giống hệt code cũ) ... */}
-                    {/* Mình rút gọn phần này để tập trung vào Tab Ảnh, bạn giữ nguyên code cũ phần này nhé */}
-                    <div className="grid grid-cols-2 gap-4">
+                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="room_number"
@@ -480,7 +504,7 @@ export default function AddRoomModal({ isOpen, onClose, onAddSuccess }) {
                   </div>
                 )}
 
-                {/* --- TAB 2: TIỀN (Giữ nguyên) --- */}
+                {/* --- TAB 2: TIỀN --- */}
                 {activeTab === "money" && (
                   <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">
@@ -588,15 +612,18 @@ export default function AddRoomModal({ isOpen, onClose, onAddSuccess }) {
                   </div>
                 )}
 
-                {/* --- TAB 3: ẢNH (ĐÃ CẬP NHẬT) --- */}
+                {/* --- TAB 3: ẢNH (ĐÃ UPDATE UI & LOGIC) --- */}
                 {activeTab === "images" && (
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <p className="text-sm text-gray-500">
                         Đã chọn {selectedImages.length}/10 ảnh
+                        <br />
+                        <span className="text-xs text-yellow-600 italic">
+                          *Ảnh đầu tiên sẽ là ảnh đại diện
+                        </span>
                       </p>
 
-                      {/* Nút Upload ẩn Input File */}
                       <div className="relative">
                         <Button
                           type="button"
@@ -618,31 +645,39 @@ export default function AddRoomModal({ isOpen, onClose, onAddSuccess }) {
                       </div>
                     </div>
 
-                    {/* Khu vực hiển thị lưới ảnh */}
                     {selectedImages.length > 0 ? (
                       <div className="grid grid-cols-3 gap-3 max-h-[300px] overflow-y-auto pr-2">
                         {selectedImages.map((img, index) => (
                           <div
                             key={index}
-                            className="relative group aspect-square rounded-lg overflow-hidden border border-gray-200"
+                            className={`relative group aspect-square rounded-lg overflow-hidden border-2 ${
+                              index === 0 ? "border-yellow-400 ring-2 ring-yellow-100" : "border-gray-200"
+                            }`}
                           >
+                            {/* Đánh dấu ảnh chính */}
+                            {index === 0 && (
+                              <div className="absolute top-0 left-0 bg-yellow-400 text-white p-1 rounded-br-lg shadow-sm z-10">
+                                <Star size={12} fill="white" />
+                              </div>
+                            )}
+
                             <img
                               src={img.preview}
                               alt={`Preview ${index}`}
                               className="w-full h-full object-cover"
                             />
-                            {/* Nút xóa ảnh */}
+                            
                             <button
                               type="button"
                               onClick={() => removeImage(index)}
-                              className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-red-600"
+                              className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-red-600 z-20"
                             >
                               <X size={12} />
                             </button>
                           </div>
                         ))}
 
-                        {/* Ô thêm nhanh nếu chưa đủ 10 */}
+                        {/* Ô thêm nhanh */}
                         {selectedImages.length < 10 && (
                           <div
                             className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 hover:border-gray-400 transition-colors text-gray-400"
@@ -654,7 +689,6 @@ export default function AddRoomModal({ isOpen, onClose, onAddSuccess }) {
                         )}
                       </div>
                     ) : (
-                      // Empty State
                       <div className="border-2 border-dashed border-gray-200 rounded-lg h-64 flex flex-col items-center justify-center text-gray-400 bg-gray-50">
                         <ImageIcon size={48} className="mb-3 opacity-20" />
                         <p className="text-sm font-medium text-gray-500">
@@ -677,6 +711,7 @@ export default function AddRoomModal({ isOpen, onClose, onAddSuccess }) {
               variant="secondary"
               onClick={onClose}
               className="bg-gray-100 hover:bg-gray-200 text-black"
+              disabled={isSubmitting}
             >
               Huỷ
             </Button>
@@ -684,8 +719,9 @@ export default function AddRoomModal({ isOpen, onClose, onAddSuccess }) {
               type="button"
               onClick={form.handleSubmit(onSubmit)}
               className="bg-gray-900 text-white hover:bg-gray-800"
+              disabled={isSubmitting}
             >
-              Chấp nhận
+              {isSubmitting ? "Đang xử lý..." : "Chấp nhận"}
             </Button>
           </div>
         </DialogContent>
