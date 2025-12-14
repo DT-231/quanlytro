@@ -20,12 +20,16 @@ import {
 import { Input } from "@/components/ui/input";
 
 // --- SCHEMA VALIDATION ---
-// Giữ nguyên camelCase để khớp với logic của authService của bạn
 const formSchema = z.object({
   lastName: z.string().min(1, { message: "Họ không được để trống." }),
   firstName: z.string().min(1, { message: "Tên không được để trống." }),
   email: z.string().email({ message: "Email không hợp lệ." }),
-  password: z.string().min(8, { message: "Mật khẩu phải có ít nhất 8 ký tự." }),
+  password: z.string()
+    .min(8, { message: "Mật khẩu phải có ít nhất 8 ký tự." })
+    .regex(/[A-Z]/, { message: "Mật khẩu phải chứa ít nhất một chữ hoa." })
+    .regex(/[a-z]/, { message: "Mật khẩu phải chứa ít nhất một chữ thường." })
+    .regex(/[0-9]/, { message: "Mật khẩu phải chứa ít nhất một chữ số." })
+    .regex(/[\W_]/, { message: "Mật khẩu phải chứa ít nhất một ký tự đặc biệt." }),
   confirmPassword: z.string().min(8, { message: "Mật khẩu không khớp." }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Mật khẩu không khớp.",
@@ -52,9 +56,6 @@ export default function RegisterPage() {
     toast.dismiss();
 
     try {
-      // --- SỬA Ở ĐÂY: KHÔNG MAP DỮ LIỆU THỦ CÔNG NỮA ---
-      // Gửi thẳng values (chứa firstName, lastName...) vào service
-      // authService của bạn đã có code để chuyển đổi chúng thành first_name, last_name rồi.
       await authService.register(values);
       
       toast.success("Đăng ký thành công!", {

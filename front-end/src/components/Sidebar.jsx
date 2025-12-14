@@ -28,22 +28,24 @@ const guestMenu = [
   { name: "Trang chủ", icon: Home, href: "/" },
 ]
 
-export default function Sidebar({ role }) {
+export default function Sidebar({ role,isGuest }) {
 
   const location = useLocation();
 
-  let menuItems = guestMenu;
+ let menuItems = guestMenu;
   if (role === 'ADMIN') menuItems = adminMenu;
-  if (['TENANT', 'CUSTOMER'].includes(role)) menuItems = tenantMenu;
+  if (['TENANT', 'CUSTOMER', 'user', 'USER'].includes(role)) menuItems = tenantMenu;
 
   return (
     <div className="w-[250px] h-full border-r bg-white py-4 flex flex-col shrink-0">
 
-      {/* Label vai trò */}
       <div className="px-5 mb-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-        {role === "ADMIN" ? "Quản trị viên" : (role === "USER" ? "Người dùng" : "Khách vãng lai")}
+        {role === "ADMIN" 
+          ? "Quản trị viên" 
+          : (isGuest ? "Khách vãng lai" : "Người dùng") 
+        }
       </div>
-
+      
       {/* MENU */}
       <nav className="flex flex-col gap-1 px-2">
         {menuItems.map((item) => {

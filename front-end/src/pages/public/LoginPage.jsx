@@ -46,16 +46,13 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const res = await authService.login(values.email, values.password)
-      // console.log(res);
       if (res.status === 200) {
         let data = res.data.data
         let user = data.user
         let token = data.token
-        
-        // Lưu vào localStorage và context
         login(user, token);
         
-        toast.success(`Chào mừng ${user.first_name} ${user.last_name} quay trở lại!`, {
+        toast.success(`Chào mừng  ${user.last_name} ${user.first_name} quay trở lại!`, {
           description: "Đăng nhập thành công",
           position: "top-center",
         });
@@ -85,8 +82,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex items-center justify-center min-h-[85vh] bg-slate-50 px-4 relative">
-      {/* 2. Thêm Toaster để hiển thị thông báo */}
-      <Toaster richColors />
+      {/* <Toaster richColors /> */}
 
       {/* Card Container */}
       <div className="w-full max-w-md bg-white p-6 rounded-xl shadow-xl border border-gray-100 ">
