@@ -131,6 +131,11 @@ class RoomService:
         building_id: Optional[UUID] = None,
         status: Optional[str] = None,
         search: Optional[str] = None,
+        city: Optional[str] = None,
+        ward: Optional[str] = None,
+        min_price: Optional[int] = None,
+        max_price: Optional[int] = None,
+        max_capacity: Optional[int] = None,
         sort_by: Optional[str] = None,
         offset: int = 0,
         limit: int = 100,
@@ -141,6 +146,11 @@ class RoomService:
             building_id: Lọc theo tòa nhà (optional).
             status: Lọc theo trạng thái (optional).
             search: Tìm kiếm theo tên phòng, số phòng, hoặc tên tòa nhà (optional).
+            city: Lọc theo thành phố (optional).
+            ward: Lọc theo phường/quận (optional).
+            min_price: Giá thuê tối thiểu (optional).
+            max_price: Giá thuê tối đa (optional).
+            max_capacity: Số người tối đa (optional).
             sort_by: Sắp xếp (price_asc, price_desc), mặc định created_at desc.
             offset: Vị trí bắt đầu.
             limit: Số lượng tối đa (max 100).
@@ -185,6 +195,11 @@ class RoomService:
             building_id=building_id,
             status=status,
             search=search,
+            city=city,
+            ward=ward,
+            min_price=min_price,
+            max_price=max_price,
+            max_capacity=max_capacity,
             sort_by=sort_by,
             offset=offset,
             limit=limit
@@ -195,6 +210,11 @@ class RoomService:
             building_id=building_id,
             status=status,
             search=search,
+            city=city,
+            ward=ward,
+            min_price=min_price,
+            max_price=max_price,
+            max_capacity=max_capacity
         )
         
         # Convert dict sang Pydantic schemas
@@ -603,6 +623,8 @@ class RoomService:
         self,
         building_id: Optional[UUID] = None,
         search: Optional[str] = None,
+        city: Optional[str] = None,
+        ward: Optional[str] = None,
         min_price: Optional[int] = None,
         max_price: Optional[int] = None,
         max_capacity: Optional[int] = None,
@@ -623,6 +645,8 @@ class RoomService:
         Args:
             building_id: Lọc theo tòa nhà (optional).
             search: Tìm kiếm theo tên phòng, số phòng, hoặc tên tòa nhà (optional).
+            city: Lọc theo thành phố (optional).
+            ward: Lọc theo phường/quận (optional).
             min_price: Giá thuê tối thiểu (optional).
             max_price: Giá thuê tối đa (optional).
             max_capacity: Số người tối đa (optional).
@@ -645,6 +669,7 @@ class RoomService:
         from sqlalchemy.orm import joinedload
         from sqlalchemy import and_, not_, exists
         from app.models.contract import Contract
+        from app.models.address import Address
         from app.core.Enum.contractEnum import ContractStatus
         
         query = self.db.query(Room).options(
@@ -664,13 +689,25 @@ class RoomService:
         )
         query = query.filter(not_(active_contract_exists))
         
+        # Join với Building và Address nếu cần filter theo city/ward
+        needs_join = search or city or ward
+        if needs_join:
+            query = query.join(Building, Room.building_id == Building.id)
+            if city or ward:
+                query = query.join(Address, Building.address_id == Address.id)
+        
         # Filter by building_id nếu có
         if building_id:
             query = query.filter(Room.building_id == building_id)
         
-        # Apply search filter - join với Building để search theo building_name
+        # Apply city and ward filters
+        if city:
+            query = query.filter(Address.city.ilike(f"%{city}%"))
+        if ward:
+            query = query.filter(Address.ward.ilike(f"%{ward}%"))
+        
+        # Apply search filter
         if search:
-            query = query.join(Building, Room.building_id == Building.id)
             search_pattern = f"%{search}%"
             query = query.filter(
                 (Room.room_number.ilike(search_pattern)) |

@@ -27,6 +27,14 @@ from app.schemas.contract_schema import (
 )
 from app.core import response
 from app.schemas.response_schema import Response
+from app.core.exceptions import (
+    BadRequestException,
+    NotFoundException,
+    ForbiddenException,
+    UnauthorizedException,
+    ConflictException,
+    InternalServerException,
+)
 
 
 router = APIRouter(prefix="/api/v1/contracts", tags=["Contracts"])
@@ -69,9 +77,9 @@ async def get_contract_stats(session: Session = Depends(get_db)):
         stats = service.get_contract_stats()
         return response.success(data=stats, message="success")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.get(
@@ -140,9 +148,9 @@ async def list_contracts(
         )
         return response.success(data=result, message="success")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.post(
@@ -187,9 +195,9 @@ async def create_contract(payload: ContractCreate, session: Session = Depends(ge
         contract = service.create_contract(payload, created_by)
         return response.success(data=contract, message="success")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.get("/{contract_id}", response_model=Response[ContractOut])
@@ -205,9 +213,9 @@ async def get_contract(contract_id: UUID, session: Session = Depends(get_db)):
         contract = service.get_contract(contract_id)
         return response.success(data=contract, message="success")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.put("/{contract_id}", response_model=Response[ContractOut])
@@ -246,9 +254,9 @@ async def update_contract(
         contract = service.update_contract(contract_id, payload)
         return response.success(data=contract, message="success")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.delete("/{contract_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -267,6 +275,6 @@ async def delete_contract(contract_id: UUID, session: Session = Depends(get_db))
         service.delete_contract(contract_id)
         return response.success(message="success")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")

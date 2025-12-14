@@ -20,6 +20,14 @@ from app.schemas.building_schema import BuildingCreate, BuildingUpdate, Building
 from app.services.BuildingService import BuildingService
 from app.core import response
 from app.schemas.response_schema import Response
+from app.core.exceptions import (
+    BadRequestException,
+    NotFoundException,
+    ForbiddenException,
+    UnauthorizedException,
+    ConflictException,
+    InternalServerException,
+)
 
 router = APIRouter(prefix="/buildings", tags=["Building Management"])
 
@@ -110,9 +118,9 @@ def list_buildings(
         )
         return response.success(data=result, message="Lấy danh sách tòa nhà thành công")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.post(
@@ -145,9 +153,9 @@ def create_building(
         return response.created( message="Tạo tòa nhà thành công")
     except ValueError as e:
         # Business rule violations
-        return response.conflict(message=str(e))
+        raise ConflictException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.get(
@@ -173,9 +181,9 @@ def get_building(
         building = building_service.get_building(building_id)
         return response.success(data=building, message="Lấy thông tin tòa nhà thành công")
     except ValueError as e:
-        return response.not_found(message=str(e))
+        raise NotFoundException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.put(
@@ -212,11 +220,11 @@ def update_building(
     except ValueError as e:
         error_msg = str(e).lower()
         if "không tìm thấy" in error_msg or "not found" in error_msg:
-            return response.not_found(message=str(e))
+            raise NotFoundException(message=str(e))
         else:
-            return response.bad_request(message=str(e))
+            raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.delete(
@@ -247,9 +255,9 @@ def delete_building(
     except ValueError as e:
         error_msg = str(e).lower()
         if "không tìm thấy" in error_msg or "not found" in error_msg:
-            return response.not_found(message=str(e))
+            raise NotFoundException(message=str(e))
         else:
-            return response.conflict(message=str(e))
+            raise ConflictException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 

@@ -11,12 +11,12 @@ class Response(GenericModel, Generic[T]):
     """Standard API response wrapper.
 
     Fields:
-    - code: HTTP-like numeric code (e.g., 200, 201, 400, 401)
-    - message: short message
+    - success: boolean indicating success or failure
+    - message: short message describing the result
     - data: payload which can be an object or an array
     """
 
-    code: int = Field(..., description="Response code", examples=[200])
+    success: bool = Field(..., description="Success flag", examples=[True])
     message: str = Field(..., description="Response message", examples=["success"])
     data: Optional[T] = Field(default=None, description="Response payload")
 
@@ -25,7 +25,7 @@ class Response(GenericModel, Generic[T]):
         json_schema_extra={
             "examples": [
                 {
-                    "code": 200,
+                    "success": True,
                     "message": "success",
                     "data": {
                         "id": "123e4567-e89b-12d3-a456-426614174000",

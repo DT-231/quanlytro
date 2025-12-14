@@ -19,6 +19,13 @@ from sqlalchemy.orm import Session
 from app.infrastructure.db.session import get_db
 from app.core.security import get_current_user
 from app.models.user import User
+from app.core.exceptions import (
+    BadRequestException,
+    NotFoundException,
+    ForbiddenException,
+    ConflictException,
+    InternalServerException,
+)
 from app.schemas.invoice_schema import (
     InvoiceCreate, InvoiceUpdate, InvoiceOut, InvoiceListItem,
     BuildingOption, RoomOption
@@ -51,7 +58,7 @@ def get_buildings_dropdown(
         buildings = invoice_service.get_buildings_for_dropdown()
         return response.success(data=buildings, message="Lấy danh sách tòa nhà thành công")
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.get(
@@ -79,7 +86,7 @@ def get_rooms_by_building(
         rooms = invoice_service.get_rooms_by_building(building_id)
         return response.success(data=rooms, message="Lấy danh sách phòng thành công")
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.get(
@@ -121,9 +128,9 @@ def list_invoices(
         )
         return response.success(data=result, message="Lấy danh sách hóa đơn thành công")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.post(
@@ -162,15 +169,15 @@ def create_invoice(
         user_role = current_user.role.role_code if current_user.role else "CUSTOMER"
         
         if user_role != "ADMIN":
-            return response.forbidden(message="Chỉ chủ nhà mới có quyền tạo hóa đơn")
+            raise ForbiddenException(message="Chỉ chủ nhà mới có quyền tạo hóa đơn")
         
         invoice_service = InvoiceService(db)
         invoice = invoice_service.create_invoice(invoice_data, current_user.id)
         return response.created(data=invoice, message="Tạo hóa đơn thành công")
     except ValueError as e:
-        return response.conflict(message=str(e))
+        raise ConflictException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.get(
@@ -200,9 +207,9 @@ def get_invoice(
         invoice = invoice_service.get_invoice(invoice_id, current_user.id, user_role)
         return response.success(data=invoice, message="Lấy thông tin hóa đơn thành công")
     except ValueError as e:
-        return response.not_found(message=str(e))
+        raise NotFoundException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.put(
@@ -243,10 +250,10 @@ def update_invoice(
     except ValueError as e:
         error_msg = str(e).lower()
         if "không tìm thấy" in error_msg:
-            return response.not_found(message=str(e))
+            raise NotFoundException(message=str(e))
         elif "không có quyền" in error_msg or "chỉ chủ nhà" in error_msg:
-            return response.forbidden(message=str(e))
+            raise ForbiddenException(message=str(e))
         else:
-            return response.bad_request(message=str(e))
+            raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")

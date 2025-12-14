@@ -20,6 +20,14 @@ from app.schemas.address_schema import AddressCreate, AddressUpdate
 from app.services.AddressService import AddressService
 from app.core import response
 from app.schemas.response_schema import Response
+from app.core.exceptions import (
+    BadRequestException,
+    NotFoundException,
+    ForbiddenException,
+    UnauthorizedException,
+    ConflictException,
+    InternalServerException,
+)
 
 router = APIRouter(prefix="/addresses", tags=["Address Management"])
 
@@ -59,9 +67,9 @@ def list_addresses(
         )
         return response.success(data=result, message="Lấy danh sách địa chỉ thành công")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.post(
@@ -92,9 +100,9 @@ def create_address(
         address = address_service.create_address(address_data)
         return response.created(data=address, message="Tạo địa chỉ thành công")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.get(
@@ -124,9 +132,9 @@ def get_address(
             data=address, message="Lấy thông tin địa chỉ thành công"
         )
     except ValueError as e:
-        return response.not_found(message=str(e))
+        raise NotFoundException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.put(
@@ -163,11 +171,11 @@ def update_address(
     except ValueError as e:
         error_msg = str(e).lower()
         if "không tìm thấy" in error_msg or "not found" in error_msg:
-            return response.not_found(message=str(e))
+            raise NotFoundException(message=str(e))
         else:
-            return response.bad_request(message=str(e))
+            raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.delete(
@@ -199,8 +207,8 @@ def delete_address(
     except ValueError as e:
         error_msg = str(e).lower()
         if "không tìm thấy" in error_msg or "not found" in error_msg:
-            return response.not_found(message=str(e))
+            raise NotFoundException(message=str(e))
         else:
-            return response.conflict(message=str(e))
+            raise ConflictException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")

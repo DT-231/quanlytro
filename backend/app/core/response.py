@@ -15,45 +15,56 @@ def _normalize_data(data: Any) -> Any:
 
 
 def success(data: Any = None, message: str = "success") -> Response[Any]:
-    return Response(code=200, message=message, data=_normalize_data(data))
+    """Return successful response with HTTP 200."""
+    return Response(success=True, message=message, data=_normalize_data(data))
 
 
 def created(data: Any = None, message: str = "success") -> Response[Any]:
-    return Response(code=201, message=message, data=_normalize_data(data))
+    """Return successful creation response with HTTP 201."""
+    return Response(success=True, message=message, data=_normalize_data(data))
 
 
 def bad_request(message: str = "bad request", data: Any = None) -> Response[Any]:
-    return Response(code=400, message=message, data=_normalize_data(data))
+    """Return bad request error with HTTP 400."""
+    return Response(success=False, message=message, data=_normalize_data(data))
 
 
 def unauthorized(message: str = "unauthorized", data: Any = None) -> Response[Any]:
-    return Response(code=401, message=message, data=_normalize_data(data))
+    """Return unauthorized error with HTTP 401."""
+    return Response(success=False, message=message, data=_normalize_data(data))
 
 
 def forbidden(message: str = "forbidden", data: Any = None) -> Response[Any]:
-    return Response(code=403, message=message, data=_normalize_data(data))
+    """Return forbidden error with HTTP 403."""
+    return Response(success=False, message=message, data=_normalize_data(data))
 
 
 def not_found(message: str = "not found", data: Any = None) -> Response[Any]:
-    return Response(code=404, message=message, data=_normalize_data(data))
+    """Return not found error with HTTP 404."""
+    return Response(success=False, message=message, data=_normalize_data(data))
 
 
 def conflict(message: str = "conflict", data: Any = None) -> Response[Any]:
-    return Response(code=409, message=message, data=_normalize_data(data))
+    """Return conflict error with HTTP 409."""
+    return Response(success=False, message=message, data=_normalize_data(data))
 
 
 def unprocessable_entity(message: str = "unprocessable entity", data: Any = None) -> Response[Any]:
-    return Response(code=422, message=message, data=_normalize_data(data))
+    """Return unprocessable entity error with HTTP 422."""
+    return Response(success=False, message=message, data=_normalize_data(data))
 
 
 def internal_error(message: str = "internal server error", data: Any = None) -> Response[Any]:
-    return Response(code=500, message=message, data=_normalize_data(data))
+    """Return internal server error with HTTP 500."""
+    return Response(success=False, message=message, data=_normalize_data(data))
 
 
 def no_content(message: str = "no content") -> Response[Any]:
     """Response for successful deletion or operations with no content to return."""
-    return Response(code=204, message=message, data={})
+    return Response(success=True, message=message, data={})
 
 
 def custom(code: int, message: str = "custom", data: Any = None) -> Response[Any]:
-    return Response(code=code, message=message, data=_normalize_data(data))
+    """Return custom response with specified code."""
+    success = 200 <= code < 300
+    return Response(success=success, message=message, data=_normalize_data(data))

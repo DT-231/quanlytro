@@ -11,6 +11,14 @@ from app.schemas.user_schema import UserCreate, UserLogin, UserRegister, UserOut
 from app.services.AuthService import AuthService
 from app.core.security import get_current_user
 from app.utils import validate
+from app.core.exceptions import (
+    BadRequestException,
+    NotFoundException,
+    ForbiddenException,
+    UnauthorizedException,
+    ConflictException,
+    InternalServerException,
+)
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -32,46 +40,46 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     """
     # Validate thủ công để control error response
     if not user_data.first_name or not user_data.first_name.strip():
-        return response.bad_request(message="Tên không được để trống")
+        raise BadRequestException(message="Tên không được để trống")
     if len(user_data.first_name) > 50:
-        return response.bad_request(message="Tên không được quá 50 ký tự")
+        raise BadRequestException(message="Tên không được quá 50 ký tự")
     
     if not user_data.last_name or not user_data.last_name.strip():
-        return response.bad_request(message="Họ không được để trống")
+        raise BadRequestException(message="Họ không được để trống")
     if len(user_data.last_name) > 50:
-        return response.bad_request(message="Họ không được quá 50 ký tự")
+        raise BadRequestException(message="Họ không được quá 50 ký tự")
     
     if not user_data.email or not user_data.email.strip():
-        return response.bad_request(message="Email không được để trống")
+        raise BadRequestException(message="Email không được để trống")
     try:
         # check_deliverability=False: Tắt DNS lookup để tránh chậm
         validate_email(user_data.email, check_deliverability=False)
     except Exception:
-        return response.bad_request(message="Email không đúng định dạng")
+        raise BadRequestException(message="Email không đúng định dạng")
     if not user_data.password:
-        return response.bad_request(message="Mật khẩu không được để trống")
+        raise BadRequestException(message="Mật khẩu không được để trống")
     if not user_data.confirm_password:
-        return response.bad_request(message="Xác nhận mật khẩu không được để trống")
+        raise BadRequestException(message="Xác nhận mật khẩu không được để trống")
     if len(user_data.password) < 8:
-        return response.bad_request(message="Mật khẩu phải có ít nhất 8 ký tự")
+        raise BadRequestException(message="Mật khẩu phải có ít nhất 8 ký tự")
     if len(user_data.password) > 16:
-        return response.bad_request(message="Mật khẩu không được quá 16 ký tự")
+        raise BadRequestException(message="Mật khẩu không được quá 16 ký tự")
     
     is_valid ,mess = validate.validate_password(password=user_data.password)
     if is_valid:
-        return response.bad_request(message=mess)
+        raise BadRequestException(message=mess)
     if user_data.password != user_data.confirm_password:
-        return response.bad_request(message="Mật khẩu và xác nhận mật khẩu không khớp")
+        raise BadRequestException(message="Mật khẩu và xác nhận mật khẩu không khớp")
     
     # Validate password strength
     is_invalid, msg = validate.validate_password(user_data.password)
     if is_invalid:
-        return response.bad_request(message=msg)
+        raise BadRequestException(message=msg)
 
     auth_service = AuthService(db)
     ok, msg, payload = auth_service.register_user(user_data)
     if not ok:
-        return response.bad_request(message=msg)
+        raise BadRequestException(message=msg)
     
     return response.created(message="Đăng ký tài khoản thành công", data={})
 
@@ -89,24 +97,24 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
     password = credentials.password
     
     if not email or not password:
-        return response.bad_request(message="email và mật khẩu không được để trống")
+        raise BadRequestException(message="email và mật khẩu không được để trống")
 
     try:
         # check_deliverability=False: Tắt DNS lookup để tránh chậm (6s+ → <1ms)
         validate_email(email, check_deliverability=False)
     except Exception:
-        return response.bad_request(message="email không đúng định dạng")
+        raise BadRequestException(message="email không đúng định dạng")
 
     # Validate password strength
     is_invalid, msg = validate.validate_password(password)
     if is_invalid:
-        return {"code": 400, "message": msg}
+        raise BadRequestException(message=msg)
 
     auth_service = AuthService(db)
     auth = auth_service.login(email, password)
     
     if not auth:
-        return response.unauthorized(message="Sai mật khẩu hoặc email")
+        raise UnauthorizedException(message="Sai mật khẩu hoặc email")
     
     return response.success(
         message="Đăng nhập thành công",
@@ -202,4 +210,4 @@ async def get_current_user_info(
             data=user_out,
         )
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")

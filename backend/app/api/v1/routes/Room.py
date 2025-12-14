@@ -18,6 +18,12 @@ from sqlalchemy.orm import Session
 from app.infrastructure.db.session import get_db
 from app.core.security import get_current_user, get_current_user_optional
 from app.models.user import User
+from app.core.exceptions import (
+    BadRequestException,
+    NotFoundException,
+    ConflictException,
+    InternalServerException,
+)
 from app.schemas.room_schema import (
     RoomCreate,
     RoomUpdate,
@@ -125,6 +131,8 @@ def list_rooms(
         None, description="Tìm kiếm theo tên phòng, tên tòa nhà, tiện ích"
     ),
     building_id: Optional[UUID] = Query(None, description="Lọc theo tòa nhà"),
+    city: Optional[str] = Query(None, description="Lọc theo thành phố"),
+    ward: Optional[str] = Query(None, description="Lọc theo phường/quận"),
     room_status: Optional[str] = Query(
         None, description="Lọc theo trạng thái (Admin only)", alias="status"
     ),
@@ -151,6 +159,8 @@ def list_rooms(
     **Query params**:
     - search: Tìm kiếm theo tên phòng/tòa nhà/tiện ích (all)
     - building_id: Lọc theo tòa nhà (all)
+    - city: Lọc theo thành phố (all)
+    - ward: Lọc theo phường/quận (all)
     - status: Lọc theo trạng thái (admin only)
     - min_price: Giá thuê tối thiểu (all)
     - max_price: Giá thuê tối đa (all)
@@ -171,6 +181,8 @@ def list_rooms(
             result = room_service.list_rooms(
                 search=search,
                 building_id=building_id,
+                city=city,
+                ward=ward,
                 status=room_status,
                 min_price=min_price,
                 max_price=max_price,
@@ -184,6 +196,8 @@ def list_rooms(
             result = room_service.list_rooms_public(
                 search=search,
                 building_id=building_id,
+                city=city,
+                ward=ward,
                 min_price=min_price,
                 max_price=max_price,
                 max_capacity=max_capacity,
@@ -194,9 +208,9 @@ def list_rooms(
         
         return response.success(data=result, message="Lấy danh sách phòng thành công")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.post(
@@ -278,9 +292,9 @@ def create_room(
         return response.created(message="Tạo phòng thành công")
     except ValueError as e:
         # Business rule violations
-        return response.conflict(message=str(e))
+        raise ConflictException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.get(
@@ -353,9 +367,9 @@ def get_room(
         room = room_service.get_room_detail_by_role(room_id, user_role)
         return response.success(data=room, message="Lấy thông tin phòng thành công")
     except ValueError as e:
-        return response.not_found(message=str(e))
+        raise NotFoundException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.put(
@@ -453,11 +467,11 @@ def update_room(
         # Có thể là not found hoặc business rule violation
         error_msg = str(e).lower()
         if "không tìm thấy" in error_msg or "not found" in error_msg:
-            return response.not_found(message=str(e))
+            raise NotFoundException(message=str(e))
         else:
-            return response.bad_request(message=str(e))
+            raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.delete(
@@ -513,9 +527,9 @@ def delete_room(
         room_service.delete_room(room_id)
         return response.success(message="Xóa phòng thành công")
     except ValueError as e:
-        return response.not_found(message=str(e))
+        raise NotFoundException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.get(
@@ -617,7 +631,7 @@ def search_rooms(
         )
         return response.success(data=result, message="Tìm kiếm phòng thành công")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 

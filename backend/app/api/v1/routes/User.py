@@ -14,6 +14,14 @@ from sqlalchemy.orm import Session
 from app.core import response
 from app.infrastructure.db.session import get_db
 from app.core.security import get_current_user
+from app.core.exceptions import (
+    BadRequestException,
+    NotFoundException,
+    ForbiddenException,
+    UnauthorizedException,
+    ConflictException,
+    InternalServerException,
+)
 from app.models.user import User
 from app.schemas.user_schema import UserUpdate, UserOut, UserListItem, UserStats
 from app.services.UserService import UserService
@@ -42,9 +50,9 @@ def get_user_stats(
         result = service.get_stats(role_id=role_id)
         return response.success(data=result, message="Lấy thống kê thành công")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.get("", status_code=status.HTTP_200_OK)
@@ -112,9 +120,9 @@ def get_list_users(
         )
         return response.success(data=result, message="Lấy danh sách người dùng thành công")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.get("/{user_id}", status_code=status.HTTP_200_OK)
@@ -142,9 +150,9 @@ def get_user_detail(
         result = service.get_user(user_id)
         return response.success(data=result, message="Lấy thông tin người dùng thành công")
     except ValueError as e:
-        return response.not_found(message=str(e))
+        raise NotFoundException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.put("/{user_id}", status_code=status.HTTP_200_OK)
@@ -176,9 +184,9 @@ def update_user(
         result = service.update_user(user_id, user_data)
         return response.success(data=result, message="Cập nhật người dùng thành công")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -206,6 +214,6 @@ def delete_user(
         service.delete_user(user_id)
         return response.success(message="Xóa người dùng thành công")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")

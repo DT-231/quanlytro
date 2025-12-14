@@ -15,6 +15,14 @@ from sqlalchemy.orm import Session
 from app.core import response
 from app.schemas.response_schema import Response
 from app.infrastructure.db.session import get_db
+from app.core.exceptions import (
+    BadRequestException,
+    NotFoundException,
+    ForbiddenException,
+    UnauthorizedException,
+    ConflictException,
+    InternalServerException,
+)
 from app.core.security import get_current_user
 from app.models.user import User
 from app.schemas.maintenance_schema import (
@@ -110,9 +118,9 @@ def get_maintenance_stats(
         )
         return response.success(data=result, message="Lấy thống kê thành công")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.get(
@@ -235,9 +243,9 @@ def get_list_maintenances(
         )
         return response.success(data=result, message="Lấy danh sách yêu cầu thành công")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.post(
@@ -321,9 +329,9 @@ def create_maintenance(
             status_code=status.HTTP_201_CREATED,
         )
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.get(
@@ -423,9 +431,9 @@ def get_maintenance_detail(
         )
         return response.success(data=result, message="Lấy thông tin yêu cầu thành công")
     except ValueError as e:
-        return response.not_found(message=str(e))
+        raise NotFoundException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.put(
@@ -511,9 +519,9 @@ def update_maintenance(
         )
         return response.success(data=result, message="Cập nhật yêu cầu thành công")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.delete(
@@ -589,6 +597,6 @@ def delete_maintenance(
         )
         return response.success(message="Xóa yêu cầu thành công")
     except ValueError as e:
-        return response.bad_request(message=str(e))
+        raise BadRequestException(message=str(e))
     except Exception as e:
-        return response.internal_error(message=f"Lỗi hệ thống: {str(e)}")
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")

@@ -14,6 +14,7 @@ from app.models.room import Room
 from app.models.building import Building
 from app.models.contract import Contract
 from app.models.user import User
+from app.models.address import Address
 from app.schemas.room_schema import RoomCreate, RoomUpdate
 from app.core.Enum.contractEnum import ContractStatus
 
@@ -108,6 +109,8 @@ class RoomRepository:
         building_id: Optional[UUID] = None,
         status: Optional[str] = None,
         search: Optional[str] = None,
+        city: Optional[str] = None,
+        ward: Optional[str] = None,
         min_price: Optional[int] = None,
         max_price: Optional[int] = None,
         max_capacity: Optional[int] = None,
@@ -118,6 +121,8 @@ class RoomRepository:
             building_id: Lọc theo tòa nhà (optional).
             status: Lọc theo trạng thái (optional).
             search: Tìm kiếm theo tên phòng, số phòng hoặc tên tòa nhà (optional).
+            city: Lọc theo thành phố (optional).
+            ward: Lọc theo phường/quận (optional).
             min_price: Giá thuê tối thiểu (optional).
             max_price: Giá thuê tối đa (optional).
             max_capacity: Số người tối đa (optional).
@@ -127,14 +132,22 @@ class RoomRepository:
         """
         query = self.db.query(Room)
         
-        # Join với Building nếu cần search theo building_name
-        if search:
+        # Join với Building nếu cần search theo building_name hoặc filter city/ward
+        if search or city or ward:
             query = query.join(Building, Room.building_id == Building.id)
+            if city or ward:
+                query = query.join(Address, Building.address_id == Address.id)
         
         if building_id:
             query = query.filter(Room.building_id == building_id)
         if status:
             query = query.filter(Room.status == status)
+        
+        # Apply city and ward filters
+        if city:
+            query = query.filter(Address.city.ilike(f"%{city}%"))
+        if ward:
+            query = query.filter(Address.ward.ilike(f"%{ward}%"))
         
         # Apply search filter - tìm kiếm theo tên phòng, số phòng hoặc tên tòa nhà
         if search:
@@ -236,7 +249,11 @@ class RoomRepository:
         building_id: Optional[UUID] = None,
         status: Optional[str] = None,
         search: Optional[str] = None,
- 
+        city: Optional[str] = None,
+        ward: Optional[str] = None,
+        min_price: Optional[int] = None,
+        max_price: Optional[int] = None,
+        max_capacity: Optional[int] = None,
         sort_by: Optional[str] = None,
         offset: int = 0,
         limit: int = 100,
@@ -247,7 +264,11 @@ class RoomRepository:
             building_id: Lọc theo tòa nhà (optional).
             status: Lọc theo trạng thái phòng (optional).
             search: Tìm kiếm theo tên phòng, số phòng hoặc tên tòa nhà (optional).
-   
+            city: Lọc theo thành phố (optional).
+            ward: Lọc theo phường/quận (optional).
+            min_price: Giá thuê tối thiểu (optional).
+            max_price: Giá thuê tối đa (optional).
+            max_capacity: Số người tối đa (optional).
             sort_by: Sắp xếp (price_asc, price_desc), mặc định created_at desc.
             offset: Vị trí bắt đầu lấy dữ liệu.
             limit: Số lượng tối đa trả về.
@@ -293,11 +314,21 @@ class RoomRepository:
             .outerjoin(User, active_contract_subq.c.tenant_id == User.id)
         )
         
+        # Join with Address if city or ward filters needed
+        if city or ward:
+            query = query.join(Address, Building.address_id == Address.id)
+        
         # Apply filters
         if building_id:
             query = query.filter(Room.building_id == building_id)
         if status:
             query = query.filter(Room.status == status)
+        
+        # Apply city and ward filters
+        if city:
+            query = query.filter(Address.city.ilike(f"%{city}%"))
+        if ward:
+            query = query.filter(Address.ward.ilike(f"%{ward}%"))
         
         # Apply search filter - tìm kiếm theo tên phòng, số phòng hoặc tên tòa nhà
         if search:
@@ -307,6 +338,16 @@ class RoomRepository:
                 (Room.room_name.ilike(search_pattern)) |
                 (Building.building_name.ilike(search_pattern))
             )
+        
+        # Apply price filters
+        if min_price is not None:
+            query = query.filter(Room.base_price >= min_price)
+        if max_price is not None:
+            query = query.filter(Room.base_price <= max_price)
+        
+        # Apply capacity filter
+        if max_capacity is not None:
+            query = query.filter(Room.capacity <= max_capacity)
         
         
         # Apply sorting - mặc định theo created_at DESC (mới nhất trước)
