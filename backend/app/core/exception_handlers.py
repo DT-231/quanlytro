@@ -15,7 +15,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.exceptions import AppException
-from app.core import response
+from app.schemas.response_schema import Response
 
 
 async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
@@ -23,7 +23,6 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
     
     Convert AppException thành JSONResponse với status code tương ứng.
     """
-    from app.schemas.response_schema import Response
     success = 200 <= exc.status_code < 300
     resp = Response(
         success=success,
@@ -41,7 +40,6 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException) 
     
     Convert HTTPException thành response chuẩn.
     """
-    from app.schemas.response_schema import Response
     success = 200 <= exc.status_code < 300
     resp = Response(
         success=success,
@@ -67,7 +65,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "type": error["type"]
         })
     
-    resp = response.unprocessable_entity(
+    resp = Response(
+        success=False,
         message="Validation error",
         data={"errors": errors}
     )
@@ -82,9 +81,10 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
     
     Catch-all handler để đảm bảo mọi lỗi đều trả về format chuẩn.
     """
-    resp = response.internal_error(
+    resp = Response(
+        success=False,
         message=f"Internal server error: {str(exc)}",
-        data=None
+        data={}
     )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

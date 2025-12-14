@@ -63,6 +63,7 @@ class ContractCreate(ContractBase):
     """
     
     contract_number: Optional[str] = Field(default=None, description="Mã hợp đồng (tự sinh nếu không nhập)")
+    status: Optional[str] = Field(default="ACTIVE", description="Trạng thái hợp đồng: ACTIVE (mặc định), PENDING (chờ kích hoạt)")
     
     # Thông tin thanh toán chi tiết
     payment_cycle_months: Optional[int] = Field(default=1, ge=1, le=12, description="Chu kỳ thanh toán (tháng)")

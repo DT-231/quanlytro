@@ -345,9 +345,98 @@ class ContractRepository:
             .scalar()
         )
         return count > 0
+    
+    def get_total_tenants_in_room(self, room_id: UUID, exclude_contract_id: Optional[UUID] = None) -> int:
+        """Đếm tổng số người đang ở trong phòng từ tất cả hợp đồng ACTIVE.
+        
+        Hỗ trợ phòng ở ghép: Tính tổng number_of_tenants từ tất cả hợp đồng ACTIVE.
+        
+        Args:
+            room_id: UUID của phòng
+            exclude_contract_id: UUID của hợp đồng cần loại trừ (dùng khi update)
+            
+        Returns:
+            Tổng số người đang ở trong phòng
+            
+        Example:
+            - Hợp đồng 1: 2 người (ACTIVE)
+            - Hợp đồng 2: 1 người (ACTIVE)
+            - Tổng: 3 người
+        """
+        query = (
+            self.db.query(func.sum(Contract.number_of_tenants))
+            .filter(
+                and_(
+                    Contract.room_id == room_id,
+                    Contract.status == ContractStatus.ACTIVE.value
+                )
+            )
+        )
+        
+        # Loại trừ hợp đồng hiện tại nếu đang update
+        if exclude_contract_id:
+            query = query.filter(Contract.id != exclude_contract_id)
+        
+        total = query.scalar()
+        return total if total else 0
 
+    def get_active_contracts_by_room(self, room_id: UUID) -> list[Contract]:
+        """Lấy tất cả hợp đồng đang hoạt động của phòng (hỗ trợ phòng ở ghép).
+        
+        Args:
+            room_id: UUID của phòng
+            
+        Returns:
+            List các Contract ORM instances với tenant relationship
+        """
+        return (
+            self.db.query(Contract)
+            .options(joinedload(Contract.tenant))
+            .filter(
+                and_(
+                    Contract.room_id == room_id,
+                    Contract.status == ContractStatus.ACTIVE.value
+                )
+            )
+            .order_by(Contract.created_at.asc())  # Sắp xếp theo thời gian tạo
+            .all()
+        )
+    
+    def get_primary_tenant_contract(self, room_id: UUID) -> Optional[Contract]:
+        """Lấy hợp đồng của người đại diện (hợp đồng được tạo đầu tiên).
+        
+        Trong phòng ở ghép, người ký hợp đồng đầu tiên được coi là người đại diện.
+        Người này chịu trách nhiệm liên lạc chính với chủ trọ.
+        
+        Args:
+            room_id: UUID của phòng
+            
+        Returns:
+            Contract ORM instance của người đại diện, hoặc None nếu không có
+            
+        Example:
+            - Hợp đồng A: created_at = 2025-01-01 (người đại diện ✓)
+            - Hợp đồng B: created_at = 2025-03-01
+            - Hợp đồng C: created_at = 2025-06-01
+        """
+        return (
+            self.db.query(Contract)
+            .options(joinedload(Contract.tenant))
+            .filter(
+                and_(
+                    Contract.room_id == room_id,
+                    Contract.status == ContractStatus.ACTIVE.value
+                )
+            )
+            .order_by(Contract.created_at.asc())  # Lấy hợp đồng cũ nhất
+            .first()
+        )
+    
     def get_active_contract_by_room(self, room_id: UUID) -> Optional[Contract]:
         """Lấy hợp đồng đang hoạt động của phòng (nếu có).
+        
+        Deprecated: Sử dụng get_active_contracts_by_room() cho phòng ở ghép.
+        Method này chỉ trả về 1 hợp đồng đầu tiên.
         
         Args:
             room_id: UUID của phòng

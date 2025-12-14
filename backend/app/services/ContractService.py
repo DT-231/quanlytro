@@ -78,25 +78,52 @@ class ContractService:
         if not tenant:
             raise ValueError(f"Không tìm thấy khách hàng với ID: {data.tenant_id}")
         
-        # 3. Validate phòng không có hợp đồng ACTIVE
-        # (Mặc định tạo hợp đồng với status ACTIVE)
-        has_active = self.contract_repo.check_room_has_active_contract(data.room_id)
-        if has_active:
-            raise ValueError(f"Phòng {room.room_number} đã có hợp đồng đang hoạt động")
+        # 3. Validate phòng ở ghép: Kiểm tra còn chỗ trống
+        contract_status = data.status if hasattr(data, 'status') and data.status else ContractStatus.ACTIVE.value
         
-        # 4. Validate phòng phải AVAILABLE để tạo hợp đồng ACTIVE
-        if room.status != RoomStatus.AVAILABLE.value:
-            raise ValueError(
-                f"Phòng {room.room_number} không ở trạng thái sẵn sàng (hiện tại: {room.status})"
-            )
+        if contract_status == ContractStatus.ACTIVE.value:
+            # Đếm tổng số người đang ở trong phòng từ các hợp đồng ACTIVE
+            current_tenants = self.contract_repo.get_total_tenants_in_room(data.room_id)
+            new_tenants = data.number_of_tenants
+            total_after_add = current_tenants + new_tenants
+            
+            # Kiểm tra không vượt quá sức chứa
+            if total_after_add > room.capacity:
+                raise ValueError(
+                    f"Phòng {room.room_number} chỉ còn {room.capacity - current_tenants}/{room.capacity} chỗ trống. "
+                    f"Hiện có {current_tenants} người, không thể thêm {new_tenants} người nữa."
+                )
+            
+            # 4. Validate phòng phải AVAILABLE, RESERVED hoặc OCCUPIED (ở ghép) để tạo hợp đồng ACTIVE
+            if room.status not in [RoomStatus.AVAILABLE.value, RoomStatus.RESERVED.value, RoomStatus.OCCUPIED.value]:
+                raise ValueError(
+                    f"Phòng {room.room_number} không ở trạng thái sẵn sàng (hiện tại: {room.status})"
+                )
+        else:
+            # Nếu tạo hợp đồng PENDING, phòng chỉ cần AVAILABLE hoặc OCCUPIED (có thể đặt trước cho phòng ở ghép)
+            if room.status not in [RoomStatus.AVAILABLE.value, RoomStatus.OCCUPIED.value]:
+                raise ValueError(
+                    f"Phòng {room.room_number} không ở trạng thái sẵn sàng (hiện tại: {room.status})"
+                )
         
         # 5. Tạo hợp đồng
         contract_orm = self.contract_repo.create(data, created_by)
         
-        # 6. Chuyển phòng sang OCCUPIED (vì hợp đồng mặc định là ACTIVE)
+        # 6. Cập nhật trạng thái phòng dựa theo status hợp đồng
         from app.schemas.room_schema import RoomUpdate
-        room_update = RoomUpdate(status=RoomStatus.OCCUPIED.value)
-        self.room_repo.update(room, room_update)
+        
+        if contract_status == ContractStatus.ACTIVE.value:
+            # Hợp đồng ACTIVE → phòng chuyển sang OCCUPIED
+            # (Nếu đã OCCUPIED rồi thì giữ nguyên - trường hợp ở ghép)
+            if room.status != RoomStatus.OCCUPIED.value:
+                room_update = RoomUpdate(status=RoomStatus.OCCUPIED.value)
+                self.room_repo.update(room, room_update)
+        elif contract_status == ContractStatus.PENDING.value:
+            # Hợp đồng PENDING → phòng chuyển sang RESERVED (đã đặt cọc, chờ vào ở)
+            # Nếu phòng đã OCCUPIED (có người ở rồi), giữ nguyên
+            if room.status == RoomStatus.AVAILABLE.value:
+                room_update = RoomUpdate(status=RoomStatus.RESERVED.value)
+                self.room_repo.update(room, room_update)
         
         # 7. Upgrade tenant từ CUSTOMER → TENANT (nếu là CUSTOMER)
         from app.services.AuthService import AuthService
@@ -211,6 +238,24 @@ class ContractService:
         
         # 2. Lưu trạng thái cũ để kiểm tra
         old_status = contract_orm.status
+        old_number_of_tenants = contract_orm.number_of_tenants
+        
+        # 2.1. Nếu thay đổi số người, kiểm tra sức chứa
+        if data.number_of_tenants is not None and data.number_of_tenants != old_number_of_tenants:
+            room = self.room_repo.get_by_id(contract_orm.room_id)
+            if room:
+                # Tính tổng số người sau khi thay đổi (loại trừ hợp đồng hiện tại)
+                current_tenants = self.contract_repo.get_total_tenants_in_room(
+                    contract_orm.room_id, 
+                    exclude_contract_id=contract_id
+                )
+                total_after_change = current_tenants + data.number_of_tenants
+                
+                if total_after_change > room.capacity:
+                    raise ValueError(
+                        f"Phòng {room.room_number} chỉ còn {room.capacity - current_tenants}/{room.capacity} chỗ trống. "
+                        f"Không thể tăng lên {data.number_of_tenants} người."
+                    )
         
         # 3. Update hợp đồng
         contract_orm = self.contract_repo.update(contract_orm, data)
@@ -222,16 +267,37 @@ class ContractService:
             if room:
                 from app.schemas.room_schema import RoomUpdate
                 
-                # Nếu hợp đồng kết thúc, chuyển phòng về AVAILABLE
+                # Nếu hợp đồng kết thúc, kiểm tra còn người ở không
                 if new_status in [ContractStatus.TERMINATED.value, ContractStatus.EXPIRED.value]:
-                    if room.status == RoomStatus.OCCUPIED.value:
-                        room_update = RoomUpdate(status=RoomStatus.AVAILABLE.value)
+                    # Kiểm tra còn hợp đồng ACTIVE nào khác không (loại trừ hợp đồng hiện tại)
+                    remaining_tenants = self.contract_repo.get_total_tenants_in_room(
+                        contract_orm.room_id,
+                        exclude_contract_id=contract_id
+                    )
+                    
+                    # Chỉ chuyển về AVAILABLE nếu không còn ai ở
+                    if remaining_tenants == 0:
+                        if room.status in [RoomStatus.OCCUPIED.value, RoomStatus.RESERVED.value]:
+                            room_update = RoomUpdate(status=RoomStatus.AVAILABLE.value)
+                            self.room_repo.update(room, room_update)
+                
+                # Nếu hợp đồng chuyển sang ACTIVE (từ PENDING), chuyển phòng sang OCCUPIED
+                elif new_status == ContractStatus.ACTIVE.value and old_status == ContractStatus.PENDING.value:
+                    if room.status in [RoomStatus.AVAILABLE.value, RoomStatus.RESERVED.value]:
+                        room_update = RoomUpdate(status=RoomStatus.OCCUPIED.value)
                         self.room_repo.update(room, room_update)
                 
-                # Nếu hợp đồng active trở lại, chuyển phòng sang OCCUPIED
-                elif new_status == ContractStatus.ACTIVE.value:
-                    if room.status == RoomStatus.AVAILABLE.value:
-                        room_update = RoomUpdate(status=RoomStatus.OCCUPIED.value)
+                # Nếu hợp đồng chuyển sang PENDING (từ ACTIVE - trường hợp hiếm)
+                elif new_status == ContractStatus.PENDING.value and old_status == ContractStatus.ACTIVE.value:
+                    # Kiểm tra còn người ở không
+                    remaining_tenants = self.contract_repo.get_total_tenants_in_room(
+                        contract_orm.room_id,
+                        exclude_contract_id=contract_id
+                    )
+                    
+                    # Nếu không còn ai, chuyển về RESERVED
+                    if remaining_tenants == 0 and room.status == RoomStatus.OCCUPIED.value:
+                        room_update = RoomUpdate(status=RoomStatus.RESERVED.value)
                         self.room_repo.update(room, room_update)
         
         # 5. Get lại với relations
@@ -261,13 +327,21 @@ class ContractService:
         # if contract_orm.invoices:
         #     raise ValueError("Không thể xóa hợp đồng đã có hóa đơn")
         
-        # Nếu hợp đồng ACTIVE, chuyển phòng về AVAILABLE
-        if contract_orm.status == ContractStatus.ACTIVE.value:
+        # Nếu hợp đồng ACTIVE hoặc RESERVED, kiểm tra còn người ở không
+        if contract_orm.status in [ContractStatus.ACTIVE.value, ContractStatus.PENDING.value]:
             room = self.room_repo.get_by_id(contract_orm.room_id)
-            if room and room.status == RoomStatus.OCCUPIED.value:
-                from app.schemas.room_schema import RoomUpdate
-                room_update = RoomUpdate(status=RoomStatus.AVAILABLE.value)
-                self.room_repo.update(room, room_update)
+            if room:
+                # Kiểm tra còn hợp đồng ACTIVE nào khác không (loại trừ hợp đồng sắp xóa)
+                remaining_tenants = self.contract_repo.get_total_tenants_in_room(
+                    contract_orm.room_id,
+                    exclude_contract_id=contract_id
+                )
+                
+                # Chỉ chuyển về AVAILABLE nếu không còn ai ở
+                if remaining_tenants == 0 and room.status in [RoomStatus.OCCUPIED.value, RoomStatus.RESERVED.value]:
+                    from app.schemas.room_schema import RoomUpdate
+                    room_update = RoomUpdate(status=RoomStatus.AVAILABLE.value)
+                    self.room_repo.update(room, room_update)
         
         # Xóa hợp đồng
         self.contract_repo.delete(contract_orm)
@@ -283,3 +357,90 @@ class ContractService:
             - expired_contracts: Đã hết hạn (10)
         """
         return self.contract_repo.get_contract_stats()
+    
+    def get_room_tenants_info(self, room_id: UUID) -> dict:
+        """Lấy thông tin tất cả người thuê trong phòng (hỗ trợ phòng ở ghép).
+        
+        Args:
+            room_id: UUID của phòng
+            
+        Returns:
+            Dict chứa:
+            - total_tenants: Tổng số người đang ở
+            - contracts: List các hợp đồng ACTIVE
+            - primary_tenant: Thông tin người đại diện (hợp đồng đầu tiên)
+            - other_tenants: List người ở ghép khác
+            
+        Example:
+            {
+                "total_tenants": 3,
+                "contracts": [
+                    {"id": "...", "tenant_name": "Người A", "number_of_tenants": 2, "is_primary": True},
+                    {"id": "...", "tenant_name": "Người B", "number_of_tenants": 1, "is_primary": False}
+                ],
+                "primary_tenant": {
+                    "name": "Người A",
+                    "phone": "0123456789",
+                    "contract_number": "HD001",
+                    "created_at": "2025-01-01"
+                }
+            }
+        """
+        # Lấy tất cả hợp đồng ACTIVE của phòng (đã sắp xếp theo created_at)
+        contracts = self.contract_repo.get_active_contracts_by_room(room_id)
+        
+        if not contracts:
+            return {
+                "total_tenants": 0,
+                "contracts": [],
+                "primary_tenant": None,
+                "other_tenants": []
+            }
+        
+        # Tổng số người
+        total_tenants = sum(c.number_of_tenants for c in contracts)
+        
+        # Người đại diện (hợp đồng đầu tiên)
+        primary_contract = contracts[0]
+        primary_tenant = {
+            "contract_id": str(primary_contract.id),
+            "contract_number": primary_contract.contract_number,
+            "name": primary_contract.tenant.full_name,
+            "phone": primary_contract.tenant.phone_number,
+            "email": primary_contract.tenant.email,
+            "number_of_tenants": primary_contract.number_of_tenants,
+            "created_at": primary_contract.created_at.isoformat() if primary_contract.created_at else None
+        }
+        
+        # Danh sách tất cả hợp đồng
+        contracts_list = []
+        other_tenants = []
+        
+        for idx, contract in enumerate(contracts):
+            is_primary = (idx == 0)
+            contract_info = {
+                "id": str(contract.id),
+                "contract_number": contract.contract_number,
+                "tenant_name": contract.tenant.full_name,
+                "tenant_phone": contract.tenant.phone_number,
+                "number_of_tenants": contract.number_of_tenants,
+                "rental_price": float(contract.rental_price),
+                "is_primary": is_primary,
+                "created_at": contract.created_at.isoformat() if contract.created_at else None
+            }
+            contracts_list.append(contract_info)
+            
+            if not is_primary:
+                other_tenants.append({
+                    "name": contract.tenant.full_name,
+                    "phone": contract.tenant.phone_number,
+                    "number_of_tenants": contract.number_of_tenants
+                })
+        
+        return {
+            "total_tenants": total_tenants,
+            "num_contracts": len(contracts),
+            "contracts": contracts_list,
+            "primary_tenant": primary_tenant,
+            "other_tenants": other_tenants
+        }

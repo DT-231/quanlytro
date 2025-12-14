@@ -278,3 +278,90 @@ async def delete_contract(contract_id: UUID, session: Session = Depends(get_db))
         raise BadRequestException(message=str(e))
     except Exception as e:
         raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
+
+
+@router.get(
+    "/room/{room_id}/tenants",
+    response_model=Response[dict],
+    responses={
+        200: {
+            "description": "Successful Response",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": 200,
+                        "message": "success",
+                        "data": {
+                            "total_tenants": 3,
+                            "num_contracts": 2,
+                            "primary_tenant": {
+                                "contract_id": "uuid",
+                                "contract_number": "HD001",
+                                "name": "Nguyễn Văn A",
+                                "phone": "0123456789",
+                                "email": "a@example.com",
+                                "number_of_tenants": 2,
+                                "created_at": "2025-01-01T00:00:00"
+                            },
+                            "other_tenants": [
+                                {
+                                    "name": "Trần Thị B",
+                                    "phone": "0987654321",
+                                    "number_of_tenants": 1
+                                }
+                            ],
+                            "contracts": [
+                                {
+                                    "id": "uuid",
+                                    "contract_number": "HD001",
+                                    "tenant_name": "Nguyễn Văn A",
+                                    "tenant_phone": "0123456789",
+                                    "number_of_tenants": 2,
+                                    "rental_price": 2000000.0,
+                                    "is_primary": True,
+                                    "created_at": "2025-01-01T00:00:00"
+                                },
+                                {
+                                    "id": "uuid",
+                                    "contract_number": "HD002",
+                                    "tenant_name": "Trần Thị B",
+                                    "tenant_phone": "0987654321",
+                                    "number_of_tenants": 1,
+                                    "rental_price": 1500000.0,
+                                    "is_primary": False,
+                                    "created_at": "2025-03-01T00:00:00"
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    }
+)
+async def get_room_tenants(room_id: UUID, session: Session = Depends(get_db)):
+    """Lấy thông tin tất cả người thuê trong phòng (hỗ trợ phòng ở ghép).
+    
+    **Path Parameters:**
+    - `room_id`: UUID của phòng
+    
+    **Response:**
+    - `total_tenants`: Tổng số người đang ở
+    - `num_contracts`: Số lượng hợp đồng ACTIVE
+    - `primary_tenant`: Thông tin người đại diện (hợp đồng đầu tiên)
+    - `other_tenants`: Danh sách người ở ghép khác
+    - `contracts`: Chi tiết tất cả hợp đồng
+    
+    **Quy tắc người đại diện:**
+    - Người ký hợp đồng đầu tiên được coi là người đại diện
+    - Người đại diện chịu trách nhiệm liên lạc chính với chủ trọ
+    - `is_primary = True` cho hợp đồng của người đại diện
+    """
+    try:
+        service = ContractService(session)
+        tenants_info = service.get_room_tenants_info(room_id)
+        return response.success(data=tenants_info, message="success")
+    except ValueError as e:
+        raise BadRequestException(message=str(e))
+    except Exception as e:
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
