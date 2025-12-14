@@ -1,34 +1,45 @@
 const RoomList = ({ rooms, onSelectRoom }) => {
-  if (!rooms || rooms.length === 0) {
-    return (
-      <p className="text-center text-gray-500">Không có phòng nào phù hợp.</p>
-    );
-  }
-
   return (
-    <div className="mt-6">
-      <h2 className="text-xl font-semibold mb-4">Danh sách phòng trọ</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="mt-8">
+      <h2 className="text-xl font-bold mb-6">Danh sách phòng trọ</h2>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-6 gap-y-8">
         {rooms.map((room) => (
           <div
             key={room.id}
-            className="border rounded-lg shadow hover:shadow-xl transition bg-white cursor-pointer"
+            className="flex w-full max-w-[580px] h-auto bg-white rounded-lg p-2.5 gap-2.5 shadow-md border border-gray-100 cursor-pointer hover:shadow-xl transition-shadow duration-300"
             onClick={() => onSelectRoom(room)}
           >
+            {/* Phần hình ảnh */}
             <img
               src={room.image}
               alt={room.name}
-              className="w-full h-48 object-cover rounded-t-lg"
+              className="w-[200px] h-full object-cover rounded-md flex-none self-stretch"
             />
-            <div className="p-4 space-y-2">
-              <h3 className="text-base font-bold text-blue-700">{room.name}</h3>
-              <p className="text-sm text-gray-600">{room.address}</p>
-              <p className="text-sm">
-                {room.area}m² - {room.capacity} người
-              </p>
-              <p className="text-base font-semibold text-red-600">
-                {room.price.toLocaleString()} VNĐ / Tháng
-              </p>
+
+            {/* Phần thông tin chi tiết */}
+            <div className="flex flex-col justify-between flex-grow self-stretch py-2.5">
+              <div className="flex flex-col gap-2.5">
+                <h3 className="h-auto md:h-12 font-semibold text-lg leading-[22px] tracking-wide text-black">
+                  {room.name}
+                </h3>
+                <p className="text-base text-black">{room.address}</p>
+                <div className="flex items-center gap-2.5 text-base text-black">
+                  <span>{room.area}m²</span>
+                  <span className="w-1.5 h-1.5 bg-gray-300 rounded-full"></span>
+                  <span>{room.capacity} người</span>
+                </div>
+                <p className="h-auto text-sm text-gray-500">
+                  {room.description}
+                </p>
+              </div>
+
+              {/* Giá tiền */}
+              <div className="flex flex-col items-end mt-2 md:mt-0">
+                <p className="font-semibold text-base tracking-wide text-green-500">
+                  {room.price.toLocaleString("vi-VN")} VNĐ / Tháng
+                </p>
+              </div>
             </div>
           </div>
         ))}

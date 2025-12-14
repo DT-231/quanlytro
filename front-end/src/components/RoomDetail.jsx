@@ -1,129 +1,177 @@
 // src/components/RoomDetail.jsx
 import { useState } from "react";
+import BookingModal from "./modals/Booking/BookingModal";
 
 const RoomDetail = ({ room, onClose }) => {
   if (!room) return null;
-  const [activeImage, setActiveImage] = useState(room.images?.[0]);
+  // Mặc định hiển thị ảnh chính của phòng, hoặc ảnh đầu tiên trong danh sách
+  const imageList = [room.image, ...(room.images || [])];
+  const [activeImage, setActiveImage] = useState(imageList[0]);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
 
   const formatVND = (v) => (v || 0).toLocaleString("vi-VN");
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-start z-50 p-4 overflow-y-auto">
-      <div className="bg-white p-6 rounded-lg w-full max-w-4xl relative">
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 text-gray-500 hover:text-black text-xl"
-          aria-label="Đóng"
-        >
-          ✖
-        </button>
-
-        {/* Tiêu đề + thông tin cơ bản */}
-        <h2 className="text-2xl font-bold mb-1">{room.name}</h2>
-        <div className="text-sm text-gray-600 mb-4">
-          Số phòng: {room.roomNumber} • Địa chỉ: {room.address} • Diện tích:{" "}
-          {room.area} m² • Số người tối đa: {room.maxPeople} người • Trạng thái:{" "}
-          {room.status}
-        </div>
-
-        {/* Gallery ảnh */}
-        <div className="mb-4">
-          <img
-            src={activeImage || room.images?.[0]}
-            alt={room.name}
-            className="w-full h-[360px] object-cover rounded-md"
-          />
-          {room.images && room.images.length > 1 && (
-            <div className="flex gap-3 mt-3">
-              {room.images.map((img, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setActiveImage(img)}
-                  className={`border rounded-md overflow-hidden ${
-                    activeImage === img ? "ring-2 ring-blue-600" : ""
-                  }`}
-                  aria-label={`Ảnh ${idx + 1}`}
-                >
-                  <img
-                    src={img}
-                    alt={`Thumb ${idx + 1}`}
-                    className="w-28 h-16 object-cover"
-                  />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Grid: Giá và tiện ích */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Giá thuê & chi phí */}
-          <div className="border rounded-md p-4">
-            <h3 className="text-lg font-semibold mb-3">Giá thuê</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <span className="font-medium">Giá thuê:</span>{" "}
-                {formatVND(room.price)}đ/tháng
-              </li>
-              <li>
-                <span className="font-medium">Tiền điện:</span>{" "}
-                {formatVND(room.electricityPrice)}đ/kWh
-              </li>
-              <li>
-                <span className="font-medium">Tiền nước:</span>{" "}
-                {formatVND(room.waterPrice)}đ/người
-              </li>
-              <li>
-                <span className="font-medium">Tiền cọc:</span>{" "}
-                {formatVND(room.deposit)}đ
-              </li>
-            </ul>
-          </div>
-
-          {/* Tiện ích */}
-          <div className="border rounded-md p-4">
-            <h3 className="text-lg font-semibold mb-3">Tiện ích</h3>
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-              {(room.utilities || []).map((u, i) => (
-                <li key={i} className="flex items-center gap-2">
-                  <span className="text-green-600">✔</span> {u}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        {/* Liên hệ & đặt lịch */}
-        <div className="mt-6 flex flex-wrap gap-3">
-          <a
-            href={`tel:${room.phone}`}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            📞 {room.phone}
-          </a>
-          <a
-            href={room.zalo}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-          >
-            💬 Nhắn Zalo
-          </a>
+    <>
+      <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 p-4 overflow-y-auto">
+        <div className="bg-gray-50 p-5 rounded-lg w-full max-w-7xl h-full max-h-[95vh] relative flex flex-col">
           <button
-            className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700"
-            onClick={() => alert("Vui lòng đặt lịch trước ít nhất 01 ngày.")}
+            onClick={onClose}
+            className="absolute top-4 right-4 text-gray-600 hover:text-black text-2xl z-10"
+            aria-label="Đóng"
           >
-            🗓️ Đặt lịch
+            ✖
           </button>
-        </div>
 
-        {/* Lưu ý */}
-        <div className="mt-4 text-sm text-gray-700">
-          <span className="font-medium">Lưu ý:</span> Đặt lịch trước ít nhất 01
-          ngày để chủ trọ chuẩn bị phòng và sắp xếp thời gian tiếp đón.
+          <div className="flex-grow overflow-y-auto">
+            <div className="flex flex-col lg:flex-row gap-5">
+              {/* --- CỘT TRÁI: ẢNH & HÀNH ĐỘNG --- */}
+              <div className="w-full lg:w-[717px] flex-shrink-0">
+                {/* Gallery ảnh */}
+                <div className="bg-white p-2.5 rounded-lg shadow-sm border border-gray-200">
+                  <img
+                    src={activeImage}
+                    alt={room.name}
+                    className="w-full h-[440px] object-cover rounded-md mb-2.5"
+                  />
+                  <div className="flex justify-center items-center gap-2.5 mb-2.5">
+                    {imageList.map((img, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveImage(img)}
+                        className={`w-2.5 h-2.5 rounded-full ${
+                          activeImage === img ? "bg-black" : "bg-gray-300"
+                        }`}
+                        aria-label={`Xem ảnh ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex gap-2.5">
+                    {imageList.map((img, idx) => (
+                      <button key={idx} onClick={() => setActiveImage(img)}>
+                        <img
+                          src={img}
+                          alt={`Thumb ${idx + 1}`}
+                          className={`w-[100px] h-[100px] object-cover rounded-md ${
+                            activeImage === img
+                              ? "ring-2 ring-black"
+                              : "opacity-70"
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Liên hệ & đặt lịch */}
+                <div className="mt-3.5 flex flex-wrap justify-between items-center gap-4">
+                  <a
+                    href={`tel:${room.phone || "0938554128"}`}
+                    className="flex items-center justify-center gap-4 bg-black text-white px-5 py-2.5 rounded-md text-lg font-semibold flex-grow"
+                  >
+                    📞 {room.phone || "0938 554 128"}
+                  </a>
+                  <a
+                    href={room.zalo}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 bg-black text-white px-5 py-2.5 rounded-md text-lg font-semibold flex-grow"
+                  >
+                    💬 Nhắn Zalo
+                  </a>
+                  <button
+                    onClick={() => setIsBookingOpen(true)}
+                    className="bg-black text-white px-10 py-2.5 rounded-md text-lg font-semibold flex-grow"
+                  >
+                    Đặt lịch
+                  </button>
+                </div>
+
+                {/* Lưu ý */}
+                <div className="mt-3.5 text-base text-black">
+                  <span className="font-medium">Lưu ý:</span> Đặt lịch trước ít
+                  nhất 01 ngày để chủ trọ chuẩn bị phòng và sắp xếp thời gian
+                  tiếp đón.
+                </div>
+              </div>
+
+              {/* --- CỘT PHẢI: THÔNG TIN CHI TIẾT --- */}
+              {isBookingOpen ? (
+                <div className="w-full lg:w-[482px] flex-shrink-0">
+                  <BookingModal
+                    room={room}
+                    onClose={() => setIsBookingOpen(false)}
+                    isEmbedded={true}
+                  />
+                </div>
+              ) : (
+                <div className="w-full lg:w-[482px] flex-shrink-0 flex flex-col gap-5">
+                  {/* Thông tin cơ bản */}
+                  <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 space-y-4">
+                    <h2 className="text-3xl font-bold text-center h-[68px] flex items-center justify-center">
+                      {room.name}
+                    </h2>
+                    <div className="space-y-2 text-lg font-bold">
+                      <p>Số phòng: {room.roomNumber || "020"}</p>
+                      <p>Địa chỉ: {room.address}</p>
+                      <p>Diện tích: {room.area} m²</p>
+                      <p>Số người tối đa: {room.capacity} người</p>
+                      <p>Trạng thái: {room.status || "Chưa thuê"}</p>
+                    </div>
+                  </div>
+
+                  {/* Giá thuê & chi phí */}
+                  <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 space-y-3">
+                    <h3 className="text-2xl font-bold mb-2">Giá thuê</h3>
+                    <p className="text-lg flex justify-between">
+                      <span>Giá thuê:</span>{" "}
+                      <span className="font-bold">
+                        {formatVND(room.price)}đ
+                      </span>
+                    </p>
+                    <p className="text-lg flex justify-between">
+                      <span>Tiền điện:</span>{" "}
+                      <span className="font-bold">4.000đ/kwh</span>
+                    </p>
+                    <p className="text-lg flex justify-between">
+                      <span>Tiền nước:</span>{" "}
+                      <span className="font-bold">50.000đ/người</span>
+                    </p>
+                    <p className="text-lg flex justify-between">
+                      <span>Tiền cọc:</span>{" "}
+                      <span className="font-bold">
+                        {formatVND(room.price)}đ
+                      </span>
+                    </p>
+                  </div>
+
+                  {/* Tiện ích */}
+                  <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+                    <h3 className="text-2xl font-bold mb-3 h-10 flex items-center">
+                      Tiện ích
+                    </h3>
+                    <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-lg">
+                      {[
+                        "Khu vực đông dân cư",
+                        "Bãi giữ xe rộng rãi",
+                        "Rộng rãi thoáng mát",
+                        "Vị trí thuận lợi",
+                        "Vệ sinh sạch sẽ",
+                        "Không bị ngập",
+                        "Có gác",
+                        "Có máy lạnh",
+                      ].map((util, i) => (
+                        <li key={i}>{util}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
