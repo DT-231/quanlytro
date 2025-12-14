@@ -68,26 +68,20 @@ class UserRegister(BaseModel):
 
 
 class UserCreate(UserBase):
-    """Schema for creating a new user.
+    """Schema for creating a new user by Admin.
 
-    Password is required here. Role is also required for new users in this
-    project (models mark `role_id` non-nullable), so we keep it required.
+    Dùng khi Admin tạo tài khoản cho người thuê/khách hàng.
+    Không cần confirm_password vì Admin tạo trực tiếp.
     """
 
-    # Simplified create schema: require a name, email or phone, password + confirm, and role
-    # Email or phone: at least one must be provided. Confirm password must match.
     password: str = Field(..., min_length=8, max_length=16)
     role_id: uuid.UUID = Field(None)
 
-    from pydantic import model_validator
-
     @model_validator(mode="after")
-    def check_contact_and_passwords(self):
-        # 'self' is a model instance in v2; perform cross-field validation
+    def check_contact(self):
+        """Validate ít nhất một trong email hoặc phone phải có."""
         if not (self.email or self.phone):
             raise ValueError("Either email or phone must be provided")
-        if self.password != self.confirm_password:
-            raise ValueError("password and confirm_password do not match")
         return self
 
 

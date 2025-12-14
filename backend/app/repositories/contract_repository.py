@@ -268,10 +268,6 @@ class ContractRepository:
         """
         contract_dict = data.model_dump(exclude={"contract_number", "payment_cycle_months", "electricity_price", "water_price", "service_fees"})
         
-        # Tạo contract_id unique
-        from app.core.utils.uuid import uuid_v7
-        contract_id = uuid_v7()
-        
         # Tạo contract_number nếu chưa có
         contract_number = data.contract_number
         if not contract_number:
@@ -287,8 +283,8 @@ class ContractRepository:
             else:
                 contract_number = "HD001"
         
+        # ID (UUIDv7) sẽ được tự động tạo bởi BaseModel.id default=generate_uuid7
         obj = Contract(
-            contract_id=contract_id,
             contract_number=contract_number,
             created_by=created_by,
             **contract_dict

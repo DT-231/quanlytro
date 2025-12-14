@@ -14,6 +14,7 @@ from typing import Optional
 from uuid import UUID
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.repositories.contract_repository import ContractRepository
 from app.repositories.room_repository import RoomRepository
@@ -107,7 +108,14 @@ class ContractService:
                 )
         
         # 5. Tạo hợp đồng
-        contract_orm = self.contract_repo.create(data, created_by)
+        try:
+            contract_orm = self.contract_repo.create(data, created_by)
+        except IntegrityError as e:
+            # Xử lý lỗi duplicate contract_number
+            if "contract_number" in str(e.orig):
+                raise ValueError(f"Mã hợp đồng '{data.contract_number}' đã tồn tại. Vui lòng sử dụng mã khác.")
+            # Các lỗi IntegrityError khác
+            raise ValueError(f"Lỗi tạo hợp đồng: {str(e.orig)}")
         
         # 6. Cập nhật trạng thái phòng dựa theo status hợp đồng
         from app.schemas.room_schema import RoomUpdate

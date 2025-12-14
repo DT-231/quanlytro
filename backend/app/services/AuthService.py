@@ -1,5 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from uuid import UUID
 
 from app.repositories import role_repository, user_repository
 from app.schemas.user_schema import UserCreate, UserRegister
@@ -79,9 +81,8 @@ class AuthService:
             "token": {"access_token": access, "refresh_token": refresh},
         }
 
-    def create_tenant_by_landlord(self, tenant_data: UserCreate):
-        """
-        Chủ nhà tạo tài khoản cho người thuê.
+    def create_tenant_by_landlord(self, tenant_data: UserCreate, created_by: UUID = None):
+        """Chủ nhà tạo tài khoản cho người thuê.
 
         Flow:
         1. Check email đã tồn tại chưa
@@ -90,6 +91,8 @@ class AuthService:
 
         Args:
             tenant_data: Thông tin người thuê
+            created_by: UUID của admin/landlord tạo tài khoản (optional)
+            
         Returns:
             Tuple (success, message, user_obj)
         """
@@ -130,7 +133,7 @@ class AuthService:
                 # Already TENANT or ADMIN
                 return (
                     False,
-                    f"Email đã tồn tại với role khác (không phải CUSTOMER)",
+                    f"Email đã tồn tại với role khác ",
                     None,
                 )
 
@@ -140,9 +143,21 @@ class AuthService:
         data["password"] = hashed
         data["role_id"] = tenant_role.id  # Force TENANT role
 
-        user_obj = self.user_repo.create_user(user_in=data)
-
-        return True, "Đã tạo tài khoản  mới"
+        try:
+            user_obj = self.user_repo.create_user(user_in=data)
+            return True, "Đã tạo tài khoản người thuê mới thành công", user_obj
+        except IntegrityError as e:
+            self.db.rollback()
+            # Xử lý lỗi duplicate key
+            error_msg = str(e.orig)
+            if "ix_users_cccd" in error_msg or "cccd" in error_msg.lower():
+                return False, f"CCCD '{tenant_data.cccd}' đã tồn tại trong hệ thống", None
+            elif "ix_users_phone" in error_msg or "phone" in error_msg.lower():
+                return False, f"Số điện thoại '{tenant_data.phone}' đã tồn tại trong hệ thống", None
+            elif "ix_users_email" in error_msg or "email" in error_msg.lower():
+                return False, f"Email '{tenant_data.email}' đã tồn tại trong hệ thống", None
+            else:
+                return False, f"Lỗi tạo tài khoản: Thông tin đã tồn tại", None
 
     def upgrade_customer_to_tenant(self, user_id):
         """

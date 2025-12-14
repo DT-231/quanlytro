@@ -17,6 +17,7 @@ from app.schemas.room_schema import (
     RoomCreate, RoomOut, RoomUpdate, RoomListItem, RoomDetailOut,
     RoomPublicDetail, RoomAdminDetail, TenantInfo, RoomSearchParams, RoomPublicListItem
 )
+from app.schemas.room_photo_schema import RoomPhotoOut
 from app.models.room import Room
 from app.models.building import Building
 from app.models.room_utility import RoomUtility
@@ -436,14 +437,9 @@ class RoomService:
         # Lấy utilities
         utilities = [u.utility_name for u in room.utilities] if room.utilities else []
         
-        # Lấy photo URLs (sắp xếp theo sort_order, ưu tiên ảnh base64 nếu có)
-        photos = sorted(room.room_photos, key=lambda p: p.sort_order) if room.room_photos else []
-        photo_urls = []
-        for p in photos:
-            if p.image_base64:
-                photo_urls.append(p.image_base64)  # Trả base64 nếu có
-            elif p.url:
-                photo_urls.append(p.url)  # Hoặc URL
+        # Lấy photos (sắp xếp theo sort_order) và convert sang RoomPhotoOut
+        photos_orm = sorted(room.room_photos, key=lambda p: p.sort_order) if room.room_photos else []
+        photos = [RoomPhotoOut.model_validate(p) for p in photos_orm]
         
         # Lấy thông tin contract active (nếu có)
         active_contract = self.contract_repo.get_active_contract_by_room(room_id)
@@ -487,7 +483,7 @@ class RoomService:
             'is_available': is_available,
             'current_occupants': current_occupants,
             'utilities': utilities,
-            'photo_urls': photo_urls,
+            'photos': photos,
         }
         
         # Trả về schema phù hợp với role

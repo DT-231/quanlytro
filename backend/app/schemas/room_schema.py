@@ -12,7 +12,7 @@ from decimal import Decimal
 import uuid
 
 from app.core.Enum.roomEnum import RoomStatus
-from app.schemas.room_photo_schema import RoomPhotoInput
+from app.schemas.room_photo_schema import RoomPhotoInput, RoomPhotoOut
 
 
 class RoomBase(BaseModel):
@@ -203,6 +203,7 @@ class RoomPublicDetail(BaseModel):
     """Schema for Room detail - Public view (cho khách hàng/người thuê).
     
     Chỉ hiển thị thông tin cơ bản, không hiển thị thông tin người thuê.
+    Trả về tất cả ảnh của phòng.
     """
     
     id: uuid.UUID
@@ -225,7 +226,7 @@ class RoomPublicDetail(BaseModel):
     
     # Utilities và photos
     utilities: List[str] = Field(default_factory=list, description="Danh sách tiện ích")
-    photo_urls: List[str] = Field(default_factory=list, description="Danh sách URL ảnh")
+    photos: List[RoomPhotoOut] = Field(default_factory=list, description="Tất cả ảnh của phòng")
     
     model_config = {"from_attributes": True}
 
@@ -248,6 +249,7 @@ class RoomAdminDetail(BaseModel):
     """Schema for Room detail - Admin view (cho chủ nhà).
     
     Hiển thị đầy đủ thông tin bao gồm thông tin người thuê.
+    Trả về tất cả ảnh của phòng.
     """
     
     id: uuid.UUID
@@ -270,7 +272,7 @@ class RoomAdminDetail(BaseModel):
     
     # Utilities và photos
     utilities: List[str] = Field(default_factory=list, description="Danh sách tiện ích")
-    photo_urls: List[str] = Field(default_factory=list, description="Danh sách URL ảnh")
+    photos: List[RoomPhotoOut] = Field(default_factory=list, description="Tất cả ảnh của phòng")
     
     # Thông tin người thuê (chỉ admin)
     tenant_info: Optional[TenantInfo] = Field(None, description="Thông tin người thuê hiện tại")

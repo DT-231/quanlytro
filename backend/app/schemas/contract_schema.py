@@ -109,8 +109,7 @@ class ContractOut(BaseModel):
     Trả về đầy đủ thông tin hợp đồng khi get detail hoặc sau khi create/update.
     """
     
-    id: UUID
-    contract_id: UUID
+    id: UUID  # Primary key (UUIDv7) từ BaseModel
     contract_number: str
     
     # Thông tin phòng và khách hàng
