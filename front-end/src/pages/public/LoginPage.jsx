@@ -46,7 +46,9 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const res = await authService.login(values.email, values.password)
-      if (res.status === 200) {
+      console.log("res : ",res);
+      
+      if (res && res.data.success) {
         let data = res.data.data
         let user = data.user
         let token = data.token

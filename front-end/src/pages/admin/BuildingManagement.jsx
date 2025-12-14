@@ -49,7 +49,7 @@ const BuildingManagement = () => {
     try {
       setLoading(true);
       const response = await buildingService.getAll();
-      if (response && response.data && Array.isArray(response.data.items)) {
+      if (response && response.data && response.data.success && Array.isArray(response.data.items)) {
         setBuildings(response.data.items);
       } else {
         setBuildings([]);
