@@ -36,10 +36,14 @@ class InvoiceCreate(BaseModel):
     electricity_new_index: Optional[float] = Field(None, ge=0, description="Chỉ số điện mới (kWh)")
     number_of_people: int = Field(1, ge=1, description="Số người ở trong tháng")
     
-    # Các khoản phí dịch vụ
+    # Các khoản phí (chủ nhà tự nhập)
+    internet_fee: Optional[Decimal] = Field(None, ge=0, description="Phí internet/tháng")
+    parking_fee: Optional[Decimal] = Field(None, ge=0, description="Phí gửi xe/tháng")
+    
+    # Phí dịch vụ (thang máy, vệ sinh, an ninh, v.v.)
     service_fees: Optional[List[ServiceFeeItem]] = Field(
         default_factory=list, 
-        description="Danh sách phí dịch vụ: [{'name': 'Dịch vụ', 'amount': 50000}, ...]"
+        description="Danh sách phí dịch vụ khác: [{'name': 'Thang máy', 'amount': 50000}, {'name': 'Vệ sinh', 'amount': 30000}]"
     )
     
     notes: Optional[str] = Field(None, description="Ghi chú")

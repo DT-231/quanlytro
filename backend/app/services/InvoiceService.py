@@ -142,34 +142,44 @@ class InvoiceService:
             electricity_usage = invoice_data.electricity_new_index - invoice_data.electricity_old_index
         
         # Parse service fees
+        # Internet và Parking được truyền trực tiếp từ input
+        internet_fee = invoice_data.internet_fee if invoice_data.internet_fee else Decimal(0)
+        parking_fee = invoice_data.parking_fee if invoice_data.parking_fee else Decimal(0)
+        
+        # Service fees từ danh sách service_fees
         service_fee = Decimal(0)
-        internet_fee = Decimal(0)
-        parking_fee = Decimal(0)
-        other_fees = Decimal(0)
-        other_fees_description = ""
+        service_fee_description = ""
         
         if invoice_data.service_fees:
             for fee in invoice_data.service_fees:
-                fee_name = fee.name.lower()
-                if "dịch vụ" in fee_name or "service" in fee_name:
-                    service_fee += fee.amount
-                elif "internet" in fee_name or "mạng" in fee_name:
-                    internet_fee += fee.amount
-                elif "xe" in fee_name or "parking" in fee_name:
-                    parking_fee += fee.amount
-                else:
-                    other_fees += fee.amount
-                    if other_fees_description:
-                        other_fees_description += ", "
-                    desc = f"{fee.name}: {fee.amount:,.0f}đ"
-                    if fee.description:
-                        desc += f" ({fee.description})"
-                    other_fees_description += desc
+                service_fee += fee.amount
+                if service_fee_description:
+                    service_fee_description += ", "
+                desc = f"{fee.name}: {fee.amount:,.0f}đ"
+                if fee.description:
+                    desc += f" ({fee.description})"
+                service_fee_description += desc
         
         # Generate invoice_number (format: INV-YYYYMM-XXX)
+        # Đếm tất cả invoices trong tháng để tạo số unique
+        from app.models.invoice import Invoice
+        from sqlalchemy import func, extract
+        
+        billing_year = invoice_data.billing_month.year
+        billing_month = invoice_data.billing_month.month
+        
+        # Đếm số invoice đã tạo trong tháng này (toàn hệ thống)
+        month_invoice_count = (
+            self.db.query(func.count(Invoice.id))
+            .filter(
+                extract('year', Invoice.billing_month) == billing_year,
+                extract('month', Invoice.billing_month) == billing_month
+            )
+            .scalar()
+        ) or 0
+        
         billing_year_month = invoice_data.billing_month.strftime("%Y%m")
-        invoice_count = len(existing_invoices) + 1
-        invoice_number = f"INV-{billing_year_month}-{invoice_count:03d}"
+        invoice_number = f"INV-{billing_year_month}-{month_invoice_count + 1:03d}"
         
         # Tạo invoice dict
         invoice_dict = {
@@ -187,8 +197,8 @@ class InvoiceService:
             "service_fee": service_fee,
             "internet_fee": internet_fee,
             "parking_fee": parking_fee,
-            "other_fees": other_fees,
-            "other_fees_description": other_fees_description,
+            "other_fees": Decimal(0),  # Không dùng other_fees nữa
+            "other_fees_description": service_fee_description,  # Lưu mô tả service fees
             "status": InvoiceStatus.PENDING.value,
             "notes": invoice_data.notes
         }
