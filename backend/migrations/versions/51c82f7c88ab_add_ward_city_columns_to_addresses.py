@@ -27,71 +27,61 @@ def upgrade() -> None:
     3. Set NOT NULL cho ward, city
     4. Xóa cột cũ và indexes không cần thiết
     """
-    # Kiểm tra xem các cột cũ có tồn tại không
     from sqlalchemy import inspect
     conn = op.get_bind()
     inspector = inspect(conn)
-    existing_columns = [c['name'] for c in inspector.get_columns('addresses')]
     
-    # Thêm cột mới (nullable=True tạm thời để migrate data)
+    # Bước 1: Lấy thông tin hiện tại của bảng
+    try:
+        existing_columns = {c['name'] for c in inspector.get_columns('addresses')}
+        existing_tables = set(inspector.get_table_names())
+    except Exception as e:
+        print(f"Warning: Could not inspect database: {e}")
+        existing_columns = set()
+        existing_tables = set()
+    
+    # Bước 2: Thêm cột mới nếu chưa có
     if 'ward' not in existing_columns:
         op.add_column('addresses', sa.Column('ward', sa.String(length=100), nullable=True))
     if 'city' not in existing_columns:
         op.add_column('addresses', sa.Column('city', sa.String(length=100), nullable=True))
     
-    # Nếu có dữ liệu từ cột cũ, migrate sang cột mới
-    # (Giả sử trước đó dùng city_id, ward_id - nếu có)
-    # Trong trường hợp này, set giá trị mặc định cho data cũ
-    if 'city_id' in existing_columns or 'ward_id' in existing_columns:
-        # Set giá trị mặc định cho các row hiện có
-        op.execute("""
-            UPDATE addresses 
-            SET ward = COALESCE(ward, 'N/A'),
-                city = COALESCE(city, 'N/A')
-            WHERE ward IS NULL OR city IS NULL
-        """)
+    # Bước 3: Migrate dữ liệu và set default
+    op.execute("""
+        UPDATE addresses 
+        SET ward = COALESCE(ward, 'N/A'),
+            city = COALESCE(city, 'N/A')
+        WHERE ward IS NULL OR city IS NULL
+    """)
     
-    # Set NOT NULL constraint
+    # Bước 4: Set NOT NULL constraint
     op.alter_column('addresses', 'ward', nullable=False)
     op.alter_column('addresses', 'city', nullable=False)
     
-    # Tạo index cho city để tối ưu search
-    try:
-        op.create_index(op.f('ix_addresses_city'), 'addresses', ['city'], unique=False)
-    except Exception:
-        pass  # Index có thể đã tồn tại
+    # Bước 5: Tạo index mới
+    op.execute("DROP INDEX IF EXISTS ix_addresses_city")
+    op.create_index(op.f('ix_addresses_city'), 'addresses', ['city'], unique=False)
     
-    # Drop các indexes và constraints cũ nếu tồn tại
-    existing_indexes = [idx['name'] for idx in inspector.get_indexes('addresses')]
+    # Bước 6: Drop các indexes cũ (sử dụng IF EXISTS)
     for idx_name in ['ix_address_city_ward', 'ix_addresses_city_id', 'ix_addresses_ward_id', 
                       'ix_addresses_address_line', 'ix_addresses_full_address']:
-        if idx_name in existing_indexes:
-            try:
-                op.drop_index(idx_name, table_name='addresses')
-            except Exception:
-                pass
+        op.execute(f"DROP INDEX IF EXISTS {idx_name}")
     
-    # Drop foreign keys nếu tồn tại
-    existing_fks = [fk['name'] for fk in inspector.get_foreign_keys('addresses')]
+    # Bước 7: Drop foreign keys cũ (sử dụng IF EXISTS)
     for fk_name in ['fk_addresses_city', 'fk_addresses_ward']:
-        if fk_name in existing_fks:
-            try:
-                op.drop_constraint(fk_name, 'addresses', type_='foreignkey')
-            except Exception:
-                pass
+        op.execute(f"ALTER TABLE addresses DROP CONSTRAINT IF EXISTS {fk_name}")
     
-    # Drop cột cũ nếu tồn tại
+    # Bước 8: Drop cột cũ nếu tồn tại
     if 'ward_id' in existing_columns:
         op.drop_column('addresses', 'ward_id')
     if 'city_id' in existing_columns:
         op.drop_column('addresses', 'city_id')
     
-    # Drop bảng cities và wards nếu tồn tại (không còn dùng)
-    existing_tables = inspector.get_table_names()
+    # Bước 9: Drop bảng cities và wards nếu tồn tại
     if 'wards' in existing_tables:
-        op.drop_table('wards')
+        op.execute("DROP TABLE IF EXISTS wards CASCADE")
     if 'cities' in existing_tables:
-        op.drop_table('cities')
+        op.execute("DROP TABLE IF EXISTS cities CASCADE")
 
 
 def downgrade() -> None:
