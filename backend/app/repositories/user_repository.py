@@ -1,3 +1,4 @@
+from types import NoneType
 from typing import Optional
 from uuid import UUID
 from sqlalchemy.orm import Session, joinedload
@@ -164,8 +165,8 @@ class UserRepository:
                 "full_name": f"{user.first_name} {user.last_name}",
                 "phone": user.phone,
                 "email": user.email,
-                "gender": gender if gender else None,  # Cần thêm vào model nếu cần
-                "district": district if district else None,  # Cần join với address
+                "gender": user.gender,  # Lấy từ user object
+                "district": user.hometown,  # Hiển thị quê quán vào field district
                 "status": user.status,
             })
         

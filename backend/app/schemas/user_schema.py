@@ -31,6 +31,8 @@ class UserBase(BaseModel):
     phone: Optional[str] = Field(None, max_length=13)
     cccd: Optional[str] = Field(None, max_length=20)
     date_of_birth: Optional[date] = None
+    gender: str = Field(default="Nam", description="Giới tính: 'Nam' hoặc 'Nữ'")
+    hometown: Optional[str] = Field(None, max_length=255, description="Quê quán")
     role_id: Optional[uuid.UUID] = None
     status: str = Field(default=UserStatus.ACTIVE.value)
     is_temporary_residence: Optional[bool] = False
@@ -60,6 +62,7 @@ class UserRegister(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     email: Optional[str] = None  # Dùng str thay vì EmailStr để tự validate
+    gender: str = Field(default="Nam", description="Giới tính: 'Nam' hoặc 'Nữ'")
     role_id: Optional[uuid.UUID] = None
     password: Optional[str] = None
     confirm_password: Optional[str] = None
@@ -120,6 +123,8 @@ class UserOut(BaseModel):
     phone: Optional[str] = None
     cccd: Optional[str] = None
     date_of_birth: Optional[date] = None
+    gender: Optional[str] = "Nam"
+    hometown: Optional[str] = None
     status: str
     is_temporary_residence: Optional[bool] = False
     temporary_residence_date: Optional[date] = None

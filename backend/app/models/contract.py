@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from sqlalchemy import Column, String, Date, DECIMAL, Integer, Text, ForeignKey
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSON
 
 from .base import BaseModel
 from app.core.Enum.contractEnum import ContractStatus
@@ -30,6 +30,13 @@ class Contract(BaseModel):
     payment_day = Column(Integer, nullable=True)  # Ngày thanh toán hàng tháng (1-31)
     number_of_tenants = Column(Integer, nullable=False, default=1)  # Số người ở trong phòng
     status = Column(String(20), nullable=False, default=ContractStatus.ACTIVE.value, index=True)
+    
+    # Thông tin thanh toán chi tiết
+    payment_cycle_months = Column(Integer, nullable=True, default=1)  # Chu kỳ thanh toán (tháng)
+    electricity_price = Column(DECIMAL(10, 2), nullable=True)  # Giá điện (VNĐ/kWh)
+    water_price = Column(DECIMAL(10, 2), nullable=True)  # Giá nước (VNĐ/m³)
+    service_fees = Column(JSON, nullable=True)  # Phí dịch vụ dưới dạng JSON array: [{"name": "Internet", "amount": 100000}]
+    
     terms_and_conditions = Column(Text, nullable=True)  # Các điều khoản, quy định
     notes = Column(Text, nullable=True)
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)

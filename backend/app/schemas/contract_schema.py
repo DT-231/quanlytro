@@ -19,6 +19,13 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from app.core.Enum.contractEnum import ContractStatus
 
 
+class ServiceFeeItem(BaseModel):
+    """Schema cho một khoản phí dịch vụ."""
+    name: str = Field(..., description="Tên dịch vụ (Internet, Parking, Vệ sinh, ...)")
+    amount: Decimal = Field(..., ge=0, description="Giá dịch vụ (VNĐ/tháng)")
+    description: Optional[str] = Field(None, description="Mô tả thêm (nếu có)")
+
+
 class ContractBase(BaseModel):
     """Schema base chung cho Contract."""
     
@@ -70,8 +77,11 @@ class ContractCreate(ContractBase):
     electricity_price: Optional[Decimal] = Field(default=0, ge=0, description="Giá điện (VNĐ/kWh)")
     water_price: Optional[Decimal] = Field(default=0, ge=0, description="Giá nước (VNĐ/m³)")
     
-    # Phí dịch vụ (có thể mở rộng sau)
-    service_fees: Optional[list[str]] = Field(default_factory=list, description="Danh sách phí dịch vụ")
+    # Phí dịch vứ (Internet, Parking, Vệ sinh, Thang máy, ...)
+    service_fees: Optional[list[ServiceFeeItem]] = Field(
+        default_factory=list, 
+        description="Danh sách phí dịch vụ: [{'name': 'Internet', 'amount': 100000}, {'name': 'Parking', 'amount': 50000}]"
+    )
 
 
 class ContractUpdate(BaseModel):
@@ -131,10 +141,29 @@ class ContractOut(BaseModel):
     terms_and_conditions: Optional[str]
     notes: Optional[str]
     
+    # Thông tin thanh toán chi tiết
+    payment_cycle_months: Optional[int] = None
+    electricity_price: Optional[Decimal] = None
+    water_price: Optional[Decimal] = None
+    service_fees: Optional[list[ServiceFeeItem]] = Field(default_factory=list)
+    
     # Metadata
     created_by: Optional[UUID]
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
+    
+    @field_validator("service_fees", mode="before")
+    @classmethod
+    def parse_service_fees(cls, v):
+        """Convert JSON từ database thành list[ServiceFeeItem]."""
+        if v is None:
+            return []
+        if isinstance(v, str):
+            import json
+            v = json.loads(v)
+        if isinstance(v, list):
+            return [ServiceFeeItem(**item) if isinstance(item, dict) else item for item in v]
+        return v
     
     model_config = {
         "from_attributes": True  # Cho phép convert từ ORM model

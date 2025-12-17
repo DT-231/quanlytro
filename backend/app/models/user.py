@@ -28,6 +28,8 @@ class User(BaseModel):
     phone = Column(String(13), nullable=True, index=True)
     cccd = Column(String(20), unique=True, nullable=True, index=True)  # Căn cước công dân
     date_of_birth = Column(Date, nullable=True)
+    gender = Column(String(10), nullable=False, default="Nam")  # Giới tính: "Nam" hoặc "Nữ"
+    hometown = Column(String(255), nullable=True)  # Quê quán
     role_id = Column(UUID(as_uuid=True), ForeignKey("roles.id"), nullable=False, index=True)
     status = Column(String(20), nullable=False, default=UserStatus.ACTIVE.value, index=True)
     is_temporary_residence = Column(Boolean, nullable=False, default=False)  # Tạm trú tạm vắng

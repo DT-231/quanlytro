@@ -56,11 +56,20 @@ Authorization: Bearer {admin_token}
   "last_name": "B",
   "email": "tenant@example.com",
   "phone": "0912345678",
+  "gender": "Nam",
   "password": "password123",
-  "confirm_password": "password123",
   "role_id": "00000000-0000-0000-0000-000000000000"
 }
 ```
+
+**Fields:**
+- `first_name`: Tên (required)
+- `last_name`: Họ (required)
+- `email`: Email (required)
+- `phone`: Số điện thoại (optional)
+- `gender`: Giới tính - "Nam" hoặc "Nữ" (default: "Nam")
+- `password`: Mật khẩu (required, 8-16 ký tự)
+- `role_id`: Optional, hệ thống tự động set TENANT role
 
 **Permissions:**
 - ✅ Chỉ ADMIN (landlord) được gọi API này
@@ -198,8 +207,8 @@ curl -X POST "http://localhost:8000/api/v1/auth/create-tenant" \
     "last_name": "Tenant",
     "email": "newtenant@example.com",
     "phone": "0912345678",
+    "gender": "Nam",
     "password": "password123",
-    "confirm_password": "password123",
     "role_id": "00000000-0000-0000-0000-000000000000"
   }'
 ```
@@ -216,8 +225,8 @@ curl -X POST "http://localhost:8000/api/v1/auth/create-tenant" \
     "last_name": "User",
     "email": "test@example.com",
     "phone": "0923456789",
+    "gender": "Nữ",
     "password": "password123",
-    "confirm_password": "password123",
     "role_id": "00000000-0000-0000-0000-000000000000"
   }'
 ```
