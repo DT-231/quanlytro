@@ -8,12 +8,17 @@ export const userService = {
 
   getAll: async (params) => {
     const response = await api.get("/users", { params });
-    return response.data;
+    return response.data || response;
   },
 
-  getStats: async () => {
-    const response = await api.get("/users/stats");
-    return response.data;
+  getRoles: async () => {
+    const response = await api.get("/users/roles");
+    return response && response.data ? response.data : response;
+  },
+
+  getStats: async (params) => {
+    const response = await api.get("/users/stats", { params });
+    return response && response.data ? response.data : response;
   },
 
   update: async (id, data) => {

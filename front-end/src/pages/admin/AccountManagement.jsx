@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { FaSearch, FaEdit, FaTrashAlt, FaPlus } from "react-icons/fa";
-import { FiFilter, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { FiFilter } from "react-icons/fi";
 import { Toaster, toast } from "sonner";
 
 // Services
@@ -30,7 +30,7 @@ const AccountManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const itemsPerPage = 5;
+  const itemsPerPage = 5; // Bạn có thể tăng lên 10 hoặc 20 tùy ý
 
   // --- MODALS ---
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -39,15 +39,49 @@ const AccountManagement = () => {
   const [tenantToDelete, setTenantToDelete] = useState(null);
 
   // --- API CALLS ---
+  
+  // 1. Lấy thống kê
   const fetchStats = async () => {
     try {
-      const data = await userService.getStats();
-      if (data) setStats(data);
+      // BƯỚC 1: Gọi API lấy danh sách Roles trước
+      const rolesData = await userService.getRoles();
+      
+      // Kiểm tra dữ liệu trả về để đảm bảo nó là một mảng
+      const rolesList = Array.isArray(rolesData) ? rolesData : (rolesData.data || []);
+
+      // BƯỚC 2: Tìm Role có code là "TENANT"
+      const tenantRole = rolesList.find(role => role.role_code === "TENANT");
+
+      if (tenantRole) {
+        // BƯỚC 3: Nếu tìm thấy, lấy ID của nó truyền vào API Stats
+        console.log("Found Tenant ID:", tenantRole.id); // Log để kiểm tra
+
+        const params = {
+          role_id: tenantRole.id // Truyền UUID thực sự vào đây
+        };
+
+        const res = await userService.getStats(params);
+        
+        // --- Xử lý hiển thị dữ liệu (giữ nguyên logic cũ) ---
+        const statsData = res && res.data ? res.data : res;
+
+        if (statsData) {
+          setStats({
+            total_tenants: statsData.total_tenants || 0,
+            active_tenants: statsData.active_tenants || 0,
+            returned_rooms: statsData.returned_rooms || 0,
+            not_rented: statsData.not_rented || 0,
+          });
+        }
+      } else {
+        console.warn("Không tìm thấy Role TENANT trong hệ thống");
+      }
+
     } catch (error) {
-      console.error("Lỗi stats:", error);
+      console.error("Lỗi khi tải thống kê:", error);
     }
   };
-
+  // 2. Lấy danh sách khách thuê
   const fetchTenants = useCallback(async () => {
     setLoading(true);
     try {
@@ -62,37 +96,46 @@ const AccountManagement = () => {
             ? "INACTIVE"
             : null,
         gender: filterGender || null,
+        role_code: "TENANT",
       };
 
       const res = await userService.getAll(params);
+      
+      // --- SỬA ĐOẠN NÀY ---
+      // Kiểm tra xem res.data có tồn tại không trước
+      const dataSource = res && res.data ? res.data : res;
 
-      if (res && res.items) {
-        setTenants(res.items);
-        setTotalItems(res.total || 0);
-        setTotalPages(Math.ceil((res.total || 0) / itemsPerPage) || 1);
+      if (dataSource && dataSource.items) {
+        setTenants(dataSource.items);       // Lấy items từ dataSource
+        setTotalItems(dataSource.total || 0); // Lấy total từ dataSource
+        setTotalPages(Math.ceil((dataSource.total || 0) / itemsPerPage) || 1);
       } else {
         setTenants([]);
+        setTotalItems(0);
+        setTotalPages(1);
       }
+      // --------------------
+
     } catch (error) {
       console.error("Lỗi lấy danh sách:", error);
       toast.error("Không thể tải danh sách khách thuê");
+      setTenants([]);
     } finally {
       setLoading(false);
     }
   }, [currentPage, searchTerm, filterStatus, filterGender]);
-
-  // Init
+  // Init data
   useEffect(() => {
     fetchStats();
   }, []);
 
-  // Debounce search
+  // Debounce search: Gọi API khi search/filter thay đổi
   useEffect(() => {
     const timer = setTimeout(() => {
-        fetchTenants();
+      fetchTenants();
     }, 500);
     return () => clearTimeout(timer);
-}, [fetchTenants, currentPage]);
+  }, [fetchTenants]);
 
   // --- HANDLERS ---
   const handleOpenAdd = () => {
@@ -108,7 +151,7 @@ const AccountManagement = () => {
   const handleSuccess = () => {
     fetchTenants();
     fetchStats();
-    setCurrentPage(1); 
+    if (!tenantToEdit) setCurrentPage(1); 
   };
 
   const handleDeleteClick = (tenant) => {
@@ -121,12 +164,13 @@ const AccountManagement = () => {
       try {
         await userService.delete(tenantToDelete.id);
         toast.success(
-          `Đã xóa: ${tenantToDelete.full_name || tenantToDelete.name}`
+          `Đã xóa: ${tenantToDelete.full_name || tenantToDelete.first_name}`
         );
         fetchTenants();
         fetchStats();
       } catch (error) {
-        toast.error("Không thể xóa khách thuê này.");
+        console.error("Lỗi xóa:", error);
+        toast.error("Không thể xóa khách thuê này (Có thể đang có hợp đồng).");
       } finally {
         setDeleteModalOpen(false);
         setTenantToDelete(null);
@@ -134,12 +178,16 @@ const AccountManagement = () => {
     }
   };
 
-  // Helpers
+  // Helpers: Xử lý hiển thị màu sắc và text trạng thái
   const getStatusColor = (status) => {
+    // API trả về ACTIVE/INACTIVE
     switch (status) {
       case "ACTIVE":
+      case "Đang thuê": // Fallback nếu dữ liệu cũ
         return "bg-green-500 text-white";
       case "INACTIVE":
+      case "Chưa thuê": // Fallback
+      case "Đã trả phòng":
         return "bg-red-500 text-white";
       default:
         return "bg-gray-200 text-gray-800";
@@ -152,6 +200,7 @@ const AccountManagement = () => {
     return status || "Chưa xác định";
   };
 
+  // --- RENDER (GIỮ NGUYÊN CSS & HTML) ---
   return (
     <div className="min-h-screen bg-gray-50 font-sans relative">
       <Toaster position="top-right" richColors />
@@ -265,33 +314,33 @@ const AccountManagement = () => {
                   </td>
                 </tr>
               ) : tenants.length > 0 ? (
-    tenants.map((tenant) => (
-      <tr
-        key={tenant.id}
-        className="hover:bg-gray-50 transition-colors"
-      >
-        <td className="p-3 font-semibold text-gray-900">
-          {tenant.full_name ||
-            `${tenant.last_name || ""} ${tenant.first_name || ""}`}
-          <div className="text-xs text-gray-400 font-normal">
-            {tenant.code || "---"} 
-          </div>
-        </td>
-        <td className="p-3">{tenant.phone || "---"}</td>
-        <td className="p-3 text-gray-500">{tenant.email || "---"}</td>
-        <td className="p-3">{tenant.gender || "---"}</td>
-        <td className="p-3">
-          {tenant.address || tenant.district || "---"}
-        </td>
-        <td className="p-3 text-center">
-          <span
-            className={`${getStatusColor(
-              tenant.status
-            )} px-2 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap`}
-          >
-            {getStatusLabel(tenant.status)}
-          </span>
-        </td>
+                tenants.map((tenant) => (
+                  <tr
+                    key={tenant.id}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="p-3 font-semibold text-gray-900">
+                      {tenant.full_name ||
+                        `${tenant.last_name || ""} ${tenant.first_name || ""}`}
+                      <div className="text-xs text-gray-400 font-normal">
+                        {tenant.code ? `#${tenant.code}` : "---"}
+                      </div>
+                    </td>
+                    <td className="p-3">{tenant.phone || "---"}</td>
+                    <td className="p-3 text-gray-500">{tenant.email || "---"}</td>
+                    <td className="p-3">{tenant.gender || "---"}</td>
+                    <td className="p-3">
+                      {tenant.district || tenant.address || "---"}
+                    </td>
+                    <td className="p-3 text-center">
+                      <span
+                        className={`${getStatusColor(
+                          tenant.status
+                        )} px-2 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap`}
+                      >
+                        {getStatusLabel(tenant.status)}
+                      </span>
+                    </td>
                     <td className="p-3 flex justify-center gap-2">
                       <button
                         onClick={() => handleOpenEdit(tenant)}
@@ -322,9 +371,9 @@ const AccountManagement = () => {
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
-          onPageChange={setCurrentPage} 
-          totalItems={totalItems} 
-          itemName="khách thuê" 
+          onPageChange={setCurrentPage}
+          totalItems={totalItems}
+          itemName="khách thuê"
         />
       </div>
 

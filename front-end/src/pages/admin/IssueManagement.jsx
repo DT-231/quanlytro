@@ -379,7 +379,7 @@ const IssueManagement = () => {
         <Pagination 
             currentPage={currentPage}
             totalPages={totalPages}
-            totalItems={totalItems}
+            // totalItems={totalItems}
             onPageChange={setCurrentPage}
             label="sự cố"
          />
