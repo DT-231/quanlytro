@@ -13,6 +13,9 @@ const Pagination = ({
       onPageChange(page);
     }
   };
+  const itemsPerPage = totalPages > 0 && totalItems > 0 ? Math.ceil(totalItems / totalPages) : 0;
+const startItem = itemsPerPage > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
+const endItem = itemsPerPage > 0 ? Math.min(currentPage * itemsPerPage, totalItems) : 0;
 
   return (
     <div className="p-4 bg-white flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-gray-100">

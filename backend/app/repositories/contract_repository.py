@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Optional
 from uuid import UUID
+from decimal import Decimal
 
 from sqlalchemy import select, func, and_, case, or_
 from sqlalchemy.orm import Session, joinedload
@@ -266,7 +267,19 @@ class ContractRepository:
         Raises:
             IntegrityError: Nếu contract_number đã tồn tại
         """
-        contract_dict = data.model_dump(exclude={"contract_number", "payment_cycle_months", "electricity_price", "water_price", "service_fees"})
+        contract_dict = data.model_dump(exclude={"contract_number", "service_fees"})
+        
+        # Convert service_fees từ Pydantic models sang dict để lưu JSON
+        # Phải convert Decimal sang float để JSON serialize được
+        if data.service_fees:
+            service_fees_json = []
+            for fee in data.service_fees:
+                fee_dict = fee.model_dump()
+                # Convert Decimal to float
+                if isinstance(fee_dict.get('amount'), Decimal):
+                    fee_dict['amount'] = float(fee_dict['amount'])
+                service_fees_json.append(fee_dict)
+            contract_dict["service_fees"] = service_fees_json
         
         # Tạo contract_number nếu chưa có
         contract_number = data.contract_number

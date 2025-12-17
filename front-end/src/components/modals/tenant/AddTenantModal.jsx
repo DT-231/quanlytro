@@ -103,37 +103,51 @@ export default function AddTenantModal({ isOpen, onClose, onAddSuccess, tenantTo
 
   const onSubmit = async (values) => {
     setIsSubmitting(true);
-    try {
-      // Payload chung
-      const commonPayload = {
-        first_name: values.firstName, 
-        last_name: values.lastName,   
-        email: values.email,
-        phone: values.phone,
-        cccd: values.cccd,
-        date_of_birth: values.dob || null,
-        gender: values.gender,
-        address: values.hometown,
-        status: "ACTIVE", 
-      };
+    let tenantId = tenantToEdit?.id; 
+    const commonPayload = {
+      first_name: values.firstName, 
+      last_name: values.lastName,   
+      email: values.email,
+      phone: values.phone,
+      cccd: values.cccd,
+      date_of_birth: values.dob || null,
+      gender: values.gender,
+      address: values.hometown,
+    };
 
+    try {
       if (isEditMode) {
-        // --- UPDATE ---
         await userService.update(tenantToEdit.id, commonPayload);
         toast.success("Cập nhật thông tin thành công!");
       } else {
-        // --- CREATE ---
         const createPayload = {
             ...commonPayload,
             password: defaultPassword,
-            is_temporary_residence: false,
-            role_name: "TENANT"
+            is_temporary_residence: false, 
         };
-        await userService.createTenant(createPayload);
+        const createdUser = await userService.createTenant(createPayload); 
+        tenantId = createdUser.id; 
+        
         toast.success("Tạo tài khoản thành công!", {
             description: `Mật khẩu mặc định: ${defaultPassword}`,
             duration: 8000, 
         });
+      }
+      if ((frontImage || backImage) && tenantId) {
+        try {
+            if (frontImage) {
+                await userService.uploadCCCD(tenantId, frontImage.file, 'front'); 
+            }
+            if (backImage) {
+                await userService.uploadCCCD(tenantId, backImage.file, 'back');
+            }
+            if(frontImage || backImage) {
+                toast.success("Đã upload ảnh CCCD thành công!");
+            }
+        } catch (uploadError) {
+            console.error("Lỗi Upload ảnh:", uploadError);
+            toast.warning("Thông tin đã lưu, nhưng có lỗi khi upload ảnh CCCD.");
+        }
       }
 
       if (onAddSuccess) onAddSuccess(); 
@@ -141,19 +155,23 @@ export default function AddTenantModal({ isOpen, onClose, onAddSuccess, tenantTo
 
     } catch (error) {
       console.error("Lỗi:", error);
-      const detail = error.response?.data?.detail;
+      const detail = error.response?.data?.detail; 
+      let errorMessage = "Thao tác thất bại. Vui lòng thử lại.";
+
       if (typeof detail === 'string') {
-          toast.error(detail);
-      } else if (Array.isArray(detail)) {
-          toast.error(`Lỗi: ${detail[0].msg}`);
-      } else {
-          toast.error("Thao tác thất bại. Có thể Email/CCCD đã tồn tại.");
+          errorMessage = detail; 
+      } else if (Array.isArray(detail) && detail.length > 0) {
+          errorMessage = `Lỗi: ${detail[0].msg} (${detail[0].loc.slice(-1)})`;
+      } else if (error.message) {
+          errorMessage = error.message;
       }
+
+      toast.error(errorMessage);
+
     } finally {
       setIsSubmitting(false);
     }
-  };
-
+};
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden bg-white text-black">

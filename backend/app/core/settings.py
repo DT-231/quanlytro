@@ -16,15 +16,15 @@ env_dev_path = backend_dir / ".env.development"
 
 if env_docker_path.exists():
     load_dotenv(env_docker_path, override=False)
-    print(f"✓ Loaded: {env_docker_path} (override=False)")
+    print(f"[OK] Loaded: {env_docker_path} (override=False)")
 elif env_dev_path.exists():
     load_dotenv(env_dev_path, override=False)
-    print(f"✓ Loaded: {env_dev_path} (override=False)")
+    print(f"[OK] Loaded: {env_dev_path} (override=False)")
 else:
-    print(f"✗ Warning: No .env file found!")
+    print(f"[WARNING] No .env file found!")
 
 # Debug: Print DATABASE_URL
-print(f"🔍 DATABASE_URL = {os.getenv('DATABASE_URL', 'NOT SET')}")
+print(f"[DEBUG] DATABASE_URL = {os.getenv('DATABASE_URL', 'NOT SET')}")
 
 class Setting(BaseSettings):
     

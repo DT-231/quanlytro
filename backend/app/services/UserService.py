@@ -69,7 +69,7 @@ class UserService:
         status: Optional[str] = None,
         gender: Optional[str] = None,
         district: Optional[str] = None,
-        role_id: Optional[UUID] = None,
+        role_code: Optional[str] = None,
         offset: int = 0,
         limit: int = 20,
     ) -> dict:
@@ -80,7 +80,7 @@ class UserService:
             status: Lọc theo trạng thái.
             gender: Lọc theo giới tính.
             district: Lọc theo quận/huyện.
-            role_id: Lọc theo role.
+            role_code: Lọc theo mã role (TENANT, CUSTOMER).
             offset: Vị trí bắt đầu.
             limit: Số lượng tối đa (max 100).
 
@@ -100,6 +100,15 @@ class UserService:
                 raise ValueError(
                     f"Trạng thái không hợp lệ. Phải là một trong: {valid_statuses}"
                 )
+        
+        # Convert role_code sang role_id nếu cần
+        role_id = None
+        if role_code:
+            from app.models.role import Role
+            role = self.db.query(Role).filter(Role.role_code == role_code.upper()).first()
+            if not role:
+                raise ValueError(f"Mã role không hợp lệ: {role_code}. Phải là TENANT hoặc CUSTOMER")
+            role_id = role.id
 
         # Lấy danh sách users
         items_data = self.user_repo.list_with_filters(
@@ -116,6 +125,8 @@ class UserService:
         total = self.user_repo.count(
             search=search,
             status=status,
+            gender=gender,
+            district=district,
             role_id=role_id,
         )
 

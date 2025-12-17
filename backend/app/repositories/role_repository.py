@@ -62,6 +62,23 @@ class RoleRepository:
             Danh sách tất cả Role instances.
         """
         return self.db.query(Role).all()
+    
+    def get_all_public_roles(self) -> list[Role]:
+        """Lấy danh sách roles công khai (loại trừ ADMIN).
+        
+        Dùng cho dropdown filter, chỉ trả TENANT và CUSTOMER.
+        
+        Returns:
+            List các Role instances (TENANT, CUSTOMER).
+        """
+        from app.core.Enum.userEnum import UserRole
+        
+        return (
+            self.db.query(Role)
+            .filter(Role.role_code != UserRole.ADMIN.value)
+            .order_by(Role.role_code)
+            .all()
+        )
 
     def create(self, role_code: str, role_name: str, description: str | None = None) -> Role:
         """Tạo role mới trong database.

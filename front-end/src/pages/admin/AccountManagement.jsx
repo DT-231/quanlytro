@@ -89,10 +89,10 @@ const AccountManagement = () => {
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchTenants();
+        fetchTenants();
     }, 500);
     return () => clearTimeout(timer);
-  }, [fetchTenants]);
+}, [fetchTenants, currentPage]);
 
   // --- HANDLERS ---
   const handleOpenAdd = () => {
@@ -108,6 +108,7 @@ const AccountManagement = () => {
   const handleSuccess = () => {
     fetchTenants();
     fetchStats();
+    setCurrentPage(1); 
   };
 
   const handleDeleteClick = (tenant) => {
@@ -264,33 +265,33 @@ const AccountManagement = () => {
                   </td>
                 </tr>
               ) : tenants.length > 0 ? (
-                tenants.map((tenant) => (
-                  <tr
-                    key={tenant.id}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="p-3 font-semibold text-gray-900">
-                      {tenant.full_name ||
-                        `${tenant.last_name} ${tenant.first_name}`}
-                      <div className="text-xs text-gray-400 font-normal">
-                        {tenant.code}
-                      </div>
-                    </td>
-                    <td className="p-3">{tenant.phone}</td>
-                    <td className="p-3 text-gray-500">{tenant.email}</td>
-                    <td className="p-3">{tenant.gender}</td>
-                    <td className="p-3">
-                      {tenant.address || tenant.district || "--"}
-                    </td>
-                    <td className="p-3 text-center">
-                      <span
-                        className={`${getStatusColor(
-                          tenant.status
-                        )} px-2 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap`}
-                      >
-                        {getStatusLabel(tenant.status)}
-                      </span>
-                    </td>
+    tenants.map((tenant) => (
+      <tr
+        key={tenant.id}
+        className="hover:bg-gray-50 transition-colors"
+      >
+        <td className="p-3 font-semibold text-gray-900">
+          {tenant.full_name ||
+            `${tenant.last_name || ""} ${tenant.first_name || ""}`}
+          <div className="text-xs text-gray-400 font-normal">
+            {tenant.code || "---"} 
+          </div>
+        </td>
+        <td className="p-3">{tenant.phone || "---"}</td>
+        <td className="p-3 text-gray-500">{tenant.email || "---"}</td>
+        <td className="p-3">{tenant.gender || "---"}</td>
+        <td className="p-3">
+          {tenant.address || tenant.district || "---"}
+        </td>
+        <td className="p-3 text-center">
+          <span
+            className={`${getStatusColor(
+              tenant.status
+            )} px-2 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap`}
+          >
+            {getStatusLabel(tenant.status)}
+          </span>
+        </td>
                     <td className="p-3 flex justify-center gap-2">
                       <button
                         onClick={() => handleOpenEdit(tenant)}

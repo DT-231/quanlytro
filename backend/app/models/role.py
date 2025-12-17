@@ -18,8 +18,9 @@ class Role(BaseModel):
     """
     __tablename__ = "roles"
     
-    role_code = Column(String(20), unique=True, nullable=False, index=True)
-    role_name = Column(String(50), nullable=False) 
+    role_code = Column(String(20), unique=True, nullable=False, index=True)  # ADMIN, TENANT, CUSTOMER
+    role_name = Column(String(50), nullable=False)  # Administrator, Tenant, Customer (English)
+    display_name = Column(String(50), nullable=True)  # Chủ trọ, Người thuê, Khách (Vietnamese)
     description = Column(String, nullable=True)
     
     # Relationships

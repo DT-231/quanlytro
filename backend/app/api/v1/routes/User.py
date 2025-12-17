@@ -24,9 +24,48 @@ from app.core.exceptions import (
 )
 from app.models.user import User
 from app.schemas.user_schema import UserUpdate, UserOut, UserListItem, UserStats
+from app.schemas.role_schema import RoleOut
 from app.services.UserService import UserService
+from app.services.RoleService import RoleService
 
 router = APIRouter(prefix="/users", tags=["Users Management"])
+
+
+@router.get("/roles", response_model=list[RoleOut], status_code=status.HTTP_200_OK)
+def get_roles_for_filter(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Lấy danh sách roles để làm bộ lọc.
+    
+    **Yêu cầu**: User đã đăng nhập
+    
+    **Response**: Danh sách roles (TENANT, CUSTOMER) - loại trừ ADMIN
+    
+    **Example response**:
+    ```json
+    [
+        {
+            "id": "uuid-tenant",
+            "role_code": "TENANT",
+            "role_name": "Tenant",
+            "display_name": "Người thuê"
+        },
+        {
+            "id": "uuid-customer",
+            "role_code": "CUSTOMER",
+            "role_name": "Customer",
+            "display_name": "Khách"
+        }
+    ]
+    ```
+    """
+    try:
+        service = RoleService(db)
+        roles = service.get_public_roles()
+        return roles  # Trả về list trực tiếp, FastAPI tự serialize theo response_model
+    except Exception as e:
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
 @router.get("/stats", status_code=status.HTTP_200_OK)
@@ -65,7 +104,7 @@ def get_list_users(
     ),
     gender: Optional[str] = Query(None, description="Lọc theo giới tính: Nam, Nữ"),
     district: Optional[str] = Query(None, description="Lọc theo quận/huyện"),
-    role_id: Optional[UUID] = Query(None, description="Lọc theo role ID"),
+    role_code: Optional[str] = Query(None, description="Lọc theo mã role: TENANT, CUSTOMER"),
     offset: int = Query(0, ge=0, description="Vị trí bắt đầu (pagination)"),
     limit: int = Query(20, ge=1, le=100, description="Số lượng tối đa mỗi trang"),
     db: Session = Depends(get_db),
@@ -80,7 +119,7 @@ def get_list_users(
     - status: Lọc theo trạng thái (ACTIVE, INACTIVE)
     - gender: Lọc theo giới tính
     - district: Lọc theo quận/huyện
-    - role_id: Lọc theo role
+    - role_code: Lọc theo mã role (TENANT, CUSTOMER)
     
     **Pagination**:
     - offset: Vị trí bắt đầu (mặc định 0)
@@ -114,7 +153,7 @@ def get_list_users(
             status=status_filter,
             gender=gender,
             district=district,
-            role_id=role_id,
+            role_code=role_code,
             offset=offset,
             limit=limit,
         )

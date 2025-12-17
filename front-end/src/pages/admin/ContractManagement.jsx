@@ -16,6 +16,7 @@ import { Toaster, toast } from "sonner";
 import AddContractModal from "@/components/modals/contract/AddContractModal";
 import { contractService } from "@/services/contractService";
 import { buildingService } from "@/services/buildingService"; 
+import EditContractModal from "@/components/modals/contract/EditContractModal";
 // --- COMPONENT: Modal Xóa ---
 import DeleteConfirmationModal from "@/components/modals/DeleteConfirmationModal";
 import Pagination from "@/components/Pagination";
@@ -44,6 +45,8 @@ const ContractManagement = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [contractToDelete, setContractToDelete] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [contractToEdit, setContractToEdit] = useState(null);
 
   // --- 2. HELPER: MAP UI STATUS -> API STATUS ---
   const mapStatusToApi = (uiStatus) => {
@@ -131,20 +134,17 @@ const ContractManagement = () => {
 
 
   // --- 5. HANDLERS ---
-  const handleAddNewContract = async (newData) => {
-    try {
-      const response = await contractService.create(newData);
-      if (response) {
-        toast.success("Tạo hợp đồng thành công!");
-        setIsAddModalOpen(false);
-        fetchContracts();
-        fetchStats();
-      }
-    } catch (error) {
-      console.error("Error creating contract:", error);
-      toast.error("Tạo hợp đồng thất bại, vui lòng kiểm tra lại.");
-    }
+  const handleContractChange = () => {
+    fetchContracts();
+    fetchStats();
   };
+
+
+const handleAddNewContract = (createdContract) => {
+    toast.success(`Tạo hợp đồng ${createdContract?.contract_number || ""} thành công!`);
+    setIsAddModalOpen(false);
+    handleContractChange(); 
+};
 
   const handleDeleteClick = (contract) => {
     setContractToDelete(contract);
@@ -156,8 +156,7 @@ const ContractManagement = () => {
       await contractService.delete(contractToDelete.id);
       toast.success(`Đã xóa hợp đồng: ${contractToDelete.contract_number}`);
 
-      fetchContracts();
-      fetchStats();
+      handleContractChange();
     } catch (error) {
       console.error("Error deleting contract:", error);
       toast.error("Xóa hợp đồng thất bại.");
@@ -168,6 +167,14 @@ const ContractManagement = () => {
     }
   };
 
+  const handleEditClick = (contract) => {
+    setContractToEdit(contract); // Lưu data dòng được click
+    setIsEditModalOpen(true);    // Mở modal
+  };
+  const handleUpdateSuccess = () => {
+    fetchContracts(); // Tải lại danh sách
+    fetchStats();     // Tải lại thống kê
+  };
   // --- 6. FORMATTERS ---
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -185,7 +192,7 @@ const ContractManagement = () => {
   const getStatusColor = (status) => {
     switch (status) {
       case "ACTIVE": return "bg-green-500 text-white";
-      case "EXPIRING_SOON": return "bg-yellow-400 text-gray-900";
+      case "PENDING": return "bg-gray-200 text-gray-800";
       case "EXPIRED": return "bg-red-600 text-white";
       case "TERMINATED": return "bg-gray-500 text-white";
       default: return "bg-gray-200 text-gray-800";
@@ -196,7 +203,8 @@ const ContractManagement = () => {
      switch (status) {
       case "ACTIVE": return "Đang hoạt động";
       case "EXPIRED": return "Đã hết hạn";
-      case "TERMINATED": return "Đã thanh lý";
+      case "TERMINATED": return "Đã kết thúc";
+      case "PENDING": return "Chờ ký"
       default: return status;
     }
   }
@@ -241,8 +249,7 @@ const ContractManagement = () => {
 
           {/* Dropdowns */}
           <div className="flex gap-2 w-full md:w-auto justify-end">
-            
-            {/* Filter Building - ĐÃ CẬP NHẬT DYNAMIC */}
+
             <div className="relative w-full md:w-48">
               <select
                 className="w-full appearance-none border border-gray-200 px-3 py-2 pr-8 rounded-md bg-white hover:bg-gray-50 text-sm focus:outline-none cursor-pointer text-gray-700 transition-all"
@@ -275,8 +282,8 @@ const ContractManagement = () => {
               >
                 <option value="">Tất cả trạng thái</option>
                 <option value="Đang hoạt động">Đang hoạt động</option>
+                <option value="Chờ ký">Chờ ký</option>
                 <option value="Đã hết hạn">Đã hết hạn</option>
-                <option value="Đã thanh lý">Đã thanh lý</option>
               </select>
               <FiFilter className="absolute right-3 top-2.5 text-gray-400 w-4 h-4 pointer-events-none" />
             </div>
@@ -372,7 +379,9 @@ const ContractManagement = () => {
                     </td>
                     <td className="p-4">
                       <div className="flex justify-center gap-2">
-                        <button className="p-2 border border-gray-200 rounded hover:bg-gray-900 hover:text-white text-gray-500 transition-all shadow-sm" title="Xem chi tiết">
+                        <button 
+                         onClick={() => handleEditClick(contract)}
+                        className="p-2 border border-gray-200 rounded hover:bg-gray-900 hover:text-white text-gray-500 transition-all shadow-sm" title="Xem chi tiết">
                           <FaEdit size={12} />
                         </button>
                         <button
@@ -400,7 +409,6 @@ const ContractManagement = () => {
         <Pagination 
             currentPage={currentPage}
             totalPages={totalPages}
-            // totalItems={totalItems} // Nếu API contract trả về total, bạn truyền vào đây
             onPageChange={setCurrentPage}
             label="hợp đồng"
           />
@@ -412,6 +420,13 @@ const ContractManagement = () => {
         onAddSuccess={handleAddNewContract}
       />
 
+      <EditContractModal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            contractData={contractToEdit}
+            onUpdateSuccess={handleUpdateSuccess}
+        />
+        
       <DeleteConfirmationModal
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
