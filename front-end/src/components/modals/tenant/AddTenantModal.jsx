@@ -40,7 +40,7 @@ export default function AddTenantModal({ isOpen, onClose, onAddSuccess, tenantTo
   const frontInputRef = useRef(null);
   const backInputRef = useRef(null);
 
-  const defaultPassword = `User@123456`; 
+  const defaultPassword = `User@1234`; 
 
   const form = useForm({
     resolver: zodResolver(formSchema),

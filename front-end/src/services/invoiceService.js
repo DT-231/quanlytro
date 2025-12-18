@@ -53,7 +53,7 @@ export const invoiceService = {
       if (!cleanParams.building_id) delete cleanParams.building_id;
       
       const response = await api.get("/invoices", { params: cleanParams });
-      return response.data; // Giữ nguyên vì cần cả field 'total' và 'items'
+      return response.data;
     } catch (error) {
       console.error("Lỗi lấy hóa đơn:", error);
       return { items: [], total: 0 };

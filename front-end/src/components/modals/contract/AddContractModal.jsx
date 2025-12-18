@@ -114,8 +114,7 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
   };
 
   const generateNextCode = () => {
-    // Tạo mã hợp đồng dựa trên thời gian: INV-XXXXXX (6 số cuối của timestamp)
-    const timestamp = Date.now(); // milliseconds since 1970
+    const timestamp = Date.now(); 
     const last6Digits = String(timestamp).slice(-6);
     
     return `INV-${last6Digits}`;

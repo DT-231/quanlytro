@@ -40,47 +40,61 @@ export default function LoginPage() {
     defaultValues: { email: "", password: "" },
   });
 
-  // --- XỬ LÝ SUBMIT VỚI DỮ LIỆU GIẢ ---
-  const onSubmit = async (values) => {
+  // --- XỬ LÝ SUBMIT VỚI DỮ LIỆU ---
+ const onSubmit = async (values) => {
     setLoginError("");
     setIsLoading(true);
-    try {
-      const res = await authService.login(values.email, values.password)
-      console.log("res : ",res);
-      
-      if (res && res.data.success) {
-        let data = res.data.data
-        let user = data.user
-        let token = data.token
-        login(user, token);
-        
-        toast.success(`Chào mừng  ${user.last_name} ${user.first_name} quay trở lại!`, {
-          description: "Đăng nhập thành công",
-          position: "top-center",
-        });
 
-        setTimeout(() => {
-          if (user.role === "ADMIN") {
-            navigate("/admin/dashboard");
-          } else {
-            navigate("/");
-          }
-        }, 1000);
+    try {
+      const res = await authService.login(values.email, values.password);
+      console.log("Dữ liệu nhận được:", res);
+      if (res && res.success) {
+        const data = res.data; 
+        const user = data.user;
+        const token = data.token?.access_token || data.token;
+
+        if (user && token) {
+            login(user, token);
+            toast.success(`Chào mừng ${user.last_name || ''} ${user.first_name || ''}!`, {
+                description: "Đăng nhập thành công",
+            });
+
+            setTimeout(() => {
+                if (user.role === "ADMIN") {
+                    navigate("/admin/dashboard");
+                } else {
+                    navigate("/");
+                }
+            }, 1000);
+        } else {
+            console.error("Thiếu user hoặc token", data);
+            setLoginError("Lỗi dữ liệu phản hồi từ server");
+        }
+
       } else {
-        toast.error("Đăng nhập thất bại", { description: res.data.message });
-        setLoginError(res.data.message);
+       
+        const msg = res.message || "Đăng nhập thất bại";
+        setLoginError(msg);
+        toast.error(msg);
       }
 
     } catch (error) {
-      console.log(error);
-      toast.error("Đăng nhập thất bại", { description: "Lỗi đăng nhập" });
-      setLoginError("Lỗi đăng nhập");
+      console.log("Lỗi HTTP:", error);
+
+      if (error.response && error.response.data) {
+        const serverMessage = error.response.data.message || "Lỗi xác thực thông tin.";
+        setLoginError(serverMessage);
+        
+
+      } else {
+        setLoginError("Không thể kết nối đến máy chủ.");
+        toast.error("Lỗi kết nối", { description: "Vui lòng kiểm tra mạng." });
+      }
 
     } finally {
       setIsLoading(false);
     }
-    
-  }
+  };
 
   return (
     <div className="flex items-center justify-center min-h-[85vh] bg-slate-50 px-4 relative">

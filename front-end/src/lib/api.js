@@ -9,11 +9,20 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token'); // Hoặc nơi bạn lưu token
-    console.log("token :",token);
+    const token = localStorage.getItem('token');
     
-    if (token && JSON.parse(token).access_token) {
-      config.headers.Authorization = `Bearer ${JSON.parse(token).access_token}`;
+    if (token) {
+      try {
+        const parsedToken = JSON.parse(token);
+        if (typeof parsedToken === 'object' && parsedToken.access_token) {
+           config.headers.Authorization = `Bearer ${parsedToken.access_token}`;
+        } 
+        else if (typeof parsedToken === 'string') {
+           config.headers.Authorization = `Bearer ${parsedToken}`;
+        }
+      } catch (e) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -22,7 +31,5 @@ api.interceptors.request.use(
   }
 );
 
-
-
-
 export default api;
+

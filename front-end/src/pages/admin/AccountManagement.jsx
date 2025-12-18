@@ -48,21 +48,16 @@ const AccountManagement = () => {
       
       // Kiểm tra dữ liệu trả về để đảm bảo nó là một mảng
       const rolesList = Array.isArray(rolesData) ? rolesData : (rolesData.data || []);
-
       // BƯỚC 2: Tìm Role có code là "TENANT"
       const tenantRole = rolesList.find(role => role.role_code === "TENANT");
 
       if (tenantRole) {
-        // BƯỚC 3: Nếu tìm thấy, lấy ID của nó truyền vào API Stats
-        console.log("Found Tenant ID:", tenantRole.id); // Log để kiểm tra
 
         const params = {
-          role_id: tenantRole.id // Truyền UUID thực sự vào đây
+          role_id: tenantRole.id 
         };
 
         const res = await userService.getStats(params);
-        
-        // --- Xử lý hiển thị dữ liệu (giữ nguyên logic cũ) ---
         const statsData = res && res.data ? res.data : res;
 
         if (statsData) {
