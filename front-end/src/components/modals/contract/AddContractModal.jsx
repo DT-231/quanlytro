@@ -2,13 +2,18 @@ import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { X, Plus, Loader2, Check, ChevronsUpDown } from "lucide-react"; 
-import { contractService } from "@/services/contractService"; 
+import { X, Plus, Loader2, Check, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
+
+// Services
+import { contractService } from "@/services/contractService";
 import { roomService } from "@/services/roomService";
 import { userService } from "@/services/userService";
-// 2. THÊM IMPORT cn
+
+// Utils
 import { cn } from "@/lib/utils";
+
+// UI Components
 import {
   Command,
   CommandEmpty,
@@ -22,7 +27,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
 import {
   Dialog,
   DialogContent,
@@ -40,6 +44,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
+// Schema Validation
 const formSchema = z.object({
   tenantId: z.string().min(1, "Vui lòng chọn khách hàng"),
   roomId: z.string().min(1, "Vui lòng chọn phòng"),
@@ -48,7 +53,7 @@ const formSchema = z.object({
   endDate: z.string().min(1, "Chọn ngày kết thúc"),
   rentPrice: z.coerce.number().min(0, "Giá thuê không được âm"),
   deposit: z.coerce.number().min(0, "Tiền cọc không được âm"),
-  paymentDate: z.coerce.number().min(1).max(31),
+  paymentDate: z.coerce.number().min(1).max(31, "Ngày không hợp lệ"),
   paymentCycle: z.string(),
   electricityPrice: z.coerce.number().min(0),
   waterPrice: z.coerce.number().min(0),
@@ -62,9 +67,10 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
   const [loadingData, setLoadingData] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // --- STATE SERVICES (Chỉ cần ID và Name) ---
   const [services, setServices] = useState([
-    { id: 1, name: "Phí rác", price: 0 },
-    { id: 2, name: "Phí giữ xe", price: 0 },
+    { id: 1, name: "Phí rác" },
+    { id: 2, name: "Phí giữ xe" },
   ]);
   const [newServiceName, setNewServiceName] = useState("");
 
@@ -83,26 +89,21 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
       electricityPrice: 3500,
       waterPrice: 15000,
       status: "ACTIVE",
-      terms: "Bên thuê có trách nhiệm bảo quản tài sản...",
+      terms: "Bên thuê có trách nhiệm bảo quản tài sản và thanh toán đúng hạn.",
     },
   });
 
   const generateNextCode = (contracts) => {
     if (!contracts || contracts.length === 0) return "HD001";
-
     let maxNum = 0;
     contracts.forEach((contract) => {
       const code = contract.contract_number;
       if (code && code.startsWith("HD")) {
         const numPart = parseInt(code.replace("HD", ""), 10);
-        if (!isNaN(numPart) && numPart > maxNum) {
-          maxNum = numPart;
-        }
+        if (!isNaN(numPart) && numPart > maxNum) maxNum = numPart;
       }
     });
-
-    const nextNum = maxNum + 1;
-    return `HD${String(nextNum).padStart(3, "0")}`;
+    return `HD${String(maxNum + 1).padStart(3, "0")}`;
   };
 
   useEffect(() => {
@@ -112,45 +113,27 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
         try {
           const [resRooms, resTenants, resContracts] = await Promise.all([
             roomService.getAll({ size: 100, status: "AVAILABLE" }),
-            userService.getAll({ size: 100, role: "TENANT" }),
+            userService.getAll({ size: 100, role_code: "TENANT" }),
             contractService.getAll({ size: 100 }),
           ]);
-          if (resRooms && resRooms.data && Array.isArray(resRooms.data.items)) {
-            setRooms(resRooms.data.items);
-          } else if (resRooms && Array.isArray(resRooms.items)) {
-            setRooms(resRooms.items);
-          } else {
-            setRooms([]);
-          }
 
-          if (
-            resTenants &&
-            resTenants.data &&
-            Array.isArray(resTenants.data.items)
-          ) {
-            setTenants(resTenants.data.items);
-          } else if (resTenants && Array.isArray(resTenants.items)) {
-            setTenants(resTenants.items);
-          } else {
-            setTenants([]);
-          }
+          if (resRooms?.data?.items) setRooms(resRooms.data.items);
+          else if (resRooms?.items) setRooms(resRooms.items);
+          else setRooms([]);
+
+          if (resTenants?.data?.items) setTenants(resTenants.data.items);
+          else if (resTenants?.items) setTenants(resTenants.items);
+          else setTenants([]);
 
           let currentContracts = [];
-          if (
-            resContracts &&
-            resContracts.data &&
-            Array.isArray(resContracts.data.items)
-          ) {
-            currentContracts = resContracts.data.items;
-          } else if (resContracts && Array.isArray(resContracts.items)) {
-            currentContracts = resContracts.items;
-          }
+          if (resContracts?.data?.items) currentContracts = resContracts.data.items;
+          else if (resContracts?.items) currentContracts = resContracts.items;
 
           const nextCode = generateNextCode(currentContracts);
           form.setValue("contractCode", nextCode);
         } catch (error) {
-          console.error("Lỗi tải dữ liệu nguồn:", error);
-          toast.error("Không thể tải danh sách phòng/khách hàng.");
+          console.error("Lỗi tải dữ liệu:", error);
+          toast.error("Không thể tải danh sách phòng hoặc khách hàng.");
         } finally {
           setLoadingData(false);
         }
@@ -162,8 +145,11 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
   const handleRoomSelect = (selectedRoomId) => {
     form.setValue("roomId", selectedRoomId);
     const room = rooms.find((r) => r.id === selectedRoomId);
-    if (room && (room.base_price || room.price)) {
-      form.setValue("rentPrice", room.base_price || room.price);
+    if (room) {
+      const price = room.rental_price || room.price || room.base_price || 0;
+      form.setValue("rentPrice", price);
+      // Gợi ý tiền cọc bằng giá thuê
+      form.setValue("deposit", price);
     }
   };
 
@@ -172,15 +158,18 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
     if (!start) return;
     const date = new Date(start);
     date.setMonth(date.getMonth() + months);
+    date.setDate(date.getDate() - 1); // Trừ 1 ngày để tròn tháng
     form.setValue("endDate", date.toISOString().split("T")[0]);
-    form.setValue("paymentCycle", months.toString());
+    // Có thể set paymentCycle nếu muốn logic tự động
+    // form.setValue("paymentCycle", months.toString());
   };
 
+  // --- LOGIC DỊCH VỤ (Tags) ---
   const handleAddService = () => {
     if (!newServiceName.trim()) return;
     setServices([
       ...services,
-      { id: Date.now(), name: newServiceName, price: 0 },
+      { id: Date.now(), name: newServiceName.trim() },
     ]);
     setNewServiceName("");
   };
@@ -188,10 +177,20 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
   const handleRemoveService = (id) => {
     setServices(services.filter((s) => s.id !== id));
   };
+  // -----------------------------
 
   const onSubmit = async (values) => {
     setIsSubmitting(true);
     try {
+
+      const serviceFeesPayload = services
+        .filter((s) => s.name.trim() !== "")
+        .map((s) => ({
+          name: s.name,
+          amount: 0, 
+          description: "" 
+        }));
+
       const apiPayload = {
         room_id: values.roomId,
         tenant_id: values.tenantId,
@@ -205,37 +204,46 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
         electricity_price: values.electricityPrice,
         water_price: values.waterPrice,
         number_of_tenants: 1,
-        terms_and_conditions: values.terms,
+        terms_and_conditions: values.terms || "",
         notes: "",
-        service_fees: services.map((s) => s.name),
+       service_fees: serviceFeesPayload,
         status: values.status,
       };
-
+      console.log("Submitting Payload:", apiPayload);
       console.log("Submitting:", apiPayload);
       const res = await contractService.create(apiPayload);
-      if (
-        res &&
-        (res.code === 200 || res.code === 201 || res.message === "success")
-      ) {
-        const createdContract = res.data;
-        if (onAddSuccess) {
-          onAddSuccess(createdContract);
-        } else {
-          toast.success(
-            `Tạo thành công hợp đồng ${createdContract?.contract_number || ""}!`
-          );
-          onClose();
-        }
 
+      if (res && (res.success || res.data || res.id)) {
+        const createdContract = res.data || res;
+        toast.success(
+          `Tạo thành công hợp đồng ${createdContract?.contract_number || values.contractCode}!`
+        );
+        if (onAddSuccess) onAddSuccess(createdContract);
+        onClose();
         form.reset();
       } else {
         toast.error("Tạo thất bại: " + (res?.message || "Lỗi không xác định"));
       }
     } catch (error) {
       console.error("Submit Error:", error);
-      const msg =
-        error.response?.data?.detail || "Có lỗi xảy ra khi kết nối server.";
-      toast.error(typeof msg === "string" ? msg : "Lỗi dữ liệu đầu vào.");
+      if (error.response?.data?.data?.errors) {
+         // Xử lý lỗi validation chi tiết như trong log bạn gửi
+         const errorList = error.response.data.data.errors;
+         const errorMsg = errorList.map(e => `${e.field}: ${e.message}`).join("\n");
+         toast.error(`Lỗi dữ liệu:\n${errorMsg}`);
+      } else if (
+        error.response?.data?.detail &&
+        Array.isArray(error.response.data.detail)
+      ) {
+        const errorMessages = error.response.data.detail
+          .map((err) => `${err.loc[1] || err.loc[0]}: ${err.msg}`)
+          .join("\n");
+        toast.error(`Lỗi dữ liệu:\n${errorMessages}`);
+      } else {
+        const msg =
+          error.response?.data?.message || "Có lỗi xảy ra khi kết nối server.";
+        toast.error(msg);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -243,8 +251,8 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] bg-white max-h-[90vh] flex flex-col p-0">
-        <div className="p-6 pb-2 border-b">
+      <DialogContent className="sm:max-w-[700px] bg-white max-h-[90vh] flex flex-col p-0 gap-0">
+        <div className="p-6 pb-4 border-b">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold flex items-center gap-2">
               Thêm hợp đồng mới
@@ -255,9 +263,9 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
           </DialogHeader>
         </div>
 
-        <div className="p-6 pt-4 overflow-y-auto flex-1">
+        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
               {/* --- HÀNG 1: Mã HĐ - Khách - Phòng --- */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
@@ -269,14 +277,13 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
                         Mã hợp đồng
                       </FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} placeholder="HD..." />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                {/* 2. KHÁCH THUÊ  */}
                 <FormField
                   control={form.control}
                   name="tenantId"
@@ -298,27 +305,25 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
                             >
                               {field.value
                                 ? tenants.find((t) => t.id === field.value)
-                                    ?.full_name || "Chọn khách hàng"
-                                : "-- Chọn khách --"}
+                                    ?.full_name || "Khách hàng"
+                                : "Chọn khách hàng"}
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[250px] p-0">
+                        <PopoverContent className="w-[250px] p-0" align="start">
                           <Command>
                             <CommandInput placeholder="Tìm tên hoặc SĐT..." />
                             <CommandList>
-                              <CommandEmpty>
-                                Không tìm thấy khách hàng.
-                              </CommandEmpty>
+                              <CommandEmpty>Không tìm thấy.</CommandEmpty>
                               <CommandGroup>
                                 {tenants.map((t) => (
                                   <CommandItem
                                     value={t.full_name + " " + t.phone}
                                     key={t.id}
-                                    onSelect={() => {
-                                      form.setValue("tenantId", t.id);
-                                    }}
+                                    onSelect={() =>
+                                      form.setValue("tenantId", t.id)
+                                    }
                                   >
                                     <Check
                                       className={cn(
@@ -346,7 +351,6 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
                   )}
                 />
 
-                {/* 3. PHÒNG  */}
                 <FormField
                   control={form.control}
                   name="roomId"
@@ -373,29 +377,25 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
                                       rooms.find((r) => r.id === field.value)
                                         .room_number
                                     }`
-                                  : "Chọn phòng"
-                                : "-- Chọn phòng --"}
+                                  : "Đã chọn phòng"
+                                : "Chọn phòng"}
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[200px] p-0">
+                        <PopoverContent className="w-[220px] p-0" align="start">
                           <Command>
                             <CommandInput placeholder="Tìm số phòng..." />
                             <CommandList>
-                              <CommandEmpty>Không tìm thấy phòng.</CommandEmpty>
+                              <CommandEmpty>Hết phòng trống.</CommandEmpty>
                               <CommandGroup>
                                 {rooms.map((r) => (
                                   <CommandItem
-                                    value={
-                                      r.room_number +
-                                      " " +
-                                      (r.building_name || "")
-                                    } // Search theo số phòng và tên tòa nhà
+                                    value={`${r.room_number} ${
+                                      r.building_name || ""
+                                    }`}
                                     key={r.id}
-                                    onSelect={() => {
-                                      handleRoomSelect(r.id); // Gọi hàm xử lý riêng để cập nhật giá
-                                    }}
+                                    onSelect={() => handleRoomSelect(r.id)}
                                   >
                                     <Check
                                       className={cn(
@@ -406,7 +406,9 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
                                       )}
                                     />
                                     <div className="flex flex-col">
-                                      <span>Phòng {r.room_number}</span>
+                                      <span className="font-medium">
+                                        Phòng {r.room_number}
+                                      </span>
                                       {r.building_name && (
                                         <span className="text-xs text-gray-500">
                                           {r.building_name}
@@ -427,7 +429,7 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
               </div>
 
               {/* --- HÀNG 2: Ngày tháng --- */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-3 rounded-lg border">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-100">
                 <FormField
                   control={form.control}
                   name="startDate"
@@ -454,34 +456,22 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
                     </FormItem>
                   )}
                 />
-                <div className="col-span-1 md:col-span-2 flex gap-2">
-                  <span className="text-xs text-gray-500 self-center">
-                    Chọn nhanh:
-                  </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDurationClick(3)}
-                  >
-                    3 Tháng
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDurationClick(6)}
-                  >
-                    6 Tháng
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDurationClick(12)}
-                  >
-                    1 Năm
-                  </Button>
+                <div className="col-span-1 md:col-span-2 flex items-center gap-3">
+                  <span className="text-sm text-gray-500">Thời hạn:</span>
+                  <div className="flex gap-2">
+                    {[3, 6, 12].map((m) => (
+                      <Button
+                        key={m}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDurationClick(m)}
+                        className="h-8"
+                      >
+                        {m === 12 ? "1 Năm" : `${m} Tháng`}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -492,7 +482,7 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
                   name="rentPrice"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Giá thuê</FormLabel>
+                      <FormLabel>Giá thuê (VNĐ)</FormLabel>
                       <FormControl>
                         <Input type="number" {...field} />
                       </FormControl>
@@ -504,7 +494,7 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
                   name="deposit"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tiền cọc</FormLabel>
+                      <FormLabel>Tiền cọc (VNĐ)</FormLabel>
                       <FormControl>
                         <Input type="number" {...field} />
                       </FormControl>
@@ -516,7 +506,7 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
                   name="electricityPrice"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Giá điện (/kWh)</FormLabel>
+                      <FormLabel>Điện (/kWh)</FormLabel>
                       <FormControl>
                         <Input type="number" {...field} />
                       </FormControl>
@@ -528,7 +518,7 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
                   name="waterPrice"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Giá nước (/khối)</FormLabel>
+                      <FormLabel>Nước (/Khối)</FormLabel>
                       <FormControl>
                         <Input type="number" {...field} />
                       </FormControl>
@@ -544,14 +534,11 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
                   name="paymentDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Ngày đóng tiền hàng tháng</FormLabel>
+                      <FormLabel>Ngày đóng tiền</FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="Ví dụ: 15"
-                          {...field}
-                        />
+                        <Input type="number" min={1} max={31} {...field} />
                       </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -564,7 +551,7 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
                       <FormControl>
                         <select
                           {...field}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                         >
                           <option value="1">1 Tháng/lần</option>
                           <option value="3">3 Tháng/lần</option>
@@ -583,9 +570,9 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
                       <FormControl>
                         <select
                           {...field}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm "
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                         >
-                          <option value="ACTIVE">Hoạt động</option>
+                          <option value="ACTIVE">Hoạt động (ACTIVE)</option>
                           <option value="PENDING">Chờ ký</option>
                         </select>
                       </FormControl>
@@ -594,52 +581,67 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
                 />
               </div>
 
-              {/* --- DỊCH VỤ --- */}
-              <div className="bg-gray-50 p-3 rounded border">
-                <FormLabel className="mb-2 block">Dịch vụ đi kèm</FormLabel>
-                <div className="flex flex-wrap gap-2 mb-2">
+              {/* --- DỊCH VỤ (Tags Style) --- */}
+              <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                <FormLabel className="mb-3 block text-base font-medium">
+                  Dịch vụ đi kèm
+                </FormLabel>
+                <div className="flex flex-wrap gap-2 mb-3">
                   {services.map((s) => (
                     <div
                       key={s.id}
-                      className="bg-white border px-3 py-1 rounded-full text-sm flex items-center gap-2 shadow-sm"
+                      className="bg-white border px-3 py-1.5 rounded-full text-sm flex items-center gap-2 shadow-sm text-gray-700"
                     >
                       {s.name}
                       <X
                         size={14}
-                        className="cursor-pointer hover:text-red-500"
+                        className="cursor-pointer hover:text-red-500 transition-colors"
                         onClick={() => handleRemoveService(s.id)}
                       />
                     </div>
                   ))}
+                  {services.length === 0 && (
+                    <span className="text-sm text-gray-400 italic">
+                      Chưa có dịch vụ nào
+                    </span>
+                  )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 max-w-sm">
                   <Input
                     placeholder="Thêm dịch vụ (Wifi, Vệ sinh...)"
                     value={newServiceName}
                     onChange={(e) => setNewServiceName(e.target.value)}
                     className="bg-white"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddService();
+                      }
+                    }}
                   />
                   <Button
                     type="button"
                     onClick={handleAddService}
                     size="icon"
-                    className="shrink-0"
+                    className="shrink-0 bg-slate-900 text-white hover:bg-slate-800"
                   >
                     <Plus size={16} />
                   </Button>
                 </div>
               </div>
 
+              {/* --- TERMS --- */}
               <FormField
                 control={form.control}
                 name="terms"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Điều khoản đặc biệt</FormLabel>
+                    <FormLabel>Điều khoản đặc biệt & Ghi chú</FormLabel>
                     <FormControl>
                       <textarea
                         {...field}
-                        className="w-full border rounded-md p-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-black"
+                        className="w-full border rounded-md p-3 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-black/20"
+                        placeholder="Nhập điều khoản bổ sung..."
                       />
                     </FormControl>
                   </FormItem>
@@ -649,19 +651,20 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
           </Form>
         </div>
 
+        {/* --- FOOTER ACTIONS --- */}
         <div className="p-4 border-t bg-gray-50 flex justify-end gap-3">
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
-            Huỷ
+            Đóng
           </Button>
           <Button
             onClick={form.handleSubmit(onSubmit)}
             disabled={isSubmitting}
-            className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]"
+            className="bg-blue-600 hover:bg-blue-700 text-white min-w-[140px]"
           >
             {isSubmitting ? (
               <Loader2 className="animate-spin mr-2 h-4 w-4" />
             ) : null}
-            {isSubmitting ? "Đang tạo..." : "Tạo hợp đồng"}
+            {isSubmitting ? "Đang xử lý..." : "Tạo hợp đồng"}
           </Button>
         </div>
       </DialogContent>
