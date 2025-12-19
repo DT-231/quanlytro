@@ -10,7 +10,7 @@ const AccountChangePhone = ({ user }) => {
             alt="avatar"
             className="w-16 h-16 rounded-full border object-cover"
           />
-          <p className="mt-2 font-semibold">{user?.fullName}</p>
+          <p className="mt-2 font-semibold">{user?.fullName || user?.email}</p>
           <p className="text-gray-500 text-sm">{user?.phone}</p>
         </div>
 

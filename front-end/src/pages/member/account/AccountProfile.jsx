@@ -3,7 +3,9 @@ import { User, Upload } from "lucide-react";
 import { authService } from "@/services/authService";
 import { userService } from "@/services/userService";
 
-const AccountProfile = ({ currentUser, userId }) => {
+const AccountProfile = () => {
+  const [userId, setUserId] = useState("");
+
   const [profile, setProfile] = useState({
     fullName: "",
     phone: "",
@@ -11,7 +13,9 @@ const AccountProfile = ({ currentUser, userId }) => {
     cccd: "",
     relativeName: "",
     relativePhone: "",
-    avatar: "",
+    avatar: "/img/avatar.png",
+    cccdImage: "/img/cccd.jpg",
+    residenceImage: "/img/ngoaitru.jpg",
   });
 
   const [previews, setPreviews] = useState({
@@ -24,96 +28,136 @@ const AccountProfile = ({ currentUser, userId }) => {
   const cccdRef = useRef(null);
   const residenceRef = useRef(null);
 
+  // ===== LOAD USER FROM TOKEN =====
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const data = await authService.getCurrentUser();
+        let response = await authService.getCurrentUser();
+
+        // Đảm bảo response là một object. Nếu là string, parse nó.
+        if (typeof response === "string") {
+          try {
+            response = JSON.parse(response);
+          } catch (e) {
+            throw new Error("Failed to parse user data from storage.");
+          }
+        }
+
+        // Xử lý các cấu trúc lồng nhau: response.data (API get-me), response.user (API login), hoặc response
+        const userData = response.data || response.user || response;
+
+        if (!userData.id) throw new Error("User ID not found in response");
+
+        setUserId(userData.id);
+
+        // Tìm ảnh đại diện và cccd từ documents
+        const avatarDoc = userData.documents?.find(
+          (doc) => doc.type === "AVATAR"
+        );
+        const cccdFrontDoc = userData.documents?.find(
+          (doc) => doc.type === "CCCD_FRONT"
+        );
+        // TODO: Tìm ảnh tạm trú khi backend hỗ trợ
+
         setProfile({
-          fullName: `${data.first_name || ""} ${data.last_name || ""}`,
-          phone: data.phone || "",
-          email: data.email || "",
-          cccd: data.cccd || "",
-          relativeName: data.relativeName || "",
-          relativePhone: data.relativePhone || "",
-          avatar: data.avatar || "/images/avatar-default.png",
+          fullName: `${userData.first_name || ""} ${
+            userData.last_name || ""
+          }`.trim(),
+          phone: userData.phone || "",
+          email: userData.email || "",
+          cccd: userData.cccd || "",
+          relativeName: userData.relative_name || "",
+          relativePhone: userData.relative_phone || "",
+          avatar: avatarDoc?.url || "/img/avatar.png",
+          cccdImage: cccdFrontDoc?.url || "/img/cccd.jpg",
+          residenceImage: "/img/ngoaitru.jpg", // Giữ ảnh mặc định
         });
-      } catch (err) {
-        console.error("Lỗi khi tải thông tin người dùng:", err);
+      } catch (error) {
+        console.error("Load user thất bại:", error);
+        alert("Không tải được thông tin người dùng");
       }
     };
 
     fetchProfile();
   }, []);
 
+  // ===== INPUT CHANGE =====
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setProfile((prev) => ({ ...prev, [name]: value }));
   };
 
+  // ===== IMAGE PREVIEW =====
   const handleImageChange = (e, type) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviews((prev) => ({ ...prev, [type]: reader.result }));
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPreviews((prev) => ({ ...prev, [type]: reader.result }));
+    };
+    reader.readAsDataURL(file);
   };
 
+  // ===== SAVE =====
   const handleSaveChanges = async () => {
-    let canUpdate = false;
-
-    if (currentUser?.role === "ADMIN") {
-      canUpdate = true;
-    } else if (currentUser?.role === "CUSTOMER" && currentUser?.id === userId) {
-      canUpdate = true;
-    }
-
-    if (!canUpdate) {
-      alert("Bạn không có quyền cập nhật thông tin người dùng này.");
+    if (!userId) {
+      alert("Không xác định được người dùng");
       return;
     }
 
-    const formData = new FormData();
-    const [firstName, ...lastNameParts] = profile.fullName.split(" ");
-    formData.append("first_name", firstName);
-    formData.append("last_name", lastNameParts.join(" "));
-    formData.append("email", profile.email);
-    formData.append("phone", profile.phone);
-    formData.append("cccd", profile.cccd);
-    formData.append("relativeName", profile.relativeName);
-    formData.append("relativePhone", profile.relativePhone);
-
-    if (fileInputRef.current?.files[0]) {
-      formData.append("avatar", fileInputRef.current.files[0]);
-    }
-    if (cccdRef.current?.files[0]) {
-      formData.append("cccd_image", cccdRef.current.files[0]);
-    }
-    if (residenceRef.current?.files[0]) {
-      formData.append("residence_image", residenceRef.current.files[0]);
-    }
+    // ===== HIỂN THỊ LOADING HOẶC VÔ HIỆU HÓA NÚT LƯU =====
 
     try {
-      const updated = await userService.update(userId, formData);
-      alert("Cập nhật thành công!");
-      console.log("Thông tin mới:", updated);
-    } catch (err) {
-      alert(`Cập nhật thất bại: ${err.message}`);
+      // Tách họ và tên
+      const nameParts = profile.fullName.trim().split(" ");
+      const lastName = nameParts.pop() || "";
+      const firstName = nameParts.join(" ");
+
+      // 1. Chuẩn bị dữ liệu để cập nhật
+      // Bao gồm cả thông tin văn bản và ảnh (dưới dạng base64 nếu có thay đổi)
+      const updateData = {
+        first_name: firstName,
+        last_name: lastName,
+        email: profile.email,
+        phone: profile.phone,
+        cccd: profile.cccd,
+        relative_name: profile.relativeName,
+        relative_phone: profile.relativePhone,
+      };
+
+      // 2. Thêm ảnh (base64) vào payload nếu người dùng có chọn ảnh mới
+      // `previews` state đang lưu trữ ảnh mới dưới dạng base64
+      if (previews.avatar) {
+        updateData.avatar = previews.avatar; // Gửi chuỗi base64
+      }
+      if (previews.cccd) {
+        updateData.cccd_front = previews.cccd; // Gửi chuỗi base64
+      }
+      // Backend chưa có trường cho ảnh tạm trú, nên tạm thời bỏ qua
+      // if (previews.residence) {
+      //   updateData.residence_image = previews.residence;
+      // }
+
+      // 3. Gọi API một lần duy nhất
+      const updatedUser = await userService.update(userId, updateData);
+
+      alert("Cập nhật thông tin thành công!");
+    } catch (error) {
+      console.error("Update thất bại:", error);
+      alert("Cập nhật thất bại");
     }
   };
 
   return (
-    <div className="w-full bg-white p-6 md:p-8 rounded-xl shadow-lg">
-      <h2 className="text-2xl font-bold mb-8 border-b pb-4">
-        Thông tin cá nhân
-      </h2>
+    <div className="w-full bg-white p-6 rounded-xl shadow">
+      <h2 className="text-2xl font-bold mb-6">Thông tin cá nhân</h2>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        {/* LEFT */}
         <div>
           <div className="flex items-center gap-6 mb-6">
-            <div className="w-28 h-28 rounded-full border-2 border-gray-200 flex items-center justify-center bg-gray-100 overflow-hidden">
+            <div className="w-28 h-28 rounded-full border flex items-center justify-center bg-gray-100 overflow-hidden">
               {previews.avatar || profile.avatar ? (
                 <img
                   src={previews.avatar || profile.avatar}
@@ -124,141 +168,134 @@ const AccountProfile = ({ currentUser, userId }) => {
                 <User className="w-14 h-14 text-gray-400" />
               )}
             </div>
+
             <input
               type="file"
               ref={fileInputRef}
-              onChange={(e) => handleImageChange(e, "avatar")}
               className="hidden"
               accept="image/*"
+              onChange={(e) => handleImageChange(e, "avatar")}
             />
+
             <button
               onClick={() => fileInputRef.current.click()}
-              className="px-4 py-2 bg-black text-white rounded-lg font-semibold hover:bg-gray-800 transition-colors"
+              className="px-4 py-2 bg-black text-white rounded-lg"
             >
               Đổi ảnh đại diện
             </button>
           </div>
 
-          <div className="space-y-5">
-            <div>
-              <label className="font-semibold">Họ và tên:</label>
-              <input
-                name="fullName"
-                className="w-full mt-1 p-2 border rounded-md"
-                value={profile.fullName || ""}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div>
-              <label className="font-semibold">Số điện thoại:</label>
-              <input
-                name="phone"
-                className="w-full mt-1 p-2 border rounded-md"
-                value={profile.phone || ""}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div>
-              <label className="font-semibold">Email:</label>
-              <input
-                name="email"
-                className="w-full mt-1 p-2 border rounded-md"
-                value={profile.email || ""}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div>
-              <label className="font-semibold">CCCD:</label>
-              <input
-                name="cccd"
-                className="w-full mt-1 p-2 border rounded-md"
-                value={profile.cccd || ""}
-                onChange={handleInputChange}
-              />
-            </div>
+          <div className="space-y-4">
+            <Input
+              label="Họ và tên"
+              name="fullName"
+              value={profile.fullName}
+              onChange={handleInputChange}
+            />
+            <Input
+              label="Số điện thoại"
+              name="phone"
+              value={profile.phone}
+              onChange={handleInputChange}
+            />
+            <Input
+              label="Email"
+              name="email"
+              value={profile.email}
+              onChange={handleInputChange}
+            />
+            <Input
+              label="CCCD"
+              name="cccd"
+              value={profile.cccd}
+              onChange={handleInputChange}
+            />
+
             <div>
               <label className="font-semibold">Người thân:</label>
-              <div className="flex gap-3 mt-1">
-                <input
-                  name="relativeName"
-                  className="w-1/2 p-2 border rounded-md"
-                  value={profile.relativeName || ""}
-                  onChange={handleInputChange}
-                  placeholder="Họ tên người thân"
-                />
-                <input
-                  name="relativePhone"
-                  className="w-1/2 p-2 border rounded-md"
-                  value={profile.relativePhone || ""}
-                  onChange={handleInputChange}
-                  placeholder="SĐT người thân"
-                />
+              <div className="grid grid-cols-2 gap-4 mt-1">
+                <div>
+                  <label className="font-medium text-gray-600">Họ và tên</label>
+                  <input
+                    name="relativeName"
+                    className="w-full p-2 mt-1 border rounded-md"
+                    value={profile.relativeName || ""}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div>
+                  <label className="font-medium text-gray-600">
+                    Số điện thoại
+                  </label>
+                  <input
+                    name="relativePhone"
+                    className="w-full p-2 mt-1 border rounded-md"
+                    value={profile.relativePhone || ""}
+                    onChange={handleInputChange}
+                  />
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-8 border-t pt-6 flex justify-end">
+          <div className="mt-6 text-right">
             <button
               onClick={handleSaveChanges}
-              className="w-48 px-6 py-3 bg-black text-white rounded-lg font-semibold hover:bg-gray-800 transition-colors"
+              className="px-6 py-2 bg-black text-white rounded-lg"
             >
               Lưu thay đổi
             </button>
           </div>
         </div>
 
-        <div>
-          <h3 className="text-xl font-semibold mb-4">Tài liệu và hình ảnh</h3>
-
-          <div className="space-y-6">
-            <ImageUploader
-              title="Ảnh CCCD/CMND"
-              preview={previews.cccd}
-              onImageChange={(e) => handleImageChange(e, "cccd")}
-              inputRef={cccdRef}
-            />
-            <ImageUploader
-              title="Ảnh đăng ký tạm trú"
-              preview={previews.residence}
-              onImageChange={(e) => handleImageChange(e, "residence")}
-              inputRef={residenceRef}
-            />
-          </div>
+        {/* RIGHT */}
+        <div className="space-y-6">
+          <ImageUploader
+            title="Ảnh CCCD/CMND"
+            preview={previews.cccd || profile.cccdImage}
+            inputRef={cccdRef}
+            onImageChange={(e) => handleImageChange(e, "cccd")}
+          />
+          <ImageUploader
+            title="Ảnh đăng ký tạm trú"
+            preview={previews.residence || profile.residenceImage}
+            inputRef={residenceRef}
+            onImageChange={(e) => handleImageChange(e, "residence")}
+          />
         </div>
       </div>
     </div>
   );
 };
 
-const ImageUploader = ({ title, preview, onImageChange, inputRef }) => {
-  return (
-    <div className="border p-4 rounded-lg">
-      <p className="font-semibold mb-3">{title}</p>
-      <div
-        className="w-full h-48 border-2 border-dashed rounded-lg flex items-center justify-center bg-gray-50 cursor-pointer hover:bg-gray-100"
-        onClick={() => inputRef.current.click()}
-      >
-        {preview ? (
-          <img
-            src={preview}
-            alt={`${title} preview`}
-            className="w-full h-full object-contain rounded-lg"
-          />
-        ) : (
-          <div className="text-center text-gray-500">
-            <Upload className="mx-auto h-8 w-8" />
-            <p className="mt-2 text-sm">Nhấn để tải ảnh lên</p>
-          </div>
-        )}
-      </div>
-      <input
-        type="file"
-        ref={inputRef}
-        onChange={onImageChange}
-        className="hidden"
-        accept="image/*"
-      />
+const Input = ({ label, ...props }) => (
+  <div>
+    <label className="font-semibold">{label}:</label>
+    <input {...props} className="w-full mt-1 p-2 border rounded-md" />
+  </div>
+);
+
+const ImageUploader = ({ title, preview, inputRef, onImageChange }) => (
+  <div className="border p-4 rounded-lg">
+    <p className="font-semibold mb-2">{title}</p>
+    <div
+      className="h-40 border-2 border-dashed rounded flex items-center justify-center cursor-pointer"
+      onClick={() => inputRef.current.click()}
+    >
+      {preview ? (
+        <img src={preview} className="h-full object-contain" />
+      ) : (
+        <Upload />
+      )}
     </div>
-  );
-};
+    <input
+      type="file"
+      ref={inputRef}
+      className="hidden"
+      accept="image/*"
+      onChange={onImageChange}
+    />
+  </div>
+);
+
 export default AccountProfile;

@@ -110,6 +110,10 @@ class UserUpdate(BaseModel):
     status: Optional[str] = None
     is_temporary_residence: Optional[bool] = None
     temporary_residence_date: Optional[date] = None
+
+    # Thêm thông tin người thân
+    relative_name: Optional[str] = Field(None, max_length=100)
+    relative_phone: Optional[str] = Field(None, max_length=15)
     
     # Upload ảnh qua base64
     avatar: Optional[str] = Field(None, description="Ảnh đại diện (base64 string)")
@@ -139,6 +143,8 @@ class UserOut(BaseModel):
     status: str
     is_temporary_residence: Optional[bool] = False
     temporary_residence_date: Optional[date] = None
+    relative_name: Optional[str] = None # Thêm thông tin người thân
+    relative_phone: Optional[str] = None # Thêm thông tin người thân
     role_name: Optional[str] = None  # Role name thay vì role object
     documents: Optional[list[dict]] = []  # Danh sách tài liệu (avatar, CCCD)
     created_at: Optional[datetime] = None
@@ -208,4 +214,3 @@ class UserDocumentUpload(BaseModel):
     avatar: Optional[str] = Field(None, description="Ảnh đại diện (base64)")
     cccd_front: Optional[str] = Field(None, description="Ảnh CCCD mặt trước (base64)")
     cccd_back: Optional[str] = Field(None, description="Ảnh CCCD mặt sau (base64)")
-

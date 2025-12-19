@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: rental_db
+    restart: "no"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-rental_management}
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    networks:
+      - rental_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API (FastAPI)
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rental_api
+    restart: "no"
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-rental_management}
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-this}
+      ACCESS_TOKEN_EXPIRE: ${ACCESS_TOKEN_EXPIRE:-30}
+      REFRESH_TOKEN_EXPIRE_DAY: ${REFRESH_TOKEN_EXPIRE_DAY:-7}
+      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+    volumes:
+      - ./backend:/app
+      - /app/env  # Exclude virtual environment
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - rental_network
+
+  # Frontend (React + Vite)
+  web:
+    build:
+      context: ./front-end
+      dockerfile: Dockerfile
+    container_name: rental_web
+    restart: "no"
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    networks:
+      - rental_network
+
+networks:
+  rental_network:
+    driver: bridge

@@ -35,6 +35,10 @@ class User(BaseModel):
     is_temporary_residence = Column(Boolean, nullable=False, default=False)  # Tạm trú tạm vắng
     temporary_residence_date = Column(Date, nullable=True)
     
+    # Thông tin người thân
+    relative_name = Column(String(100), nullable=True)
+    relative_phone = Column(String(15), nullable=True)
+    
     # Relationships
     role = relationship("Role", back_populates="users")
     created_contracts = relationship("Contract", foreign_keys="Contract.created_by", back_populates="creator")

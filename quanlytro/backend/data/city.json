@@ -1,0 +1,147 @@
+{
+  "total": 63,
+  "data": [
+    {
+      "id": "89",
+      "name": "An Giang",
+      "type": 2,
+      "typeText": "Tỉnh",
+      "slug": "ANGIANG"
+    },
+    {
+      "id": "77",
+      "name": "Bà Rịa - Vũng Tàu",
+      "type": 2,
+      "typeText": "Tỉnh",
+      "slug": "BARIAVUNGTAU"
+    },
+    {
+      "id": "24",
+      "name": "Bắc Giang",
+      "type": 2,
+      "typeText": "Tỉnh",
+      "slug": "BACGIANG"
+    },
+    {
+      "id": "6",
+      "name": "Bắc Kạn",
+      "type": 2,
+      "typeText": "Tỉnh",
+      "slug": "BACKAN"
+    },
+    {
+      "id": "95",
+      "name": "Bạc Liêu",
+      "type": 2,
+      "typeText": "Tỉnh",
+      "slug": "BACLIEU"
+    },
+    {
+      "id": "27",
+      "name": "Bắc Ninh",
+      "type": 2,
+      "typeText": "Tỉnh",
+      "slug": "BACNINH"
+    },
+    {
+      "id": "83",
+      "name": "Bến Tre",
+      "type": 2,
+      "typeText": "Tỉnh",
+      "slug": "BENTRE"
+    },
+    {
+      "id": "74",
+      "name": "Bình Dương",
+      "type": 2,
+      "typeText": "Tỉnh",
+      "slug": "BINHDUONG"
+    },
+    {
+      "id": "70",
+      "name": "Bình Phước",
+      "type": 2,
+      "typeText": "Tỉnh",
+      "slug": "BINHPHUOC"
+    },
+    {
+      "id": "60",
+      "name": "Bình Thuận",
+      "type": 2,
+      "typeText": "Tỉnh",
+      "slug": "BINHTHUAN"
+    },
+    {
+      "id": "52",
+      "name": "Bình Định",
+      "type": 2,
+      "typeText": "Tỉnh",
+      "slug": "BINHDINH"
+    },
+    {
+      "id": "96",
+      "name": "Cà Mau",
+      "type": 2,
+      "typeText": "Tỉnh",
+      "slug": "CAMAU"
+    },
+    {
+      "id": "92",
+      "name": "Cần Thơ",
+      "type": 1,
+      "typeText": "Trung ương",
+      "slug": "CANTHO"
+    },
+    {
+      "id": "4",
+      "name": "Cao Bằng",
+      "type": 2,
+      "typeText": "Tỉnh",
+      "slug": "CAOBANG"
+    },
+    {
+      "id": "64",
+      "name": "Gia Lai",
+      "type": 2,
+      "typeText": "Tỉnh",
+      "slug": "GIALAI"
+    },
+    {
+      "id": "2",
+      "name": "Hà Giang",
+      "type": 2,
+      "typeText": "Tỉnh",
+      "slug": "HAGIANG"
+    },
+    {
+      "id": "35",
+      "name": "Hà Nam",
+      "type": 2,
+      "typeText": "Tỉnh",
+      "slug": "HANAM"
+    },
+    {
+      "id": "1",
+      "name": "Hà Nội",
+      "type": 1,
+      "typeText": "Trung ương",
+      "slug": "HANOI"
+    },
+    {
+      "id": "42",
+      "name": "Hà Tĩnh",
+      "type": 2,
+      "typeText": "Tỉnh",
+      "slug": "HATINH"
+    },
+    {
+      "id": "30",
+      "name": "Hải Dương",
+      "type": 2,
+      "typeText": "Tỉnh",
+      "slug": "HAIDUONG"
+    }
+  ],
+  "code": "success",
+  "message": null
+}

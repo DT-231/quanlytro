@@ -81,6 +81,8 @@ class UserService:
             "status": user.status,
             "is_temporary_residence": user.is_temporary_residence,
             "temporary_residence_date": user.temporary_residence_date,
+            "relative_name": user.relative_name,
+            "relative_phone": user.relative_phone,
             "role_name": user.role.role_name if user.role else None,
             "documents": documents_list,
             "created_at": user.created_at,
@@ -201,55 +203,56 @@ class UserService:
         if not user:
             raise ValueError(f"Không tìm thấy người dùng với ID: {user_id}")
 
-        # Validate các field được update
-        update_data = user_data.model_dump(exclude_unset=True)
+        # Tách các trường ảnh base64 ra khỏi dữ liệu update chính
+        update_dict = user_data.model_dump(exclude_unset=True)
+        avatar_base64 = update_dict.pop("avatar", None)
+        cccd_front_base64 = update_dict.pop("cccd_front", None)
+        cccd_back_base64 = update_dict.pop("cccd_back", None)
 
-        if "email" in update_data and update_data["email"]:
-            if update_data["email"] != user.email:
-                existing = self.user_repo.get_by_email(update_data["email"])
+        # Upload ảnh nếu có
+        if avatar_base64 or cccd_front_base64 or cccd_back_base64:
+            self.upload_user_documents_base64(
+                user_id=user_id,
+                avatar_base64=avatar_base64,
+                cccd_front_base64=cccd_front_base64,
+                cccd_back_base64=cccd_back_base64,
+                uploaded_by=user_id,  # User tự upload
+            )
+
+        # Dữ liệu còn lại để update vào bảng users
+        # update_data bây giờ chính là update_dict sau khi đã pop các trường ảnh
+
+        if "email" in update_dict and update_dict["email"]:
+            if update_dict["email"] != user.email:
+                existing = self.user_repo.get_by_email(update_dict["email"])
                 if existing:
-                    raise ValueError(f"Email {update_data['email']} đã tồn tại")
+                    raise ValueError(f"Email {update_dict['email']} đã tồn tại")
 
-        if "phone" in update_data and update_data["phone"]:
-            if update_data["phone"] != user.phone:
-                existing = self.user_repo.get_by_phone(update_data["phone"])
+        if "phone" in update_dict and update_dict["phone"]:
+            if update_dict["phone"] != user.phone:
+                existing = self.user_repo.get_by_phone(update_dict["phone"])
                 if existing:
-                    raise ValueError(f"Số điện thoại {update_data['phone']} đã tồn tại")
+                    raise ValueError(f"Số điện thoại {update_dict['phone']} đã tồn tại")
 
-        if "cccd" in update_data and update_data["cccd"]:
-            if update_data["cccd"] != user.cccd:
-                existing = self.user_repo.get_by_cccd(update_data["cccd"])
+        if "cccd" in update_dict and update_dict["cccd"]:
+            if update_dict["cccd"] != user.cccd:
+                existing = self.user_repo.get_by_cccd(update_dict["cccd"])
                 if existing:
-                    raise ValueError(f"CCCD {update_data['cccd']} đã tồn tại")
+                    raise ValueError(f"CCCD {update_dict['cccd']} đã tồn tại")
 
-        if "status" in update_data:
+        if "status" in update_dict:
             valid_statuses = [s.value for s in UserStatus]
-            if update_data["status"] not in valid_statuses:
+            if update_dict["status"] not in valid_statuses:
                 raise ValueError(
                     f"Trạng thái không hợp lệ. Phải là một trong: {valid_statuses}"
                 )
 
-        # Update user
-        updated_user = self.user_repo.update(user, update_data)
+        # Update user nếu có dữ liệu văn bản cần update
+        if update_dict:
+            self.user_repo.update(user, update_dict)
 
-        # Convert sang schema
-        user_dict = {
-            "id": updated_user.id,
-            "first_name": updated_user.first_name,
-            "last_name": updated_user.last_name,
-            "email": updated_user.email,
-            "phone": updated_user.phone,
-            "cccd": updated_user.cccd,
-            "date_of_birth": updated_user.date_of_birth,
-            "status": updated_user.status,
-            "is_temporary_residence": updated_user.is_temporary_residence,
-            "temporary_residence_date": updated_user.temporary_residence_date,
-            "role_name": updated_user.role.role_name if updated_user.role else None,
-            "created_at": updated_user.created_at,
-            "updated_at": updated_user.updated_at,
-        }
-        
-        return UserOut(**user_dict)
+        # Lấy lại thông tin user đầy đủ sau khi đã update và upload ảnh
+        return self.get_user(user_id)
 
     def delete_user(self, user_id: UUID) -> None:
         """Xóa user.
