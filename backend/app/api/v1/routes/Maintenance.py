@@ -187,8 +187,8 @@ def get_list_maintenances(
         None, description="Lọc theo tòa nhà (admin only)"
     ),
     room_id: Optional[UUID] = Query(None, description="Lọc theo phòng"),
-    offset: int = Query(0, ge=0, description="Vị trí bắt đầu (pagination)"),
-    limit: int = Query(20, ge=1, le=100, description="Số lượng tối đa mỗi trang"),
+    page: int = Query(1, ge=1, description="Số trang (bắt đầu từ 1)"),
+    pageSize: int = Query(20, ge=1, le=100, description="Số items mỗi trang"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -221,9 +221,12 @@ def get_list_maintenances(
                 "status": "PENDING"
             }
         ],
-        "total": 175,
-        "offset": 0,
-        "limit": 20
+        "pagination": {
+            "totalItems": 175,
+            "page": 1,
+            "pageSize": 20,
+            "totalPages": 9
+        }
     }
     ```
     """
@@ -238,8 +241,8 @@ def get_list_maintenances(
             request_type=request_type,
             building_id=building_id,
             room_id=room_id,
-            offset=offset,
-            limit=limit,
+            page=page,
+            pageSize=pageSize,
         )
         return response.success(data=result, message="Lấy danh sách yêu cầu thành công")
     except ValueError as e:

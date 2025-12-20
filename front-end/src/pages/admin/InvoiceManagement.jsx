@@ -80,8 +80,8 @@ const InvoiceManagement = () => {
     setLoading(true);
     try {
       const params = {
-        limit: itemsPerPage,
-        offset: (currentPage - 1) * itemsPerPage,
+        page: currentPage,
+        size: itemsPerPage,
         status: mapStatusToApi(filterStatus),
         building_id: filterBuilding || null,
         // search: searchTerm // Bỏ comment nếu API hỗ trợ search
@@ -92,19 +92,17 @@ const InvoiceManagement = () => {
       if (response && response.data) {
         // Xử lý dữ liệu trả về linh hoạt (Array hoặc Object có items)
         let items = [];
-        let total = 0;
+        const pagination = response.data.pagination || {};
 
         if (Array.isArray(response.data)) {
             items = response.data;
-            total = items.length;
         } else {
             items = response.data.items || [];
-            total = response.data.total || 0;
         }
         
         setInvoices(items);
-        setTotalItems(total);
-        setTotalPages(Math.ceil(total / itemsPerPage) || 1);
+        setTotalItems(pagination.totalItems || 0);
+        setTotalPages(pagination.totalPages || 1);
       } else {
         setInvoices([]);
       }

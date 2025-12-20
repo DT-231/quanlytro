@@ -99,8 +99,8 @@ def get_rooms_by_building(
 def list_invoices(
     invoice_status: Optional[str] = Query(None, description="Lọc theo trạng thái", alias="status"),
     building_id: Optional[UUID] = Query(None, description="Lọc theo tòa nhà (chỉ admin)"),
-    offset: int = Query(0, ge=0, description="Vị trí bắt đầu"),
-    limit: int = Query(20, ge=1, le=100, description="Số lượng tối đa"),
+    page: int = Query(1, ge=1, description="Số trang (bắt đầu từ 1)"),
+    pageSize: int = Query(20, ge=1, le=100, description="Số items mỗi trang"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -112,7 +112,7 @@ def list_invoices(
     Query params:
     - status: PENDING, PAID, OVERDUE, CANCELLED
     - building_id: UUID (chỉ admin)
-    - offset, limit: Pagination
+    - page, pageSize: Pagination
     """
     try:
         user_role = current_user.role.role_code if current_user.role else "CUSTOMER"
@@ -123,8 +123,8 @@ def list_invoices(
             user_role=user_role,
             status=invoice_status,
             building_id=building_id,
-            offset=offset,
-            limit=limit
+            page=page,
+            pageSize=pageSize
         )
         return response.success(data=result, message="Lấy danh sách hóa đơn thành công")
     except ValueError as e:

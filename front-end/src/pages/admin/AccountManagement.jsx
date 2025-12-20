@@ -81,8 +81,8 @@ const AccountManagement = () => {
     setLoading(true);
     try {
       const params = {
-        offset: (currentPage - 1) * itemsPerPage,
-        limit: itemsPerPage,
+        page: currentPage,
+        size: itemsPerPage,
         search: searchTerm || null,
         status:
           filterStatus === "Đang thuê"
@@ -96,20 +96,21 @@ const AccountManagement = () => {
 
       const res = await userService.getAll(params);
       
-      // --- SỬA ĐOẠN NÀY ---
-      // Kiểm tra xem res.data có tồn tại không trước
+      // Xử lý response với cấu trúc pagination mới
       const dataSource = res && res.data ? res.data : res;
 
       if (dataSource && dataSource.items) {
-        setTenants(dataSource.items);       // Lấy items từ dataSource
-        setTotalItems(dataSource.total || 0); // Lấy total từ dataSource
-        setTotalPages(Math.ceil((dataSource.total || 0) / itemsPerPage) || 1);
+        setTenants(dataSource.items);
+        
+        // Sử dụng pagination object mới
+        const pagination = dataSource.pagination || {};
+        setTotalItems(pagination.totalItems || 0);
+        setTotalPages(pagination.totalPages || 1);
       } else {
         setTenants([]);
         setTotalItems(0);
         setTotalPages(1);
       }
-      // --------------------
 
     } catch (error) {
       console.error("Lỗi lấy danh sách:", error);

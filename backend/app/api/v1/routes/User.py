@@ -105,8 +105,8 @@ def get_list_users(
     gender: Optional[str] = Query(None, description="Lọc theo giới tính: Nam, Nữ"),
     district: Optional[str] = Query(None, description="Lọc theo quận/huyện"),
     role_code: Optional[str] = Query(None, description="Lọc theo mã role: TENANT, CUSTOMER"),
-    offset: int = Query(0, ge=0, description="Vị trí bắt đầu (pagination)"),
-    limit: int = Query(20, ge=1, le=100, description="Số lượng tối đa mỗi trang"),
+    page: int = Query(1, ge=1, description="Số trang (bắt đầu từ 1)"),
+    pageSize: int = Query(20, ge=1, le=100, description="Số items mỗi trang"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -122,27 +122,32 @@ def get_list_users(
     - role_code: Lọc theo mã role (TENANT, CUSTOMER)
     
     **Pagination**:
-    - offset: Vị trí bắt đầu (mặc định 0)
-    - limit: Số lượng mỗi trang (1-100, mặc định 20)
+    - page: Số trang (mặc định 1)
+    - pageSize: Số items mỗi trang (1-100, mặc định 20)
     
     **Response format**:
     ```json
     {
-        "items": [
-            {
-                "id": "uuid",
-                "code": "101",
-                "full_name": "Phan Mạnh Quỳnh",
-                "phone": "0256662848",
-                "email": "nguyenthanhbinh789@gmail.com",
-                "gender": "Nam",
-                "district": "Lâm Đồng",
-                "status": "Đang thuê"
+        "success": true,
+        "data": {
+            "items": [
+                {
+                    "id": "uuid",
+                    "full_name": "Phan Mạnh Quỳnh",
+                    "phone": "0256662848",
+                    "email": "nguyenthanhbinh789@gmail.com",
+                    "gender": "Nam",
+                    "district": "Lâm Đồng",
+                    "status": "Đang thuê"
+                }
+            ],
+            "pagination": {
+                "totalItems": 108,
+                "page": 1,
+                "pageSize": 20,
+                "totalPages": 6
             }
-        ],
-        "total": 108,
-        "offset": 0,
-        "limit": 20
+        }
     }
     ```
     """
@@ -154,8 +159,8 @@ def get_list_users(
             gender=gender,
             district=district,
             role_code=role_code,
-            offset=offset,
-            limit=limit,
+            page=page,
+            pageSize=pageSize,
         )
         return response.success(data=result, message="Lấy danh sách người dùng thành công")
     except ValueError as e:

@@ -78,7 +78,7 @@ const ContractManagement = () => {
 
       const response = await contractService.getAll(params);
 
-      // Logic xử lý response an toàn (tránh lỗi undefined)
+      // Logic xử lý response với cấu trúc pagination mới
       const data = response?.data || response; 
       
       if (data && (data.items || Array.isArray(data))) {
@@ -86,10 +86,10 @@ const ContractManagement = () => {
         const items = data.items || (Array.isArray(data) ? data : []);
         setContracts(items);
         
-        // Xử lý phân trang
-        const pages = data.pages || data.total_pages || 1;
-        setTotalPages(pages);
-        setTotalItems(data.total || 0);
+        // Sử dụng pagination object mới
+        const pagination = data.pagination || {};
+        setTotalPages(pagination.totalPages || 1);
+        setTotalItems(pagination.totalItems || 0);
       } else {
         setContracts([]);
         setTotalPages(1);
