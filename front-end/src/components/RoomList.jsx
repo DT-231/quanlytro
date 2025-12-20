@@ -1,14 +1,14 @@
-const RoomList = ({ rooms, onSelectRoom }) => {
+const RoomList = ({ rooms }) => {
   return (
     <div className="mt-8">
       <h2 className="text-xl font-bold mb-6">Danh sách phòng trọ</h2>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-6 gap-y-8">
-        {rooms.map((room) => (
+        {rooms && rooms.map((room) => (
           <div
             key={room.id}
             className="flex w-full max-w-[580px] h-auto bg-white rounded-lg p-2.5 gap-2.5 shadow-md border border-gray-100 cursor-pointer hover:shadow-xl transition-shadow duration-300"
-            onClick={() => onSelectRoom(room)}
+            // onClick={() => onSelectRoom(room)}
           >
             {/* Phần hình ảnh */}
             <img

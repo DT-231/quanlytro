@@ -149,27 +149,7 @@ class UserOut(BaseModel):
         "populate_by_name": True
     }
     
-    # @classmethod
-    # def model_validate(cls, obj, **kwargs):
-    #     """Custom validation to extract role_name from role relationship."""
-    #     if hasattr(obj, 'role') and obj.role:
-    #         data = {
-    #             'id': obj.id,
-    #             'first_name': obj.first_name,
-    #             'last_name': obj.last_name,
-    #             'email': obj.email,
-    #             'phone': obj.phone,
-    #             'cccd': obj.cccd,
-    #             'date_of_birth': obj.date_of_birth,
-    #             'status': obj.status,
-    #             'is_temporary_residence': obj.is_temporary_residence,
-    #             'temporary_residence_date': obj.temporary_residence_date,
-    #             'role_name': obj.role.role_name,  # Extract role_name from role
-    #             'created_at': obj.created_at,
-    #             'updated_at': obj.updated_at,
-    #         }
-    #         return cls(**data)
-    #     return super().model_validate(obj, **kwargs)
+    
 
 
 class UserListItem(BaseModel):

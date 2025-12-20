@@ -166,7 +166,7 @@ class ContractService:
     def list_contracts(
         self,
         page: int = 1,
-        size: int = 20,
+        pageSize: int = 20,
         status: Optional[str] = None,
         building: Optional[str] = None,
         search: Optional[str] = None
@@ -175,25 +175,28 @@ class ContractService:
         
         Args:
             page: Số trang (bắt đầu từ 1)
-            size: Số lượng items mỗi trang
+            pageSize: Số items mỗi trang
             status: Lọc theo trạng thái (ACTIVE, EXPIRED, TERMINATED, PENDING)
             building: Lọc theo tên tòa nhà
             search: Tìm kiếm theo mã hợp đồng, tên khách, sđt
             
         Returns:
-            Dict chứa:
-            - items: List[ContractListItem]
-            - total: Tổng số hợp đồng
-            - page: Trang hiện tại
-            - size: Kích thước trang
-            - pages: Tổng số trang
+            Dict chứa items và pagination (totalItems, page, pageSize, totalPages).
         """
-        offset = (page - 1) * size
+        # Validate page và pageSize
+        if page < 1:
+            page = 1
+        if pageSize < 1:
+            pageSize = 20
+        if pageSize > 100:
+            pageSize = 100
+            
+        offset = (page - 1) * pageSize
         
         # Lấy dữ liệu từ repository
         items_dict = self.contract_repo.list_with_details(
             offset=offset,
-            limit=size,
+            limit=pageSize,
             status_filter=status,
             building_filter=building,
             search_query=search
@@ -203,20 +206,22 @@ class ContractService:
         items = [ContractListItem.model_validate(item) for item in items_dict]
         
         # Đếm tổng số
-        total = self.contract_repo.count_contracts(
+        totalItems = self.contract_repo.count_contracts(
             status_filter=status,
             building_filter=building,
             search_query=search
         )
         
-        pages = (total + size - 1) // size  # ceiling division
+        totalPages = (totalItems + pageSize - 1) // pageSize if totalItems > 0 else 1
         
         return {
             "items": items,
-            "total": total,
-            "page": page,
-            "size": size,
-            "pages": pages
+            "pagination": {
+                "totalItems": totalItems,
+                "page": page,
+                "pageSize": pageSize,
+                "totalPages": totalPages
+            }
         }
     
     def update_contract(self, contract_id: UUID, data: ContractUpdate) -> ContractOut:

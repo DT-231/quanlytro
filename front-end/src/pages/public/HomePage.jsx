@@ -2,131 +2,270 @@ import { useState, useEffect } from "react";
 import RoomSearchForm from "../../components/RoomSearchForm";
 import RoomList from "../../components/RoomList";
 import RoomDetail from "../../components/RoomDetail";
+import { getCity, getWard } from "@/services/locationService";
+import { ComboboxLocation } from "./Room/Components/ComboxLocations";
+import { roomService } from "@/services/roomService";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import useDebounce from "@/hooks/useDebounce";
+import { X } from "lucide-react";
+import Pagination from "@/components/Pagination";
+import formatPrice from "@/Utils/formatPrice";
 
-const mockRooms = [
-  {
-    id: 1,
-    name: "Phòng đơn giá rẻ, Hải Châu",
-    address: "Gần cầu Rồng, Q. Hải Châu, Đà Nẵng",
-    area: 18,
-    capacity: 1,
-    price: 2000000,
-    image: "/img/room1.jpg",
-    type: "Phòng đơn",
-    description:
-      "Phòng nhỏ gọn, phù hợp sinh viên, có WC riêng, wifi miễn phí, khu vực yên tĩnh.",
-  },
-  {
-    id: 2,
-    name: "Phòng chung cư mini, Thanh Khê",
-    address: "Đường Điện Biên Phủ, Q. Thanh Khê, Đà Nẵng",
-    area: 25,
-    capacity: 2,
-    price: 2500000,
-    image: "/img/room2.jpg",
-    type: "Chung cư mini",
-    description:
-      "Phòng thoáng mát, có máy lạnh, bếp riêng, gần chợ và trạm xe buýt.",
-  },
-  {
-    id: 3,
-    name: "Phòng có gác, Liên Chiểu",
-    address: "Gần Đại học Bách Khoa, Q. Liên Chiểu, Đà Nẵng",
-    area: 30,
-    capacity: 3,
-    price: 2800000,
-    image: "/img/room3.jpg",
-    type: "Phòng có gác",
-    description:
-      "Phòng rộng rãi, có gác lửng, WC riêng, wifi mạnh, gần trường học.",
-  },
-  {
-    id: 4,
-    name: "Phòng full nội thất, Ngũ Hành Sơn",
-    address: "Gần biển Mỹ Khê, Q. Ngũ Hành Sơn, Đà Nẵng",
-    area: 28,
-    capacity: 2,
-    price: 3500000,
-    image: "/img/room4.jpg",
-    type: "Phòng full nội thất",
-    description:
-      "Trang bị đầy đủ nội thất: giường, tủ, máy lạnh, máy giặt, bếp, WC riêng.",
-  },
-  {
-    id: 5,
-    name: "Phòng tập thể, Sơn Trà",
-    address: "Gần chợ Mân Thái, Q. Sơn Trà, Đà Nẵng",
-    area: 40,
-    capacity: 4,
-    price: 2800000,
-    image: "/img/room5.jpg",
-    type: "Phòng tập thể",
-    description:
-      "Phòng lớn, phù hợp nhóm bạn hoặc gia đình, có bếp chung, WC riêng, gần biển.",
-  },
-  {
-    id: 6,
-    name: "Phòng cao cấp, Hải Châu",
-    address: "Trung tâm Q. Hải Châu, Đà Nẵng",
-    area: 35,
-    capacity: 2,
-    price: 5000000,
-    image: "/img/room6.jpg",
-    type: "Phòng cao cấp",
-    description:
-      "Phòng hiện đại, nội thất cao cấp, thang máy, bảo vệ 24/7, gần trung tâm thương mại.",
-  },
-];
+const defaultCity = {
+  id: null,
+  name: "Chọn thành phố",
+};
+const defaultWard = {
+  id: null,
+  name: "Chọn quận",
+};
 
 const HomePage = () => {
-  const [rooms, setRooms] = useState(mockRooms);
-  const [filters, setFilters] = useState({
-    priceRange: "",
-    capacity: "",
-    location: "",
-    roomType: "",
+  const [rooms, setRooms] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [pagination, setPagination] = useState({
+    totalItems: 0,
+    page: 1,
+    pageSize: 20,
+    totalPages: 0,
   });
-  const [selectedRoom, setSelectedRoom] = useState(null);
+
+  const [searchValue, setSearchValue] = useState("");
+  const debounceSearchValue = useDebounce(searchValue);
+
+  const [selectedCity, setSelectedCity] = useState(defaultCity);
+  const [selectedWard, setSelectedWard] = useState(defaultWard);
+  const [capacity, setCapacity] = useState(null);
+
+  const [listCitys, setListCitys] = useState([]);
+  const [listWards, setListWards] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const fetchRooms = async () => {
+    setIsLoading(true);
+    try {
+      const res = await roomService.getAll({
+        searchValue: debounceSearchValue.trim() || undefined,
+        city: selectedCity.id ? selectedCity.name : undefined,
+        ward: selectedWard.id ? selectedWard.name : undefined,
+        capacity: capacity || undefined,
+      });
+
+      if (res?.success) {
+        console.log(res.data);
+        setRooms(res.data.items || res.data);
+
+        // Cập nhật pagination với cấu trúc mới
+        if (res.data.pagination) {
+          setPagination(res.data.pagination);
+          setCurrentPage(pagination.page);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching rooms:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let filtered = mockRooms;
+    fetchRooms();
+  }, [debounceSearchValue, selectedCity, selectedWard, capacity]);
 
-    if (filters.priceRange) {
-      const [min, max] = filters.priceRange.split("-").map(Number);
-      filtered = filtered.filter((r) => r.price >= min && r.price <= max);
-    }
+  useEffect(() => {
+    fetchCity();
+  }, []);
 
-    if (filters.capacity) {
-      filtered = filtered.filter(
-        (r) => r.capacity === parseInt(filters.capacity)
-      );
-    }
+  const fetchCity = async () => {
+    let res = await getCity();
+    setListCitys(res);
+  };
 
-    if (filters.location) {
-      filtered = filtered.filter((r) =>
-        r.address.toLowerCase().includes(filters.location.toLowerCase())
-      );
-    }
+  const fetchWard = async (provide_id) => {
+    let res = await getWard(provide_id);
+    console.log(res);
+    setListWards(res);
+  };
 
-    if (filters.roomType) {
-      filtered = filtered.filter((r) =>
-        r.type.toLowerCase().includes(filters.roomType.toLowerCase())
-      );
-    }
+  const handleSelectedCity = (value) => {
+    fetchWard(value.id);
+    setSelectedCity(value);
+    setSelectedWard(defaultWard);
+  };
 
-    setRooms(filtered);
-  }, [filters]);
+  const handleSelectedWard = (value) => {
+    setSelectedWard(value);
+  };
+
+  const handleClearFilters = () => {
+    setSearchValue("");
+    setSelectedCity(defaultCity);
+    setSelectedWard(defaultWard);
+    setListWards([]);
+    setCapacity(null);
+  };
+
+  const hasActiveFilters =
+    searchValue.trim() !== "" ||
+    selectedCity.id !== null ||
+    selectedWard.id !== null ||
+    capacity !== null;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-bold text-center mb-6">
-        Tìm kiếm phòng trọ
-      </h1>
-      <RoomSearchForm filters={filters} setFilters={setFilters} />
-      <RoomList rooms={rooms} onSelectRoom={setSelectedRoom} />
-      {selectedRoom && (
-        <RoomDetail room={selectedRoom} onClose={() => setSelectedRoom(null)} />
-      )}
+    <div className="p-4 md:p-6 bg-gray-50 min-h-screen">
+      <section className="bg-white p-4 md:p-5 rounded-[10px] border border-black/10 mb-6">
+        <div className="flex items-center justify-between mb-4 md:mb-5">
+          <h2 className="text-base md:text-lg font-semibold leading-5 text-black">
+            Tìm kiếm
+          </h2>
+
+          {hasActiveFilters && (
+            <button
+              onClick={handleClearFilters}
+              className="flex items-center gap-1 text-sm text-red-600 hover:text-red-700 font-medium transition-colors"
+            >
+              <X className="w-4 h-4" />
+              <span className="hidden sm:inline">Xóa bộ lọc</span>
+              <span className="sm:hidden">Xóa</span>
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-4 justify-between">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              name="search"
+              placeholder="Nhập tên phòng, tiện ích"
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              className="h-10 flex-1 w-md rounded-md border border-zinc-200 bg-gray-50 px-4 py-2 text-sm md:text-base"
+            />
+            <button
+              className="h-10 sm:h-9 flex-none items-center justify-center rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-gray-50 hover:bg-zinc-800 transition-colors"
+              onClick={() => {}}
+            >
+              Tìm
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            <Select
+              value={capacity?.toString() || ""}
+              onValueChange={(v) => setCapacity(v ? Number(v) : null)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Số người ở" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1 người</SelectItem>
+                <SelectItem value="2">2 người</SelectItem>
+                <SelectItem value="3">3 người</SelectItem>
+                <SelectItem value="4">4+ người</SelectItem>
+              </SelectContent>
+            </Select>
+            <ComboboxLocation
+              datas={listCitys}
+              onSelected={handleSelectedCity}
+              value={selectedCity}
+            />
+            <ComboboxLocation
+              datas={listWards}
+              onSelected={handleSelectedWard}
+              value={selectedWard}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Danh sách phòng - ĐÃ SỬA */}
+      <section className="">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 md:mb-6 gap-2">
+          <h1 className="text-2xl md:text-4xl font-bold">
+            Danh sách phòng trọ
+          </h1>
+          {!isLoading && pagination.totalItems * pagination.totalPages > 0 && (
+            <p className="text-sm md:text-base text-gray-600">
+              Kết quả:
+              <span className="font-semibold text-zinc-900">
+                {pagination.totalItems * pagination.totalPages}
+              </span>{" "}
+              phòng
+            </p>
+          )}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {isLoading ? (
+            <div className="col-span-full flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-zinc-900"></div>
+            </div>
+          ) : rooms.length > 0 ? (
+            rooms.map((room) => (
+              <div
+                key={room.id}
+                className="flex w-full h-auto bg-white rounded-lg p-2.5 gap-2.5 shadow-md border border-gray-100 cursor-pointer hover:shadow-xl transition-shadow duration-300"
+              >
+                <img
+                  src={
+                    room.primary_photo || "https://placehold.net/400x400.png"
+                  }
+                  alt={`${room.room_name} ${room.full_address}`}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "https://placehold.net/400x400.png";
+                  }}
+                  className="w-[200px] h-full object-cover rounded-md flex-none self-stretch"
+                />
+
+                <div className="flex flex-col justify-between  w-full py-2.5">
+                  <div className="flex flex-col gap-2.5">
+                    <h3 className="h-auto md:h-12 font-semibold text-lg leading-[22px] tracking-wide text-black">
+                      {room.room_name || room.name}
+                    </h3>
+                    <p className="text-base text-black">
+                      {room.full_address || room.address}
+                    </p>
+                    <div className="flex items-center gap-2.5 text-base text-black">
+                      <span>{room.area}m²</span>
+                      <span className="w-1.5 h-1.5 bg-gray-300 rounded-full"></span>
+                      <span>{room.capacity} người</span>
+                    </div>
+                    <p className="h-auto text-sm text-gray-500">
+                      {room.description}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col items-end mt-2 md:mt-0">
+                    <p className="font-semibold text-base tracking-wide text-green-500">
+                      {/* {(room.base_price || room.price)?.toLocaleString("vi-VN")}{" "} */}
+                      {formatPrice(room.base_price)} VNĐ
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="col-span-full flex flex-col items-center justify-center py-12 text-gray-500">
+              <p className="text-lg font-medium">Không tìm thấy phòng nào</p>
+              <p className="text-sm mt-2">
+                Vui lòng thử thay đổi bộ lọc tìm kiếm
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+      <Pagination
+        currentPage={currentPage}
+        totalPages={pagination.totalPages}
+        onPageChange={setCurrentPage}
+        totalItems={pagination.totalItems}
+        itemName="Phòng"
+      />
     </div>
   );
 };

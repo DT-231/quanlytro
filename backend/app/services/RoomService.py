@@ -138,8 +138,8 @@ class RoomService:
         max_price: Optional[int] = None,
         max_capacity: Optional[int] = None,
         sort_by: Optional[str] = None,
-        offset: int = 0,
-        limit: int = 100,
+        page: int = 1,
+        pageSize: int = 20,
     ) -> dict:
         """Lấy danh sách phòng với thông tin đầy đủ, filter và pagination.
         
@@ -153,43 +153,30 @@ class RoomService:
             max_price: Giá thuê tối đa (optional).
             max_capacity: Số người tối đa (optional).
             sort_by: Sắp xếp (price_asc, price_desc), mặc định created_at desc.
-            offset: Vị trí bắt đầu.
-            limit: Số lượng tối đa (max 100).
+            page: Số trang (bắt đầu từ 1).
+            pageSize: Số items mỗi trang (max 100).
             
         Returns:
-            Dict chứa items (danh sách phòng với details), total, offset, limit.
-            
-            Response format:
-            {
-                "items": [
-                    {
-                        "id": "uuid",
-                        "room_number": "101",
-                        "building_name": "Chung cư hoàng anh",
-                        "area": 50.0,
-                        "capacity": 4,
-                        "current_occupants": 2,
-                        "status": "OCCUPIED",
-                        "base_price": 7000000,
-                        "representative": "Nguyễn Văn A"
-                    }
-                ],
-                "total": 50,
-                "offset": 0,
-                "limit": 20
-            }
+            Dict chứa items và pagination (totalItems, page, pageSize, totalPages).
         """
-        # Validate limit
-        if limit > 100:
-            limit = 100
-        if limit < 1:
-            limit = 20
+        # Validate pageSize
+        if pageSize > 100:
+            pageSize = 100
+        if pageSize < 1:
+            pageSize = 20
+        
+        # Validate page
+        if page < 1:
+            page = 1
             
         # Validate status nếu có
         if status:
             valid_statuses = [s.value for s in RoomStatus]
             if status not in valid_statuses:
                 raise ValueError(f"Trạng thái không hợp lệ. Phải là một trong: {valid_statuses}")
+        
+        # Tính offset
+        offset = (page - 1) * pageSize
         
         # Lấy danh sách với details
         items_data = self.room_repo.list_with_details(
@@ -203,11 +190,11 @@ class RoomService:
             max_capacity=max_capacity,
             sort_by=sort_by,
             offset=offset,
-            limit=limit
+            limit=pageSize
         )
         
         # Lấy tổng số
-        total = self.room_repo.count(
+        totalItems = self.room_repo.count(
             building_id=building_id,
             status=status,
             search=search,
@@ -218,14 +205,20 @@ class RoomService:
             max_capacity=max_capacity
         )
         
+        # Tính tổng số trang
+        totalPages = (totalItems + pageSize - 1) // pageSize if totalItems > 0 else 1
+        
         # Convert dict sang Pydantic schemas
         items_out = [RoomListItem(**item) for item in items_data]
         
         return {
             "items": items_out,
-            "total": total,
-            "offset": offset,
-            "limit": limit,
+            "pagination": {
+                "totalItems": totalItems,
+                "page": page,
+                "pageSize": pageSize,
+                "totalPages": totalPages
+            }
         }
 
     def update_room(self, room_id: UUID, room_data: RoomUpdate, user_id: Optional[UUID] = None) -> RoomDetailOut:
@@ -507,8 +500,8 @@ class RoomService:
         capacity: Optional[int] = None,
         status: Optional[str] = None,
         utilities: Optional[List[str]] = None,
-        offset: int = 0,
-        limit: int = 20,
+        page: int = 1,
+        pageSize: int = 20,
     ) -> dict:
         """Tìm kiếm phòng với nhiều điều kiện.
         
@@ -521,17 +514,21 @@ class RoomService:
             capacity: Sức chứa.
             status: Trạng thái phòng.
             utilities: Danh sách tiện ích cần có.
-            offset: Vị trí bắt đầu.
-            limit: Số lượng tối đa.
+            page: Số trang (bắt đầu từ 1).
+            pageSize: Số items mỗi trang.
             
         Returns:
-            Dict chứa items, total, offset, limit.
+            Dict chứa items và pagination (totalItems, page, pageSize, totalPages).
         """
-        # Validate limit
-        if limit > 100:
-            limit = 100
-        if limit < 1:
-            limit = 20
+        # Validate pageSize
+        if pageSize > 100:
+            pageSize = 100
+        if pageSize < 1:
+            pageSize = 20
+        
+        # Validate page
+        if page < 1:
+            page = 1
         
         # Validate status nếu có
         if status:
@@ -577,10 +574,13 @@ class RoomService:
                 query = query.join(RoomUtility).filter(RoomUtility.utility_name == utility)
         
         # Get total count
-        total = query.count()
+        totalItems = query.count()
+        
+        # Tính offset
+        offset = (page - 1) * pageSize
         
         # Apply pagination
-        rooms = query.offset(offset).limit(limit).all()
+        rooms = query.offset(offset).limit(pageSize).all()
         
         # Convert to list items (simple version)
         items = []
@@ -608,11 +608,17 @@ class RoomService:
                 representative=representative
             ))
         
+        # Tính tổng số trang
+        totalPages = (totalItems + pageSize - 1) // pageSize if totalItems > 0 else 1
+        
         return {
             "items": items,
-            "total": total,
-            "offset": offset,
-            "limit": limit,
+            "pagination": {
+                "totalItems": totalItems,
+                "page": page,
+                "pageSize": pageSize,
+                "totalPages": totalPages
+            }
         }
 
     def list_rooms_public(
@@ -625,8 +631,8 @@ class RoomService:
         max_price: Optional[int] = None,
         max_capacity: Optional[int] = None,
         sort_by: Optional[str] = None,
-        offset: int = 0,
-        limit: int = 10,
+        page: int = 1,
+        pageSize: int = 10,
     ) -> dict:
         """Lấy danh sách phòng cho khách thuê/khách vãng lai (không cần đăng nhập).
         
@@ -647,19 +653,23 @@ class RoomService:
             max_price: Giá thuê tối đa (optional).
             max_capacity: Số người tối đa (optional).
             sort_by: Sắp xếp (price_asc, price_desc), mặc định created_at desc.
-            offset: Vị trí bắt đầu.
-            limit: Số lượng tối đa (default 10).
+            page: Số trang (bắt đầu từ 1).
+            pageSize: Số items mỗi trang (default 10, max 20).
             
         Returns:
-            Dict chứa items, total, offset, limit.
+            Dict chứa items và pagination (totalItems, page, pageSize, totalPages).
         """
         from app.models.address import Address
         
-        # Validate limit
-        if limit > 20:
-            limit = 20
-        if limit < 1:
-            limit = 10
+        # Validate pageSize
+        if pageSize > 20:
+            pageSize = 20
+        if pageSize < 1:
+            pageSize = 10
+        
+        # Validate page
+        if page < 1:
+            page = 1
         
         # Query rooms với joinedload để tránh N+1
         from sqlalchemy.orm import joinedload
@@ -730,10 +740,13 @@ class RoomService:
             query = query.order_by(Room.created_at.desc())
         
         # Count total
-        total = query.count()
+        totalItems = query.count()
+        
+        # Tính offset
+        offset = (page - 1) * pageSize
         
         # Pagination
-        rooms = query.offset(offset).limit(limit).all()
+        rooms = query.offset(offset).limit(pageSize).all()
         
         # Convert to RoomPublicListItem
         items = []
@@ -778,9 +791,15 @@ class RoomService:
                 created_at=room.created_at
             ))
         
+        # Tính tổng số trang
+        totalPages = (totalItems + pageSize - 1) // pageSize if totalItems > 0 else 1
+        
         return {
             "items": items,
-            "total": total,
-            "offset": offset,
-            "limit": limit,
+            "pagination": {
+                "totalItems": totalItems,
+                "page": page,
+                "pageSize": pageSize,
+                "totalPages": totalPages
+            }
         }

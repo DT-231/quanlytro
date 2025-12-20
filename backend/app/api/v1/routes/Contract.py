@@ -108,10 +108,12 @@ async def get_contract_stats(session: Session = Depends(get_db)):
                                     "created_at": "2025-01-01T00:00:00"
                                 }
                             ],
-                            "total": 582,
-                            "page": 1,
-                            "size": 20,
-                            "pages": 30
+                            "pagination": {
+                                "totalItems": 582,
+                                "page": 1,
+                                "pageSize": 20,
+                                "totalPages": 30
+                            }
                         }
                     }
                 }
@@ -121,7 +123,7 @@ async def get_contract_stats(session: Session = Depends(get_db)):
 )
 async def list_contracts(
     page: int = Query(1, ge=1, description="Số trang (bắt đầu từ 1)"),
-    size: int = Query(20, ge=1, le=100, description="Số items mỗi trang"),
+    pageSize: int = Query(20, ge=1, le=100, description="Số items mỗi trang"),
     status: Optional[str] = Query(
         None, description="Lọc theo trạng thái: ACTIVE, EXPIRED, TERMINATED, PENDING"
     ),
@@ -135,7 +137,7 @@ async def list_contracts(
 
     **Query Parameters:**
     - `page`: Số trang (mặc định 1)
-    - `size`: Số items mỗi trang (mặc định 20, max 100)
+    - `pageSize`: Số items mỗi trang (mặc định 20, max 100)
     - `status`: Lọc theo trạng thái (ACTIVE, EXPIRED, TERMINATED, PENDING)
     - `building`: Lọc theo tên tòa nhà (tìm kiếm gần đúng)
     - `search`: Tìm kiếm theo mã hợp đồng / tên khách hàng / số điện thoại
@@ -144,7 +146,7 @@ async def list_contracts(
     try:
         service = ContractService(session)
         result = service.list_contracts(
-            page=page, size=size, status=status, building=building, search=search
+            page=page, pageSize=pageSize, status=status, building=building, search=search
         )
         return response.success(data=result, message="success")
     except ValueError as e:

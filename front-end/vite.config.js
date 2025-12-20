@@ -1,7 +1,7 @@
-import path from "path"
-import tailwindcss from "@tailwindcss/vite"
-import react from "@vitejs/plugin-react"
-import { defineConfig } from "vite"
+import path from "path";
+import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -11,7 +11,18 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-})
+
+  server: {
+    proxy: {
+      "/api/address": {
+        target: "https://tailieu365.com",
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
+});
+
 // git init
 // git add .
 // git commit -m "first commit"

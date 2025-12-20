@@ -96,8 +96,8 @@ class UserService:
         gender: Optional[str] = None,
         district: Optional[str] = None,
         role_code: Optional[str] = None,
-        offset: int = 0,
-        limit: int = 20,
+        page: int = 1,
+        pageSize: int = 20,
     ) -> dict:
         """Lấy danh sách users với filter, search và pagination.
 
@@ -107,17 +107,21 @@ class UserService:
             gender: Lọc theo giới tính.
             district: Lọc theo quận/huyện.
             role_code: Lọc theo mã role (TENANT, CUSTOMER).
-            offset: Vị trí bắt đầu.
-            limit: Số lượng tối đa (max 100).
+            page: Số trang (bắt đầu từ 1).
+            pageSize: Số items mỗi trang (max 100).
 
         Returns:
-            Dict chứa items, total, offset, limit.
+            Dict chứa items và pagination (totalItems, page, pageSize, totalPages).
         """
-        # Validate limit
-        if limit > 100:
-            limit = 100
-        if limit < 1:
-            limit = 20
+        # Validate pageSize
+        if pageSize > 100:
+            pageSize = 100
+        if pageSize < 1:
+            pageSize = 20
+        
+        # Validate page
+        if page < 1:
+            page = 1
 
         # Validate status nếu có
         if status:
@@ -136,6 +140,9 @@ class UserService:
                 raise ValueError(f"Mã role không hợp lệ: {role_code}. Phải là TENANT hoặc CUSTOMER")
             role_id = role.id
 
+        # Tính offset
+        offset = (page - 1) * pageSize
+
         # Lấy danh sách users
         items_data = self.user_repo.list_with_filters(
             search=search,
@@ -144,11 +151,11 @@ class UserService:
             district=district,
             role_id=role_id,
             offset=offset,
-            limit=limit,
+            limit=pageSize,
         )
 
         # Lấy tổng số
-        total = self.user_repo.count(
+        totalItems = self.user_repo.count(
             search=search,
             status=status,
             gender=gender,
@@ -156,14 +163,20 @@ class UserService:
             role_id=role_id,
         )
 
+        # Tính tổng số trang
+        totalPages = (totalItems + pageSize - 1) // pageSize if totalItems > 0 else 1
+
         # Convert sang schema
         items_out = [UserListItem(**item) for item in items_data]
 
         return {
             "items": items_out,
-            "total": total,
-            "offset": offset,
-            "limit": limit,
+            "pagination": {
+                "totalItems": totalItems,
+                "page": page,
+                "pageSize": pageSize,
+                "totalPages": totalPages
+            }
         }
 
     def get_stats(self, role_id: Optional[UUID] = None) -> UserStats:

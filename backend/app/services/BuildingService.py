@@ -122,44 +122,29 @@ class BuildingService:
         self,
         address_id: Optional[UUID] = None,
         status: Optional[str] = None,
-        offset: int = 0,
-        limit: int = 100,
+        page: int = 1,
+        pageSize: int = 20,
     ) -> dict:
         """Lấy danh sách tòa nhà với thống kê phòng, filter và pagination.
 
         Args:
             address_id: Lọc theo địa chỉ (optional).
             status: Lọc theo trạng thái (optional).
-            offset: Vị trí bắt đầu.
-            limit: Số lượng tối đa (max 100).
+            page: Số trang (bắt đầu từ 1).
+            pageSize: Số items mỗi trang (max 100).
 
         Returns:
-            Dict chứa items (danh sách tòa nhà với stats), total, offset, limit.
-
-            Response format:
-            {
-                "items": [
-                    {
-                        "id": "uuid",
-                        "building_name": "Tên tòa nhà",
-                        "address_line": "Địa chỉ đầy đủ",
-                        "total_rooms": 15,
-                        "available_rooms": 1,
-                        "rented_rooms": 14,
-                        "status": "ACTIVE",
-                        "created_at": "2025-01-23T..."
-                    }
-                ],
-                "total": 10,
-                "offset": 0,
-                "limit": 20
-            }
+            Dict chứa items và pagination (totalItems, page, pageSize, totalPages).
         """
-        # Validate limit
-        if limit > 100:
-            limit = 100
-        if limit < 1:
-            limit = 20
+        # Validate pageSize
+        if pageSize > 100:
+            pageSize = 100
+        if pageSize < 1:
+            pageSize = 20
+        
+        # Validate page
+        if page < 1:
+            page = 1
 
         # Validate status nếu có
         if status:
@@ -169,22 +154,31 @@ class BuildingService:
                     f"Trạng thái không hợp lệ. Phải là một trong: {valid_statuses}"
                 )
 
+        # Tính offset
+        offset = (page - 1) * pageSize
+
         # Lấy danh sách với room statistics
         items_data = self.building_repo.list_with_room_stats(
-            address_id=address_id, status=status, offset=offset, limit=limit
+            address_id=address_id, status=status, offset=offset, limit=pageSize
         )
 
         # Lấy tổng số
-        total = self.building_repo.count(address_id=address_id, status=status)
+        totalItems = self.building_repo.count(address_id=address_id, status=status)
+
+        # Tính tổng số trang
+        totalPages = (totalItems + pageSize - 1) // pageSize if totalItems > 0 else 1
 
         # Convert dict sang Pydantic schemas
         items_out = [BuildingListItem(**item) for item in items_data]
 
         return {
             "items": items_out,
-            "total": total,
-            "offset": offset,
-            "limit": limit,
+            "pagination": {
+                "totalItems": totalItems,
+                "page": page,
+                "pageSize": pageSize,
+                "totalPages": totalPages
+            }
         }
 
     def update_building(

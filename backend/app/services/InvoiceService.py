@@ -243,8 +243,8 @@ class InvoiceService:
         user_role: str,
         status: Optional[str] = None,
         building_id: Optional[UUID] = None,
-        offset: int = 0,
-        limit: int = 20
+        page: int = 1,
+        pageSize: int = 20
     ) -> dict:
         """Lấy danh sách hóa đơn.
         
@@ -256,12 +256,20 @@ class InvoiceService:
             user_role: Role code
             status: Lọc theo trạng thái
             building_id: Lọc theo tòa nhà (chỉ admin)
-            offset: Vị trí bắt đầu
-            limit: Số lượng tối đa
+            page: Số trang (bắt đầu từ 1)
+            pageSize: Số items mỗi trang
             
         Returns:
-            Dict chứa items, total, offset, limit
+            Dict chứa items và pagination (totalItems, page, pageSize, totalPages)
         """
+        # Validate page và pageSize
+        if page < 1:
+            page = 1
+        if pageSize < 1:
+            pageSize = 20
+        if pageSize > 100:
+            pageSize = 100
+            
         # Nếu là tenant, chỉ lấy hóa đơn của mình
         tenant_id = None if user_role == "ADMIN" else user_id
         
@@ -269,27 +277,36 @@ class InvoiceService:
         if user_role != "ADMIN":
             building_id = None
         
+        # Tính offset
+        offset = (page - 1) * pageSize
+        
         items_data = self.invoice_repo.list_with_details(
             status_filter=status,
             building_id=building_id,
             tenant_id=tenant_id,
             offset=offset,
-            limit=limit
+            limit=pageSize
         )
         
-        total = self.invoice_repo.count(
+        totalItems = self.invoice_repo.count(
             status_filter=status,
             building_id=building_id,
             tenant_id=tenant_id
         )
         
+        # Tính tổng số trang
+        totalPages = (totalItems + pageSize - 1) // pageSize if totalItems > 0 else 1
+        
         items_out = [InvoiceListItem(**item) for item in items_data]
         
         return {
             "items": items_out,
-            "total": total,
-            "offset": offset,
-            "limit": limit
+            "pagination": {
+                "totalItems": totalItems,
+                "page": page,
+                "pageSize": pageSize,
+                "totalPages": totalPages
+            }
         }
     
     def update_invoice(

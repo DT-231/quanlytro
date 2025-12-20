@@ -153,8 +153,8 @@ class MaintenanceService:
         request_type: Optional[str] = None,
         building_id: Optional[UUID] = None,
         room_id: Optional[UUID] = None,
-        offset: int = 0,
-        limit: int = 20,
+        page: int = 1,
+        pageSize: int = 20,
     ) -> dict:
         """Lấy danh sách maintenance requests với phân quyền.
 
@@ -165,16 +165,21 @@ class MaintenanceService:
         Args:
             user_id: UUID của user hiện tại.
             is_admin: True nếu user là admin.
-            Các tham số filter khác...
+            page: Số trang (bắt đầu từ 1).
+            pageSize: Số items mỗi trang (max 100).
 
         Returns:
-            Dict chứa items, total, offset, limit.
+            Dict chứa items và pagination (totalItems, page, pageSize, totalPages).
         """
-        # Validate limit
-        if limit > 100:
-            limit = 100
-        if limit < 1:
-            limit = 20
+        # Validate pageSize
+        if pageSize > 100:
+            pageSize = 100
+        if pageSize < 1:
+            pageSize = 20
+        
+        # Validate page
+        if page < 1:
+            page = 1
 
         # Validate status nếu có
         if status:
@@ -195,6 +200,9 @@ class MaintenanceService:
         # Nếu là tenant, chỉ xem requests của mình
         tenant_id = None if is_admin else user_id
 
+        # Tính offset
+        offset = (page - 1) * pageSize
+
         # Lấy danh sách
         items_data = self.maintenance_repo.list_with_filters(
             search=search,
@@ -205,11 +213,11 @@ class MaintenanceService:
             room_id=room_id,
             tenant_id=tenant_id,
             offset=offset,
-            limit=limit,
+            limit=pageSize,
         )
 
         # Lấy tổng số
-        total = self.maintenance_repo.count(
+        totalItems = self.maintenance_repo.count(
             search=search,
             status=status,
             priority=priority,
@@ -219,14 +227,20 @@ class MaintenanceService:
             tenant_id=tenant_id,
         )
 
+        # Tính tổng số trang
+        totalPages = (totalItems + pageSize - 1) // pageSize if totalItems > 0 else 1
+
         # Convert sang schema
         items_out = [MaintenanceListItem(**item) for item in items_data]
 
         return {
             "items": items_out,
-            "total": total,
-            "offset": offset,
-            "limit": limit,
+            "pagination": {
+                "totalItems": totalItems,
+                "page": page,
+                "pageSize": pageSize,
+                "totalPages": totalPages
+            }
         }
 
     def get_stats(

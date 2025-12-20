@@ -72,8 +72,8 @@ router = APIRouter(prefix="/buildings", tags=["Building Management"])
 def list_buildings(
     address_id: Optional[UUID] = Query(None, description="Lọc theo địa chỉ"),
     building_status: Optional[str] = Query(None, description="Lọc theo trạng thái (ACTIVE, INACTIVE, SUSPENDED)", alias="status"),
-    offset: int = Query(0, ge=0, description="Vị trí bắt đầu"),
-    limit: int = Query(20, ge=1, le=100, description="Số lượng tối đa (max 100)"),
+    page: int = Query(1, ge=1, description="Số trang (bắt đầu từ 1)"),
+    pageSize: int = Query(20, ge=1, le=100, description="Số items mỗi trang (max 100)"),
     db: Session = Depends(get_db),
 ):
     """Lấy danh sách tòa nhà với thống kê phòng.
@@ -81,12 +81,12 @@ def list_buildings(
     Query params:
     - address_id: UUID của địa chỉ (optional)
     - status: Trạng thái tòa nhà (ACTIVE, INACTIVE, SUSPENDED)
-    - offset: Vị trí bắt đầu (default 0)
-    - limit: Số lượng tối đa (default 20, max 100)
+    - page: Số trang (default 1)
+    - pageSize: Số items mỗi trang (default 20, max 100)
     
     Response format:
     {
-        "code": 200,
+        "success": true,
         "message": "success",
         "data": {
             "items": [
@@ -102,9 +102,12 @@ def list_buildings(
                     "created_at": "2025-02-10T..."
                 }
             ],
-            "total": 10,
-            "offset": 0,
-            "limit": 20
+            "pagination": {
+                "totalItems": 10,
+                "page": 1,
+                "pageSize": 20,
+                "totalPages": 1
+            }
         }
     }
     """
@@ -113,8 +116,8 @@ def list_buildings(
         result = building_service.list_buildings(
             address_id=address_id,
             status=building_status,
-            offset=offset,
-            limit=limit,
+            page=page,
+            pageSize=pageSize,
         )
         return response.success(data=result, message="Lấy danh sách tòa nhà thành công")
     except ValueError as e:

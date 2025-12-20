@@ -144,8 +144,8 @@ def list_rooms(
         description="Sắp xếp theo (price_asc, price_desc). Mặc định: phòng mới nhất trước (created_at desc)",
         regex="^(price_asc|price_desc)$"
     ),
-    offset: int = Query(0, ge=0, description="Vị trí bắt đầu"),
-    limit: int = Query(20, ge=1, le=100, description="Số lượng (Public max 20, Admin max 100)"),
+    page: int = Query(1, ge=1, description="Số trang (bắt đầu từ 1)"),
+    pageSize: int = Query(20, ge=1, le=100, description="Số items mỗi trang (Public max 20, Admin max 100)"),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional),  # Optional - không bắt buộc login
 ):
@@ -166,7 +166,7 @@ def list_rooms(
     - max_price: Giá thuê tối đa (all)
     - max_capacity: Số người tối đa (all)
     - sort_by: price_asc (giá tăng dần), price_desc (giá giảm dần), mặc định là mới nhất
-    - offset, limit: Pagination
+    - page, pageSize: Pagination
     """
     try:
         room_service = RoomService(db)
@@ -188,11 +188,11 @@ def list_rooms(
                 max_price=max_price,
                 max_capacity=max_capacity,
                 sort_by=sort_by,
-                offset=offset,
-                limit=min(limit, 100),  # Max 100 cho admin
+                page=page,
+                pageSize=min(pageSize, 100),  # Max 100 cho admin
             )
         else:
-            # Public/Customer: chỉ phòng available, limit max 20
+            # Public/Customer: chỉ phòng available, pageSize max 20
             result = room_service.list_rooms_public(
                 search=search,
                 building_id=building_id,
@@ -202,8 +202,8 @@ def list_rooms(
                 max_price=max_price,
                 max_capacity=max_capacity,
                 sort_by=sort_by,
-                offset=offset,
-                limit=min(limit, 20),  # Max 20 cho public
+                page=page,
+                pageSize=min(pageSize, 20),  # Max 20 cho public
             )
         
         return response.success(data=result, message="Lấy danh sách phòng thành công")
