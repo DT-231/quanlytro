@@ -228,7 +228,12 @@ class RoomPublicDetail(BaseModel):
     utilities: List[str] = Field(default_factory=list, description="Danh sách tiện ích")
     photos: List[RoomPhotoOut] = Field(default_factory=list, description="Tất cả ảnh của phòng")
     
-    model_config = {"from_attributes": True}
+    model_config = {
+        "from_attributes": True,
+        "json_encoders": {
+            Decimal: str
+        }
+    }
 
 
 class TenantInfo(BaseModel):
@@ -280,7 +285,12 @@ class RoomAdminDetail(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     
-    model_config = {"from_attributes": True}
+    model_config = {
+        "from_attributes": True,
+        "json_encoders": {
+            Decimal: str
+        }
+    }
 
 
 class RoomSearchParams(BaseModel):

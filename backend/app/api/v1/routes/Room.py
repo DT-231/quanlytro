@@ -346,26 +346,32 @@ def create_room(
 def get_room(
     room_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_optional),
 ):
-    """Xem chi tiết phòng theo role.
+    """Xem chi tiết phòng theo role (Công khai - không bắt buộc đăng nhập).
 
-    - Admin (ADMIN): Thấy đầy đủ thông tin + thông tin người thuê
-    - Tenant/Customer: Chỉ thấy thông tin cơ bản, không thấy người thuê
+    - Admin (ADMIN) có token: Thấy đầy đủ thông tin + thông tin người thuê
+    - User có token (Tenant/Customer): Thấy thông tin cơ bản
+    - Khách không đăng nhập: Thấy thông tin cơ bản (public view)
 
     Args:
         room_id: UUID của phòng cần xem
-        current_user: User hiện tại (từ token)
+        current_user: User hiện tại (optional, từ token nếu có)
 
     Returns:
         RoomAdminDetail (nếu admin) hoặc RoomPublicDetail (nếu không)
     """
     try:
         room_service = RoomService(db)
-        # Lấy role code từ user
-        user_role = current_user.role.role_code if current_user.role else "CUSTOMER"
+        # Lấy role code từ user (nếu có), mặc định là CUSTOMER nếu không đăng nhập
+        user_role = "CUSTOMER"
+        if current_user and current_user.role:
+            user_role = current_user.role.role_code
+        
         room = room_service.get_room_detail_by_role(room_id, user_role)
-        return response.success(data=room, message="Lấy thông tin phòng thành công")
+        # Convert Pydantic model sang dict để serialize đúng
+        room_data = room.model_dump(mode='json')
+        return response.success(data=room_data, message="Lấy thông tin phòng thành công")
     except ValueError as e:
         raise NotFoundException(message=str(e))
     except Exception as e:

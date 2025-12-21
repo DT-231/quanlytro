@@ -59,6 +59,7 @@ class AuthService:
             create_access_token,
             create_refresh_token,
         )
+        from app.models.user_document import UserDocument
 
         user = self.user_repo.get_by_email(email)
         if not user:
@@ -69,6 +70,19 @@ class AuthService:
 
         access = create_access_token(str(user.id))
         refresh = create_refresh_token(str(user.id))
+        
+        # Lấy avatar của user (nếu có)
+        avatar_url = None
+        avatar_doc = (
+            self.db.query(UserDocument)
+            .filter(
+                UserDocument.user_id == user.id,
+                UserDocument.document_type == "AVATAR"
+            )
+            .first()
+        )
+        if avatar_doc:
+            avatar_url = avatar_doc.url
 
         return {
             "user": {
@@ -77,6 +91,7 @@ class AuthService:
                 "role" :user.role.role_code,
                 "last_name":user.last_name,
                 "first_name":user.first_name,
+                "avatar": avatar_url,
             },
             "token": {"access_token": access, "refresh_token": refresh},
         }
