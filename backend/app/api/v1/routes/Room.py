@@ -27,11 +27,8 @@ from app.core.exceptions import (
 from app.schemas.room_schema import (
     RoomCreate,
     RoomUpdate,
-    RoomOut,
     RoomListItem,
     RoomDetailOut,
-    RoomPublicDetail,
-    RoomAdminDetail,
     RoomPublicListItem,
 )
 from app.services.RoomService import RoomService
@@ -287,9 +284,9 @@ def create_room(
     """
     try:
         room_service = RoomService(db)
-        # TODO: Thay None bằng current_user.id khi có auth
-        room_service.create_room(room_data, user_id=current_user.id)
-        return response.created(message="Tạo phòng thành công")
+        # Tạo phòng và nhận kết quả trả về (bao gồm utilities và photos)
+        room_created = room_service.create_room(room_data, user_id=current_user.id)
+        return response.created(data=room_created, message="Tạo phòng thành công")
     except ValueError as e:
         # Business rule violations
         raise ConflictException(message=str(e))

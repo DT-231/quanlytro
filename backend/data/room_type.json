@@ -1,0 +1,117 @@
+[
+    {
+        "name": "Phòng Studio Cao Cấp",
+        "description": "Phòng studio thiết kế hiện đại, đầy đủ nội thất cao cấp, diện tích 30-40m², phù hợp cho cá nhân hoặc cặp đôi. Tích hợp đầy đủ khu bếp, phòng ngủ và khu vực sinh hoạt trong một không gian mở.",
+        "is_active": true
+    },
+    {
+        "name": "Phòng 1 Phòng Ngủ",
+        "description": "Căn hộ có 1 phòng ngủ riêng biệt, diện tích 40-55m², phù hợp cho 2-3 người. Bao gồm phòng khách, bếp và phòng tắm riêng, thiết kế tối ưu không gian sống.",
+        "is_active": true
+    },
+    {
+        "name": "Văn Phòng Mini",
+        "description": "Không gian làm việc chuyên nghiệp, diện tích 25-35m², phù hợp cho freelancer, startup nhỏ. Thiết kế tối giản, tập trung vào năng suất làm việc.",
+        "is_active": true
+    },
+    {
+        "name": "Văn Phòng Hạng A",
+        "description": "Văn phòng hạng A cao cấp, diện tích 50-80m², phù hợp cho 6-15 nhân viên. Đầy đủ tiện nghi hiện đại, vị trí trung tâm, hình ảnh chuyên nghiệp.",
+        "is_active": true
+    },
+    {
+        "name": "Văn Phòng Premium",
+        "description": "Văn phòng cao cấp nhất, diện tích từ 80m² trở lên, có phòng họp riêng, pantry và không gian làm việc linh hoạt. Phù hợp cho công ty 15+ nhân viên.",
+        "is_active": true
+    },
+    {
+        "name": "Căn Hộ 2 Phòng Ngủ",
+        "description": "Căn hộ rộng rãi với 2 phòng ngủ riêng biệt, diện tích 65-85m², phù hợp cho gia đình 4-5 người. Có phòng khách rộng, bếp đầy đủ và 1-2 phòng tắm.",
+        "is_active": true
+    },
+    {
+        "name": "Căn Hộ 3 Phòng Ngủ / Penthouse",
+        "description": "Căn hộ cao cấp hoặc penthouse với 3 phòng ngủ, diện tích 100-120m² trở lên. Thiết kế sang trọng, có thể bao gồm sân vườn riêng, phù hợp gia đình lớn hoặc người có thu nhập cao.",
+        "is_active": true
+    },
+    {
+        "name": "Căn Hộ 1 Phòng Ngủ Deluxe",
+        "description": "Căn hộ 1 phòng ngủ cao cấp, diện tích 50-60m², nội thất và thiết bị hiện đại hơn loại standard. Có ban công lớn và view đẹp.",
+        "is_active": true
+    },
+    {
+        "name": "Mặt Bằng Kinh Doanh F&B",
+        "description": "Mặt bằng tầng trệt hoặc tầng thấp, diện tích 40-80m², phù hợp kinh doanh nhà hàng, quán cafe, fast food. Có hệ thống thoát khói và vị trí đắc địa.",
+        "is_active": true
+    },
+    {
+        "name": "Mặt Bằng Thời Trang / Retail",
+        "description": "Mặt bằng trong trung tâm thương mại, diện tích 40-80m², phù hợp kinh doanh thời trang, mỹ phẩm, phụ kiện. Vị trí đông khách và có kho để hàng.",
+        "is_active": true
+    },
+    {
+        "name": "Văn Phòng Dịch Vụ",
+        "description": "Văn phòng trong trung tâm thương mại hoặc tòa nhà hỗn hợp, diện tích 40-50m², thuận tiện gặp khách hàng. Phù hợp cho dịch vụ tư vấn, môi giới, đào tạo.",
+        "is_active": true
+    },
+    {
+        "name": "Phòng Studio Standard",
+        "description": "Phòng studio cơ bản, diện tích 28-35m², nội thất đầy đủ nhưng đơn giản. Giá cả phải chăng, phù hợp cho sinh viên, người đi làm độc thân.",
+        "is_active": true
+    },
+    {
+        "name": "Căn Hộ 1 Phòng Ngủ Premium",
+        "description": "Căn hộ 1 phòng ngủ cao cấp nhất, diện tích 45-55m², thiết kế hiện đại, nội thất sang trọng, view đẹp. Phù hợp cho cặp đôi hoặc gia đình nhỏ có thu nhập khá.",
+        "is_active": true
+    },
+    {
+        "name": "Căn Hộ 2 Phòng Ngủ Family",
+        "description": "Căn hộ 2 phòng ngủ thiết kế gia đình, diện tích 65-75m², có khu vực sinh hoạt chung rộng rãi, bếp đầy đủ, phù hợp cho gia đình có con nhỏ.",
+        "is_active": true
+    },
+    {
+        "name": "Phòng Trọ Sinh Viên",
+        "description": "Phòng trọ đơn giản, diện tích 20-28m², nội thất cơ bản, giá rẻ. An ninh tốt, gần trường học và tiện ích. Phù hợp cho sinh viên và người thu nhập thấp.",
+        "is_active": true
+    },
+    {
+        "name": "Căn Hộ 1 Phòng Ngủ Standard",
+        "description": "Căn hộ 1 phòng ngủ tiêu chuẩn, diện tích 40-50m², nội thất đầy đủ, thiết kế hợp lý. Giá cả phải chăng, phù hợp cho người đi làm hoặc gia đình nhỏ.",
+        "is_active": true
+    },
+    {
+        "name": "Căn Hộ 2 Phòng Ngủ Duplex",
+        "description": "Căn hộ duplex 2 tầng, diện tích 80-100m², thiết kế độc đáo với 2 phòng ngủ. Phân chia không gian riêng tư tốt, phù hợp gia đình 4-5 người.",
+        "is_active": true
+    },
+    {
+        "name": "Studio Ocean View / Sea View",
+        "description": "Studio có view biển hoặc sông, diện tích 35-40m², nội thất phong cách resort. Thích hợp cho người yêu thiên nhiên hoặc thuê ngắn hạn.",
+        "is_active": true
+    },
+    {
+        "name": "Căn Hộ 1 Phòng Ngủ Sea View",
+        "description": "Căn hộ 1 phòng ngủ view biển, diện tích 50-60m², ban công lớn hướng biển, nội thất hiện đại. Phù hợp cho người thích không gian thoáng đãng.",
+        "is_active": true
+    },
+    {
+        "name": "Căn Hộ 2 Phòng Ngủ Panorama",
+        "description": "Căn hộ 2 phòng ngủ với view panorama 180-360 độ, diện tích 75-90m², tầng cao, có nhiều ban công. Phù hợp cho gia đình yêu thích view đẹp.",
+        "is_active": true
+    },
+    {
+        "name": "Phòng Trọ City / Basic",
+        "description": "Phòng trọ đơn giản trong thành phố, diện tích 20-25m², nội thất cơ bản nhất. Giá rẻ nhất, phù hợp cho người thu nhập thấp, công nhân.",
+        "is_active": true
+    },
+    {
+        "name": "Studio City Center",
+        "description": "Studio tại trung tâm thành phố, diện tích 30-38m², vị trí thuận tiện đi lại, gần các tiện ích. Phù hợp cho người đi làm, cần di chuyển nhiều.",
+        "is_active": true
+    },
+    {
+        "name": "Căn Hộ 1 Phòng Ngủ City Life",
+        "description": "Căn hộ 1 phòng ngủ tại khu dân cư thành phố, diện tích 40-50m², gần trường học, siêu thị, bệnh viện. Phù hợp cho gia đình trẻ hoặc người đi làm.",
+        "is_active": true
+    }
+]

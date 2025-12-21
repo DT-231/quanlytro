@@ -15,7 +15,7 @@ from app.models.building import Building
 from app.models.contract import Contract
 from app.models.user import User
 from app.models.address import Address
-from app.schemas.room_schema import RoomCreate, RoomUpdate
+from app.models.room_type import RoomType
 from app.core.Enum.contractEnum import ContractStatus
 
 
@@ -41,19 +41,20 @@ class RoomRepository:
         return self.db.query(Room).filter(Room.id == room_id).first()
     
     def get_by_id_with_relations(self, room_id: UUID) -> Optional[Room]:
-        """Lấy Room theo ID với eager loading utilities và photos.
+        """Lấy Room theo ID với eager loading utilities, photos và room_type.
         
         Args:
             room_id: UUID của phòng cần tìm.
             
         Returns:
-            Room instance với utilities và room_photos, hoặc None.
+            Room instance với utilities, room_photos và room_type, hoặc None.
         """
         return (
             self.db.query(Room)
             .options(
                 joinedload(Room.utilities),
-                joinedload(Room.room_photos)
+                joinedload(Room.room_photos),
+                joinedload(Room.room_type)
             )
             .filter(Room.id == room_id)
             .first()
@@ -169,21 +170,6 @@ class RoomRepository:
             query = query.filter(Room.capacity <= max_capacity)
             
         return query.count()
-
-    def create(self, data: RoomCreate) -> Room:
-        """Tạo phòng mới trong database (deprecated - use create_room_basic).
-        
-        Args:
-            data: RoomCreate schema chứa dữ liệu phòng.
-            
-        Returns:
-            Room instance vừa được tạo.
-        """
-        room = Room(**data.model_dump())
-        self.db.add(room)
-        self.db.commit()
-        self.db.refresh(room)
-        return room
     
     def create_room_basic(self, room_dict: dict) -> Room:
         """Tạo phòng mới (chỉ basic info, không có utilities/photos).
@@ -197,25 +183,6 @@ class RoomRepository:
         room = Room(**room_dict)
         self.db.add(room)
         self.db.flush()  # Flush để có id nhưng chưa commit
-        return room
-
-    def update(self, room: Room, data: RoomUpdate) -> Room:
-        """Cập nhật thông tin phòng (deprecated - use update_room_basic).
-        
-        Args:
-            room: Room instance cần update.
-            data: RoomUpdate schema chứa dữ liệu mới.
-            
-        Returns:
-            Room instance đã được cập nhật.
-        """
-        # Chỉ update các field được set trong request
-        update_data = data.model_dump(exclude_unset=True)
-        for field, value in update_data.items():
-            setattr(room, field, value)
-            
-        self.db.commit()
-        self.db.refresh(room)
         return room
     
     def update_room_basic(self, room: Room, room_dict: dict) -> Room:
@@ -303,10 +270,13 @@ class RoomRepository:
                 Room.status,
                 Room.base_price,
                 Building.building_name,
+                RoomType.id.label('room_type_id'),
+                RoomType.name.label('room_type_name'),
                 func.coalesce(active_contract_subq.c.number_of_tenants, 0).label('current_occupants'),
                 func.concat(User.last_name, ' ', User.first_name).label('representative'),
             )
             .join(Building, Room.building_id == Building.id)
+            .outerjoin(RoomType, Room.room_type_id == RoomType.id)
             .outerjoin(
                 active_contract_subq,
                 (Room.id == active_contract_subq.c.room_id) & (active_contract_subq.c.rn == 1)
@@ -362,11 +332,13 @@ class RoomRepository:
         results = query.offset(offset).limit(limit).all()
         
         # Convert to dict
+        from app.schemas.room_type_schema import RoomTypeSimple
         return [
             {
                 'id': row.id,
                 'room_number': row.room_number,
                 'building_name': row.building_name,
+                'room_type': RoomTypeSimple(id=row.room_type_id, name=row.room_type_name) if row.room_type_id else None,
                 'area': row.area,
                 'capacity': row.capacity,
                 'current_occupants': row.current_occupants,

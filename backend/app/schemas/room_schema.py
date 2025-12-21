@@ -13,6 +13,7 @@ import uuid
 
 from app.core.Enum.roomEnum import RoomStatus
 from app.schemas.room_photo_schema import RoomPhotoInput, RoomPhotoOut
+from app.schemas.room_type_schema import RoomTypeSimple
 
 
 class RoomBase(BaseModel):
@@ -22,6 +23,7 @@ class RoomBase(BaseModel):
     """
 
     building_id: uuid.UUID
+    room_type_id: Optional[uuid.UUID] = Field(None, description="ID loại phòng")
     room_number: str = Field(..., min_length=1, max_length=20)
     room_name: Optional[str] = Field(None, max_length=100)
     area: Optional[float] = Field(None, gt=0)
@@ -62,18 +64,29 @@ class RoomCreate(RoomBase):
     
     @validator('photos')
     def validate_photos(cls, v):
-        """Validate danh sách photos."""
-        if v:
-            validated = []
-            for idx, photo in enumerate(v):
-                if isinstance(photo, dict) and 'image_base64' in photo:
-                    validated.append({
-                        'image_base64': photo['image_base64'],
-                        'is_primary': photo.get('is_primary', idx == 0),  # First photo is primary by default
-                        'sort_order': photo.get('sort_order', idx)
-                    })
-            return validated
-        return []
+        """Validate danh sách photos.
+        
+        Xử lý cả dict và RoomPhotoInput Pydantic object.
+        """
+        if not v:
+            return []
+        
+        validated = []
+        for idx, photo in enumerate(v):
+            # Xử lý dict
+            if isinstance(photo, dict):
+                image_base64 = photo.get('image_base64')
+                if image_base64:
+                    validated.append(RoomPhotoInput(
+                        image_base64=image_base64,
+                        is_primary=photo.get('is_primary', idx == 0),
+                        sort_order=photo.get('sort_order', idx)
+                    ))
+            # Xử lý RoomPhotoInput object (đã parse sẵn)
+            elif isinstance(photo, RoomPhotoInput):
+                validated.append(photo)
+        
+        return validated
 
 
 class RoomUpdate(BaseModel):
@@ -84,6 +97,7 @@ class RoomUpdate(BaseModel):
     """
 
     building_id: Optional[uuid.UUID] = None
+    room_type_id: Optional[uuid.UUID] = None
     room_number: Optional[str] = Field(None, min_length=1, max_length=20)
     room_name: Optional[str] = Field(None, max_length=100)
     area: Optional[float] = Field(None, gt=0)
@@ -137,6 +151,8 @@ class RoomDetailOut(BaseModel):
     
     id: uuid.UUID
     building_id: uuid.UUID
+    room_type_id: Optional[uuid.UUID] = None
+    room_type: Optional[RoomTypeSimple] = Field(None, description="Thông tin loại phòng")
     room_number: str
     room_name: Optional[str] = None
     area: Optional[float] = None
@@ -166,6 +182,7 @@ class RoomListItem(BaseModel):
     
     id: uuid.UUID
     room_number: str
+    room_type: Optional[RoomTypeSimple] = Field(None, description="Thông tin loại phòng")
     building_name: str  # Tên tòa nhà từ relationship
     area: Optional[float] = None
     capacity: int
@@ -187,6 +204,7 @@ class RoomPublicListItem(BaseModel):
     id: uuid.UUID
     room_number: str
     room_name: Optional[str] = None
+    room_type: Optional[RoomTypeSimple] = Field(None, description="Thông tin loại phòng")
     building_name: str  # Tên tòa nhà
     full_address: str  # Địa chỉ đầy đủ (address_line, ward, city)
     base_price: Decimal
@@ -209,8 +227,10 @@ class RoomPublicDetail(BaseModel):
     id: uuid.UUID
     building_id: uuid.UUID
     building_name: str  # Tên tòa nhà
+    full_address: str  # Địa chỉ đầy đủ
     room_number: str
     room_name: Optional[str] = None
+    room_type: Optional[RoomTypeSimple] = Field(None, description="Thông tin loại phòng")
     area: Optional[float] = None
     capacity: int
     base_price: Decimal
@@ -260,8 +280,10 @@ class RoomAdminDetail(BaseModel):
     id: uuid.UUID
     building_id: uuid.UUID
     building_name: str  # Tên tòa nhà
+    full_address: str  # Địa chỉ đầy đủ
     room_number: str
     room_name: Optional[str] = None
+    room_type: Optional[RoomTypeSimple] = Field(None, description="Thông tin loại phòng")
     area: Optional[float] = None
     capacity: int
     base_price: Decimal

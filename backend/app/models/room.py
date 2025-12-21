@@ -21,6 +21,7 @@ class Room(BaseModel):
     __tablename__ = "rooms"
     
     building_id = Column(UUID(as_uuid=True), ForeignKey("buildings.id"), nullable=False, index=True)
+    room_type_id = Column(UUID(as_uuid=True), ForeignKey("room_types.id"), nullable=True, index=True)  # Loại phòng
     room_number = Column(String(20), nullable=False)  # Ví dụ: 101, A202
     room_name = Column(String(100), nullable=True)    # Ví dụ: Căn hộ 1PN
     area = Column(Float, nullable=True)               # m²
@@ -34,6 +35,7 @@ class Room(BaseModel):
     
     # Relationships
     building = relationship("Building", back_populates="rooms")
+    room_type = relationship("RoomType", back_populates="rooms")
     contracts = relationship("Contract", back_populates="room")
     maintenance_requests = relationship("MaintenanceRequest", back_populates="room")
     reviews = relationship("Review", back_populates="room")

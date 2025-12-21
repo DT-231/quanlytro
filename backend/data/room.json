@@ -1,0 +1,400 @@
+[
+  {
+    "building_id": "00a67889-ed14-4ad2-9ea3-a5a0bd458b03",
+    "building_name": "Khu Công Nghệ Cao Đà Nẵng",
+    "rooms": [
+      {
+        "room_type_id": "6f6c524b-10a8-42dd-8c41-af933953a98e",
+        "room_number": "A101",
+        "room_name": "Phòng Studio Cao Cấp",
+        "area": 35,
+        "capacity": 2,
+        "base_price": 5500000,
+        "electricity_price": 3500,
+        "water_price_per_person": 100000,
+        "deposit_amount": 11000000,
+        "status": "AVAILABLE",
+        "description": "Phòng studio hiện đại, đầy đủ nội thất, view công viên công nghệ",
+        "utilities": ["Hồ bơi", "Thang máy", "Gym", "WiFi", "Điều hòa", "Máy nước nóng"]
+      },
+      {
+        "room_type_id": "a00e2120-7f00-430f-a719-5ceac7d63a0f",
+        "room_number": "A201",
+        "room_name": "Phòng 1 Phòng Ngủ",
+        "area": 45,
+        "capacity": 3,
+        "base_price": 7000000,
+        "electricity_price": 3500,
+        "water_price_per_person": 100000,
+        "deposit_amount": 14000000,
+        "status": "AVAILABLE",
+        "description": "Phòng rộng rãi với 1 phòng ngủ riêng, phù hợp gia đình nhỏ",
+        "utilities": ["Hồ bơi", "Thang máy", "Gym", "WiFi", "Điều hòa", "Bếp", "Ban công"]
+      },
+      {
+        "room_type_id": "f01116f5-f51e-4f34-b95f-598048adda8e",
+        "room_number": "B105",
+        "room_name": "Văn Phòng Mini",
+        "area": 28,
+        "capacity": 1,
+        "base_price": 4500000,
+        "electricity_price": 3500,
+        "water_price_per_person": 80000,
+        "deposit_amount": 9000000,
+        "status": "AVAILABLE",
+        "description": "Không gian làm việc riêng tư, phù hợp startup và freelancer",
+        "utilities": ["Thang máy", "WiFi tốc độ cao", "Điều hòa", "Bàn làm việc"]
+      }
+    ]
+  },
+  {
+    "building_id": "8590e05c-d0f9-4c06-acab-504e572607bb",
+    "building_name": "Vincom Office Đà Nẵng",
+    "rooms": [
+      {
+        "room_type_id": "83712eb7-42da-4dfa-b418-c9c15328698f",
+        "room_number": "V501",
+        "room_name": "Văn Phòng Hạng A - 50m²",
+        "area": 50,
+        "capacity": 8,
+        "base_price": 25000000,
+        "electricity_price": 4000,
+        "water_price_per_person": 50000,
+        "deposit_amount": 50000000,
+        "status": "RENTED",
+        "description": "Văn phòng hạng A view trung tâm thành phố, đầy đủ tiện nghi",
+        "utilities": ["Thang máy", "WiFi tốc độ cao", "Điều hòa trung tâm", "Bãi đỗ xe", "Lễ tân 24/7"]
+      },
+      {
+        "room_type_id": "3791ce83-72cd-4f25-946f-7eac3f9945ea",
+        "room_number": "V801",
+        "room_name": "Văn Phòng Premium - 80m²",
+        "area": 80,
+        "capacity": 15,
+        "base_price": 40000000,
+        "electricity_price": 4000,
+        "water_price_per_person": 50000,
+        "deposit_amount": 80000000,
+        "status": "AVAILABLE",
+        "description": "Văn phòng cao cấp với phòng họp riêng, view sông Hàn tuyệt đẹp",
+        "utilities": ["Thang máy", "WiFi", "Điều hòa", "Phòng họp", "Bãi đỗ xe", "Pantry"]
+      }
+    ]
+  },
+  {
+    "building_id": "f3b64d46-b889-4f65-acc1-b768474822bc",
+    "building_name": "Marina Riverside",
+    "rooms": [
+      {
+        "room_type_id": "0bb33406-b9ad-4381-9ba8-cc39eecb5924",
+        "room_number": "MR-1505",
+        "room_name": "Căn Hộ 2PN View Sông",
+        "area": 75,
+        "capacity": 4,
+        "base_price": 15000000,
+        "electricity_price": 3800,
+        "water_price_per_person": 120000,
+        "deposit_amount": 30000000,
+        "status": "RENTED",
+        "description": "Căn hộ 2 phòng ngủ view sông Hàn tuyệt đẹp, nội thất cao cấp",
+        "utilities": ["Camera", "Giữ xe", "Hồ bơi", "Gym", "Khu vui chơi trẻ em", "Thang máy"]
+      },
+      {
+        "room_type_id": "172151a2-ebf8-4130-89d6-094563bdb156",
+        "room_number": "MR-2108",
+        "room_name": "Căn Hộ 3PN Penthouse",
+        "area": 120,
+        "capacity": 6,
+        "base_price": 28000000,
+        "electricity_price": 3800,
+        "water_price_per_person": 120000,
+        "deposit_amount": 56000000,
+        "status": "AVAILABLE",
+        "description": "Penthouse sang trọng với 3 phòng ngủ, sân vườn riêng",
+        "utilities": ["Camera", "Giữ xe", "Hồ bơi", "Gym", "Thang máy", "Sân vườn riêng"]
+      },
+      {
+        "room_type_id": "e15c852a-d556-437a-b03c-19b6159ddd97",
+        "room_number": "MR-1802",
+        "room_name": "Căn Hộ 1PN Deluxe",
+        "area": 55,
+        "capacity": 2,
+        "base_price": 10000000,
+        "electricity_price": 3800,
+        "water_price_per_person": 120000,
+        "deposit_amount": 20000000,
+        "status": "AVAILABLE",
+        "description": "Căn hộ 1 phòng ngủ cao cấp, nội thất đầy đủ",
+        "utilities": ["Camera", "Giữ xe", "Hồ bơi", "Gym", "Thang máy", "Ban công"]
+      }
+    ]
+  },
+  {
+    "building_id": "af73b004-6fee-4fe0-98cb-a580576e6297",
+    "building_name": "Indochina Riverside Mall",
+    "rooms": [
+      {
+        "room_type_id": "cc58fbb1-ed1c-4336-b815-da0cf3efcf08",
+        "room_number": "IRM-G12",
+        "room_name": "Mặt Bằng Kinh Doanh 40m²",
+        "area": 40,
+        "capacity": 5,
+        "base_price": 35000000,
+        "electricity_price": 4500,
+        "water_price_per_person": 80000,
+        "deposit_amount": 70000000,
+        "status": "AVAILABLE",
+        "description": "Mặt bằng tầng trệt, vị trí đắc địa, thích hợp kinh doanh F&B",
+        "utilities": ["Gym", "Camera", "Hệ thống PCCC", "Điều hòa trung tâm"]
+      },
+      {
+        "room_type_id": "96718bb1-356b-4cfb-9205-e7151a2081e5",
+        "room_number": "IRM-201",
+        "room_name": "Mặt Bằng Thời Trang 60m²",
+        "area": 60,
+        "capacity": 8,
+        "base_price": 45000000,
+        "electricity_price": 4500,
+        "water_price_per_person": 80000,
+        "deposit_amount": 90000000,
+        "status": "AVAILABLE",
+        "description": "Mặt bằng tầng 2, phù hợp kinh doanh thời trang và phụ kiện",
+        "utilities": ["Gym", "Camera", "Thang máy", "Điều hòa", "Kho để hàng"]
+      },
+      {
+        "room_type_id": "4c02c852-0ea6-41af-818f-6b542c2e59ea",
+        "room_number": "IRM-315",
+        "room_name": "Văn Phòng Dịch Vụ 45m²",
+        "area": 45,
+        "capacity": 6,
+        "base_price": 22000000,
+        "electricity_price": 4500,
+        "water_price_per_person": 60000,
+        "deposit_amount": 44000000,
+        "status": "AVAILABLE",
+        "description": "Văn phòng trong trung tâm thương mại, thuận tiện gặp khách hàng",
+        "utilities": ["Gym", "Camera", "WiFi", "Điều hòa", "Thang máy"]
+      },
+      {
+        "room_type_id": "cc58fbb1-ed1c-4336-b815-da0cf3efcf08",
+        "room_number": "IRM-G25",
+        "room_name": "Quán Cafe 80m²",
+        "area": 80,
+        "capacity": 40,
+        "base_price": 55000000,
+        "electricity_price": 4500,
+        "water_price_per_person": 100000,
+        "deposit_amount": 110000000,
+        "status": "AVAILABLE",
+        "description": "Mặt bằng rộng rãi view sông, vị trí đẹp cho quán cafe",
+        "utilities": ["Camera", "Hệ thống thoát khói", "Điều hòa", "Bãi đỗ xe"]
+      }
+    ]
+  },
+  {
+    "building_id": "7188af79-aaf6-459f-a6b9-a87d0ca64163",
+    "building_name": "Sunrise Tower 1",
+    "rooms": [
+      {
+        "room_type_id": "fb04e6f9-e09c-4a9b-b31f-8f15bafeafce",
+        "room_number": "ST-701",
+        "room_name": "Studio Sunrise",
+        "area": 32,
+        "capacity": 2,
+        "base_price": 6500000,
+        "electricity_price": 3500,
+        "water_price_per_person": 100000,
+        "deposit_amount": 13000000,
+        "status": "AVAILABLE",
+        "description": "Studio hiện đại tại Quận 1, gần trung tâm Nguyễn Huệ",
+        "utilities": ["Thang máy", "WiFi", "Điều hòa", "Giường", "Tủ quần áo"]
+      },
+      {
+        "room_type_id": "4d9bc455-baad-4de1-8bda-0a66ea553061",
+        "room_number": "ST-1205",
+        "room_name": "Căn Hộ 1PN Premium",
+        "area": 48,
+        "capacity": 3,
+        "base_price": 9000000,
+        "electricity_price": 3500,
+        "water_price_per_person": 100000,
+        "deposit_amount": 18000000,
+        "status": "AVAILABLE",
+        "description": "Căn hộ 1 phòng ngủ cao cấp, view thành phố",
+        "utilities": ["Thang máy", "WiFi", "Điều hòa", "Bếp", "Ban công", "Máy giặt"]
+      },
+      {
+        "room_type_id": "8971b4fb-36f6-41b7-8213-89fc6106f66d",
+        "room_number": "ST-1508",
+        "room_name": "Căn Hộ 2PN Family",
+        "area": 68,
+        "capacity": 4,
+        "base_price": 13500000,
+        "electricity_price": 3500,
+        "water_price_per_person": 100000,
+        "deposit_amount": 27000000,
+        "status": "AVAILABLE",
+        "description": "Căn hộ 2 phòng ngủ rộng rãi, thích hợp gia đình",
+        "utilities": ["Thang máy", "WiFi", "Điều hòa", "Bếp đầy đủ", "2 Ban công", "Máy giặt"]
+      }
+    ]
+  },
+  {
+    "building_id": "ac74727b-b5ff-4c0a-97b9-482c4544f921",
+    "building_name": "Moonlight Residence 2",
+    "rooms": [
+      {
+        "room_type_id": "7d53372b-8b31-458b-a395-2424221d990a",
+        "room_number": "ML-305",
+        "room_name": "Phòng Trọ Sinh Viên",
+        "area": 25,
+        "capacity": 2,
+        "base_price": 4000000,
+        "electricity_price": 3500,
+        "water_price_per_person": 80000,
+        "deposit_amount": 8000000,
+        "status": "RENTED",
+        "description": "Phòng trọ sạch sẽ, an ninh tốt, gần trường đại học",
+        "utilities": ["Thang máy", "WiFi", "Điều hòa", "Giường", "Bàn học"]
+      },
+      {
+        "room_type_id": "fb04e6f9-e09c-4a9b-b31f-8f15bafeafce",
+        "room_number": "ML-508",
+        "room_name": "Studio Moonlight",
+        "area": 30,
+        "capacity": 2,
+        "base_price": 5500000,
+        "electricity_price": 3500,
+        "water_price_per_person": 90000,
+        "deposit_amount": 11000000,
+        "status": "AVAILABLE",
+        "description": "Studio đầy đủ nội thất, khu vực yên tĩnh",
+        "utilities": ["Thang máy", "WiFi", "Điều hòa", "Bếp nhỏ", "Máy nước nóng"]
+      },
+      {
+        "room_type_id": "2158727b-54f4-484a-87b0-8fc8144a5e89",
+        "room_number": "ML-812",
+        "room_name": "Căn Hộ 1PN Standard",
+        "area": 42,
+        "capacity": 3,
+        "base_price": 7500000,
+        "electricity_price": 3500,
+        "water_price_per_person": 90000,
+        "deposit_amount": 15000000,
+        "status": "AVAILABLE",
+        "description": "Căn hộ 1 phòng ngủ tiện nghi, ban công thoáng mát",
+        "utilities": ["Thang máy", "WiFi", "Điều hòa", "Bếp", "Ban công", "Tủ lạnh"]
+      },
+      {
+        "room_type_id": "4dda2ac2-02c9-42bf-9a98-2156f7ff611a",
+        "room_number": "ML-1015",
+        "room_name": "Căn Hộ 2PN Duplex",
+        "area": 85,
+        "capacity": 5,
+        "base_price": 14000000,
+        "electricity_price": 3500,
+        "water_price_per_person": 90000,
+        "deposit_amount": 28000000,
+        "status": "AVAILABLE",
+        "description": "Căn hộ duplex 2 tầng, thiết kế độc đáo",
+        "utilities": ["Thang máy", "WiFi", "Điều hòa", "Bếp cao cấp", "2 Ban công", "Máy giặt"]
+      }
+    ]
+  },
+  {
+    "building_id": "d4e712f5-ae68-4cea-a831-0b967379a4ec",
+    "building_name": "Ocean View 4",
+    "rooms": [
+      {
+        "room_type_id": "b2209a36-2a76-425f-959a-5e4b5dda7bef",
+        "room_number": "OV-601",
+        "room_name": "Studio Ocean Breeze",
+        "area": 38,
+        "capacity": 2,
+        "base_price": 7500000,
+        "electricity_price": 3800,
+        "water_price_per_person": 100000,
+        "deposit_amount": 15000000,
+        "status": "AVAILABLE",
+        "description": "Studio view biển, nội thất resort, gần bãi tắm",
+        "utilities": ["Thang máy", "WiFi", "Điều hòa", "Ban công view biển", "Bếp"]
+      },
+      {
+        "room_type_id": "ca249110-3b4b-48e3-beb5-7f3a4591ab8e",
+        "room_number": "OV-1203",
+        "room_name": "Căn Hộ 1PN Sea View",
+        "area": 52,
+        "capacity": 3,
+        "base_price": 11000000,
+        "electricity_price": 3800,
+        "water_price_per_person": 100000,
+        "deposit_amount": 22000000,
+        "status": "AVAILABLE",
+        "description": "Căn hộ view biển tuyệt đẹp, thiết kế hiện đại",
+        "utilities": ["Thang máy", "WiFi", "Điều hòa", "Ban công lớn", "Bếp", "Hồ bơi chung"]
+      },
+      {
+        "room_type_id": "96c4060a-d165-45a2-81d9-adea42d264a9",
+        "room_number": "OV-1805",
+        "room_name": "Căn Hộ 2PN Panorama",
+        "area": 78,
+        "capacity": 5,
+        "base_price": 16500000,
+        "electricity_price": 3800,
+        "water_price_per_person": 100000,
+        "deposit_amount": 33000000,
+        "status": "AVAILABLE",
+        "description": "Căn hộ 2 phòng ngủ view panorama 180 độ ra biển",
+        "utilities": ["Thang máy", "WiFi", "Điều hòa", "2 Ban công", "Bếp đầy đủ", "Hồ bơi", "Gym"]
+      }
+    ]
+  },
+  {
+    "building_id": "53692ee8-1614-43b3-aff1-aed41dc18147",
+    "building_name": "City Center 5",
+    "rooms": [
+      {
+        "room_type_id": "9a50b778-9d9b-4a65-98ae-2e614c5d2196",
+        "room_number": "CC-405",
+        "room_name": "Phòng Trọ City",
+        "area": 22,
+        "capacity": 1,
+        "base_price": 3500000,
+        "electricity_price": 3500,
+        "water_price_per_person": 80000,
+        "deposit_amount": 7000000,
+        "status": "AVAILABLE",
+        "description": "Phòng trọ đơn giản, giá rẻ, gần chợ và bến xe",
+        "utilities": ["Thang máy", "WiFi", "Điều hòa", "Giường"]
+      },
+      {
+        "room_type_id": "16821537-3f26-49e2-b14c-5a78519d7bfa",
+        "room_number": "CC-708",
+        "room_name": "Studio City Center",
+        "area": 35,
+        "capacity": 2,
+        "base_price": 6000000,
+        "electricity_price": 3500,
+        "water_price_per_person": 90000,
+        "deposit_amount": 12000000,
+        "status": "AVAILABLE",
+        "description": "Studio trung tâm Bình Thạnh, thuận tiện di chuyển",
+        "utilities": ["Thang máy", "WiFi", "Điều hòa", "Bếp nhỏ", "Ban công"]
+      },
+      {
+        "room_type_id": "6d9b35a8-7c9e-4bdb-a3de-be9ac262afcd",
+        "room_number": "CC-1012",
+        "room_name": "Căn Hộ 1PN City Life",
+        "area": 45,
+        "capacity": 3,
+        "base_price": 8500000,
+        "electricity_price": 3500,
+        "water_price_per_person": 90000,
+        "deposit_amount": 17000000,
+        "status": "AVAILABLE",
+        "description": "Căn hộ 1 phòng ngủ tiện nghi, gần siêu thị và trường học",
+        "utilities": ["Thang máy", "WiFi", "Điều hòa", "Bếp", "Ban công", "Máy giặt chung"]
+      }
+    ]
+  }
+]

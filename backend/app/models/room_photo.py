@@ -24,7 +24,7 @@ class RoomPhoto(BaseModel):
     image_base64 = Column(Text, nullable=True)  # Ảnh dạng base64 string
     is_primary = Column(Boolean, nullable=False, default=False, index=True)
     sort_order = Column(Integer, nullable=False, default=0)
-    uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)  # Nullable để hỗ trợ upload không cần user_id
     
     # Relationships
     room = relationship("Room", back_populates="room_photos")

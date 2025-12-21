@@ -14,8 +14,8 @@ from app.repositories.room_repository import RoomRepository
 from app.repositories.building_repository import BuildingRepository
 from app.repositories.contract_repository import ContractRepository
 from app.schemas.room_schema import (
-    RoomCreate, RoomOut, RoomUpdate, RoomListItem, RoomDetailOut,
-    RoomPublicDetail, RoomAdminDetail, TenantInfo, RoomSearchParams, RoomPublicListItem
+    RoomCreate, RoomUpdate, RoomListItem, RoomDetailOut,
+    RoomPublicDetail, RoomAdminDetail, TenantInfo, RoomPublicListItem
 )
 from app.schemas.room_photo_schema import RoomPhotoOut
 from app.models.room import Room
@@ -41,6 +41,10 @@ class RoomService:
         self.room_repo = RoomRepository(db)
         self.building_repo = BuildingRepository(db)
         self.contract_repo = ContractRepository(db)
+        
+        # Import RoomTypeRepository để validate room_type_id
+        from app.repositories.room_type_repository import RoomTypeRepository
+        self.room_type_repo = RoomTypeRepository(db)
 
     def create_room(self, room_data: RoomCreate, user_id: Optional[UUID] = None) -> RoomDetailOut:
         """Tạo phòng mới với validation, utilities và photos.
@@ -73,6 +77,14 @@ class RoomService:
         if not building:
             raise ValueError(f"Không tìm thấy tòa nhà với ID: {room_data.building_id}")
         
+        # Validate room_type_id nếu có
+        if room_data.room_type_id:
+            room_type = self.room_type_repo.get_by_id(room_data.room_type_id)
+            if not room_type:
+                raise ValueError(f"Không tìm thấy loại phòng với ID: {room_data.room_type_id}")
+            if not room_type.is_active:
+                raise ValueError(f"Loại phòng '{room_type.name}' đã bị vô hiệu hóa")
+        
         # Validate status
         valid_statuses = [s.value for s in RoomStatus]
         if room_data.status not in valid_statuses:
@@ -86,17 +98,13 @@ class RoomService:
         if existing:
             raise ValueError(f"Số phòng {room_data.room_number} đã tồn tại trong tòa nhà này")
         
-        # Extract utilities và photos từ room_data
         utilities = room_data.utilities or []
         photos = room_data.photos or []
         
-        # Tạo dict từ room_data (exclude utilities và photos)
         room_dict = room_data.model_dump(exclude={'utilities', 'photos'})
         
-        # Tạo phòng mới
         room = self.room_repo.create_room_basic(room_dict)
         
-        # Thêm utilities nếu có
         if utilities:
             for utility_name in utilities:
                 utility = RoomUtility(
@@ -107,24 +115,33 @@ class RoomService:
                 )
                 self.db.add(utility)
         
-        # Thêm photos nếu có (lưu base64 vào database)
-        if photos and user_id:
-            for photo_data in photos:
+        if photos:
+            for idx, photo_data in enumerate(photos):
+                if isinstance(photo_data, dict):
+                    image_base64 = photo_data.get('image_base64')
+                    is_primary = photo_data.get('is_primary', False)
+                    sort_order = photo_data.get('sort_order', 0)
+                else:
+                    image_base64 = getattr(photo_data, 'image_base64', None)
+                    is_primary = getattr(photo_data, 'is_primary', False)
+                    sort_order = getattr(photo_data, 'sort_order', 0)
+                
+                if not image_base64:
+                    continue
+                
                 photo = RoomPhoto(
                     room_id=room.id,
-                    image_base64=photo_data.get('image_base64'),
-                    url=None,  # Không có URL vì lưu base64
-                    is_primary=photo_data.get('is_primary', False),
-                    sort_order=photo_data.get('sort_order', 0),
+                    image_base64=image_base64,
+                    url=None,
+                    is_primary=is_primary,
+                    sort_order=sort_order,
                     uploaded_by=user_id
                 )
                 self.db.add(photo)
         
-        # Commit tất cả
         self.db.commit()
         self.db.refresh(room)
         
-        # Convert sang RoomDetailOut
         return self._room_to_detail_out(room)
 
     def list_rooms(
@@ -252,6 +269,14 @@ class RoomService:
         if room_data.capacity is not None and room_data.capacity < 1:
             raise ValueError("Sức chứa phải ít nhất 1 người")
         
+        # Validate room_type_id nếu có update
+        if room_data.room_type_id is not None:
+            room_type = self.room_type_repo.get_by_id(room_data.room_type_id)
+            if not room_type:
+                raise ValueError(f"Không tìm thấy loại phòng với ID: {room_data.room_type_id}")
+            if not room_type.is_active:
+                raise ValueError(f"Loại phòng '{room_type.name}' đã bị vô hiệu hóa")
+        
         if room_data.status is not None:
             valid_statuses = [s.value for s in RoomStatus]
             if room_data.status not in valid_statuses:
@@ -371,19 +396,31 @@ class RoomService:
             room: Room ORM instance.
             
         Returns:
-            RoomDetailOut schema với utilities và photos.
+            RoomDetailOut schema với utilities, photos và room_type.
         """
         # Lấy utilities
         utilities = [u.utility_name for u in room.utilities] if room.utilities else []
         
-        # Lấy photo URLs, sắp xếp theo sort_order
+        # Lấy photo URLs hoặc base64, sắp xếp theo sort_order
+        # Ưu tiên url nếu có, nếu không có thì dùng image_base64
         photos = sorted(room.room_photos, key=lambda p: p.sort_order) if room.room_photos else []
-        photo_urls = [p.url for p in photos]
+        photo_urls = [p.url if p.url else p.image_base64 for p in photos if (p.url or p.image_base64)]
+        
+        # Lấy room_type nếu có
+        from app.schemas.room_type_schema import RoomTypeSimple
+        room_type_data = None
+        if room.room_type:
+            room_type_data = RoomTypeSimple(
+                id=room.room_type.id,
+                name=room.room_type.name
+            )
         
         # Build dict data
         room_data = {
             'id': room.id,
             'building_id': room.building_id,
+            'room_type_id': room.room_type_id,
+            'room_type': room_type_data,
             'room_number': room.room_number,
             'room_name': room.room_name,
             'area': room.area,
@@ -427,12 +464,33 @@ class RoomService:
         building = self.building_repo.get_by_id(room.building_id)
         building_name = building.building_name if building else "N/A"
         
+        # Lấy địa chỉ đầy đủ từ building
+        full_address = "N/A"
+        if building and building.address:
+            address_parts = []
+            if building.address.address_line:
+                address_parts.append(building.address.address_line)
+            if building.address.ward:
+                address_parts.append(building.address.ward)
+            if building.address.city:
+                address_parts.append(building.address.city)
+            full_address = ", ".join(address_parts) if address_parts else "N/A"
+        
         # Lấy utilities
         utilities = [u.utility_name for u in room.utilities] if room.utilities else []
         
         # Lấy photos (sắp xếp theo sort_order) và convert sang RoomPhotoOut
         photos_orm = sorted(room.room_photos, key=lambda p: p.sort_order) if room.room_photos else []
         photos = [RoomPhotoOut.model_validate(p) for p in photos_orm]
+        
+        # Lấy room_type nếu có
+        from app.schemas.room_type_schema import RoomTypeSimple
+        room_type_data = None
+        if room.room_type:
+            room_type_data = RoomTypeSimple(
+                id=room.room_type.id,
+                name=room.room_type.name
+            )
         
         # Lấy thông tin contract active (nếu có)
         active_contract = self.contract_repo.get_active_contract_by_room(room_id)
@@ -463,8 +521,10 @@ class RoomService:
             'id': room.id,
             'building_id': room.building_id,
             'building_name': building_name,
+            'full_address': full_address,
             'room_number': room.room_number,
             'room_name': room.room_name,
+            'room_type': room_type_data,
             'area': room.area,
             'capacity': room.capacity,
             'base_price': room.base_price,

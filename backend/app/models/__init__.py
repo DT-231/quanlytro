@@ -17,6 +17,7 @@ from .building import Building
 
 # Room-related models
 from .room import Room
+from .room_type import RoomType
 from .room_utility import RoomUtility
 
 # Media/Document models
@@ -50,6 +51,7 @@ __all__ = [
     
     # Room and Utilities
     "Room",
+    "RoomType",
     "RoomUtility",
     
     # Business models
