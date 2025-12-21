@@ -24,6 +24,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
 const RoomDetailModal = ({ isOpen, onClose, room, loading }) => {
+  console.log("Dữ liệu room nhận được:", room); 
+  console.log("Mảng photos:", room?.photos);
   const [activeTab, setActiveTab] = useState("info");
   const activeAmenities = useMemo(() => {
     if (!room || !room.utilities) return [];
@@ -33,27 +35,20 @@ const RoomDetailModal = ({ isOpen, onClose, room, loading }) => {
   }, [room]);
 
   const roomImages = useMemo(() => {
-    if (!room) return [];
+    if (!room || !room.photos || !Array.isArray(room.photos)) {
+        console.log("Không tìm thấy mảng photos trong room:", room);
+        return [];
+    }
 
-    // Tìm mảng ảnh từ các tên trường phổ biến của Backend
-    // Ưu tiên 'photos' (theo payload AddRoom), sau đó đến 'photo_urls', 'images'
-    const rawData = room.photos || room.photo_urls || room.images || room.photo || [];
-
-    if (!Array.isArray(rawData)) return [];
-
-    // Map dữ liệu về dạng mảng String URL/Base64
-    return rawData.map(item => {
-        // Nếu là string (URL hoặc Base64 sẵn) -> Dùng luôn
-        if (typeof item === 'string') return item;
-        
-        // Nếu là object -> Trích xuất trường chứa ảnh
-        if (typeof item === 'object' && item !== null) {
-            return item.image_base64 || item.image_url || item.url || item.link || null;
+    return room.photos
+      .map(item => {
+        if (item && typeof item === 'object' && item.image_base64) {
+             return item.image_base64;
         }
-        return null;
-    }).filter(url => url !== null); // Loại bỏ các ảnh null/undefined
+        return item?.url || null;
+      })
+      .filter(img => img);
   }, [room]);
-
   if (!isOpen) return null;
 
   const getStatusBadge = (status) => {
