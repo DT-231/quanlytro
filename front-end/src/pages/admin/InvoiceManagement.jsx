@@ -1,26 +1,27 @@
-import React, { useState, useEffect, useCallback } from "react";
-import {
-  FaSearch,
-  FaPlus,
-  FaEllipsisH,
-  FaSync
-} from "react-icons/fa";
-import { FiFilter, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+// src/pages/admin/InvoiceManagement.jsx
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { FaPlus, FaEllipsisH } from "react-icons/fa";
+import { Toaster, toast } from "sonner";
+
+// Services
+import { invoiceService } from "@/services/invoiceService";
+import { buildingService } from "@/services/buildingService";
+
+// Components & Modals
 import InvoiceDetailModal from "@/components/modals/invoice/InvoiceDetailModal";
 import AddInvoiceModal from "@/components/modals/invoice/AddInvoiceModal";
-import { Toaster, toast } from "sonner";
 import Pagination from "@/components/Pagination";
-// Import Services
-import { invoiceService } from "@/services/invoiceService";
-import { buildingService } from "@/services/buildingService"; 
+
+// NEW: Import FilterBar
+import FilterBar from "@/components/FilterBar";
 
 const InvoiceManagement = () => {
-  // --- STATES QUẢN LÝ DỮ LIỆU ---
+  // --- STATES ---
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Dữ liệu cho bộ lọc (Filter)
-  const [buildingsForFilter, setBuildingsForFilter] = useState([]);
+  // Filter Data
+  const [buildings, setBuildings] = useState([]);
   
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
@@ -75,7 +76,7 @@ const InvoiceManagement = () => {
 
   // --- 2. API CALLS ---
 
-  // A. Lấy danh sách hóa đơn
+  // A. Fetch Invoices
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
     try {
@@ -84,13 +85,12 @@ const InvoiceManagement = () => {
         size: itemsPerPage,
         status: mapStatusToApi(filterStatus),
         building_id: filterBuilding || null,
-        // search: searchTerm // Bỏ comment nếu API hỗ trợ search
+        // search: searchTerm // Add search param if API supports it
       };
 
       const response = await invoiceService.getAll(params);
 
       if (response && response.data) {
-        // Xử lý dữ liệu trả về linh hoạt (Array hoặc Object có items)
         let items = [];
         const pagination = response.data.pagination || {};
 
@@ -115,18 +115,17 @@ const InvoiceManagement = () => {
     }
   }, [currentPage, filterStatus, filterBuilding]);
 
-  // B. Lấy danh sách tòa nhà cho bộ lọc (Chỉ chạy 1 lần)
+  // B. Fetch Buildings for Filter
   useEffect(() => {
     const fetchBuildings = async () => {
       try {
         const res = await buildingService.getAll();
-        // Xử lý response linh hoạt
         let buildingList = [];
         if (Array.isArray(res)) buildingList = res;
         else if (res?.data && Array.isArray(res.data)) buildingList = res.data;
         else if (res?.data?.items) buildingList = res.data.items;
         
-        setBuildingsForFilter(buildingList);
+        setBuildings(buildingList);
       } catch (error) {
         console.error("Lỗi tải tòa nhà:", error);
       }
@@ -134,15 +133,64 @@ const InvoiceManagement = () => {
     fetchBuildings();
   }, []);
 
-  // Gọi fetchInvoices khi filter thay đổi
   useEffect(() => {
     fetchInvoices();
   }, [fetchInvoices]);
 
-  // --- 3. EVENT HANDLERS ---
+  // --- 3. FILTER CONFIGURATION ---
+
+  // Prepare Building Options
+  const buildingOptions = useMemo(() => {
+    return buildings.map(b => ({ id: b.id, name: b.building_name || b.name }));
+  }, [buildings]);
+
+  // Prepare Status Options
+  const statusOptions = [
+    { id: "Chưa thanh toán", name: "Chưa thanh toán" },
+    { id: "Đã thanh toán", name: "Đã thanh toán" },
+    { id: "Quá hạn", name: "Quá hạn" },
+  ];
+
+  // Filter Configuration Array
+  const filterConfigs = [
+    {
+      key: "building",
+      type: "combobox",
+      placeholder: "Lọc theo tòa nhà",
+      options: buildingOptions,
+      value: filterBuilding,
+    },
+    {
+      key: "status",
+      type: "select",
+      placeholder: "Trạng thái",
+      options: statusOptions,
+      value: filterStatus,
+    },
+  ];
+
+  // Handle Filter Change
+  const handleFilterChange = (key, value) => {
+    if (key === "building") {
+        setFilterBuilding(value);
+    } else if (key === "status") {
+        setFilterStatus(value);
+    }
+    setCurrentPage(1);
+  };
+
+  // Handle Clear Filters
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setFilterBuilding("");
+    setFilterStatus("");
+    setCurrentPage(1);
+  };
+
+  // --- 4. EVENT HANDLERS ---
   
   const handleAddSuccess = () => {
-    fetchInvoices(); // Refresh bảng
+    fetchInvoices(); 
   };
 
   const handleViewDetail = async (invoiceId) => {
@@ -177,62 +225,15 @@ const InvoiceManagement = () => {
         </div>
       </div>
 
-      {/* FILTER BAR */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-3">
-          {/* Search */}
-          <div className="relative w-full md:w-1/3">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FaSearch className="text-gray-400" />
-            </div>
-            <input
-                type="text"
-                className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-900 bg-gray-50 transition-all"
-                placeholder="Tìm theo phòng hoặc khách hàng..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          <div className="flex gap-2 w-full md:w-auto justify-end">
-            {/* Filter Building */}
-            <div className="relative w-full md:w-48">
-              <select
-                className="w-full appearance-none border border-gray-200 px-3 py-2 pr-8 rounded-md bg-white hover:bg-gray-50 text-sm focus:outline-none cursor-pointer text-gray-700 transition-all"
-                value={filterBuilding}
-                onChange={(e) => {
-                    setFilterBuilding(e.target.value);
-                    setCurrentPage(1);
-                }}
-              >
-                <option value="">Tất cả tòa nhà</option>
-                {buildingsForFilter.map(b => (
-                    <option key={b.id} value={b.id}>{b.building_name || b.name}</option>
-                ))}
-              </select>
-              <FiFilter className="absolute right-3 top-2.5 text-gray-400 w-3 h-3 pointer-events-none" />
-            </div>
-
-            {/* Filter Status */}
-            <div className="relative w-full md:w-40">
-              <select
-                className="w-full appearance-none border border-gray-200 px-3 py-2 pr-8 rounded-md bg-white hover:bg-gray-50 text-sm focus:outline-none cursor-pointer text-gray-700 transition-all"
-                value={filterStatus}
-                onChange={(e) => {
-                    setFilterStatus(e.target.value);
-                    setCurrentPage(1);
-                }}
-              >
-                <option value="">Tất cả trạng thái</option>
-                <option value="Chưa thanh toán">Chưa thanh toán</option>
-                <option value="Đã thanh toán">Đã thanh toán</option>
-                <option value="Quá hạn">Quá hạn</option>
-              </select>
-              <FiFilter className="absolute right-3 top-2.5 text-gray-400 w-3 h-3 pointer-events-none" />
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* FILTER BAR (REUSABLE COMPONENT) */}
+      <FilterBar
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Tìm theo phòng hoặc khách hàng..."
+        filters={filterConfigs}
+        onFilterChange={handleFilterChange}
+        onClear={handleClearFilters}
+      />
 
       {/* DATA TABLE */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
@@ -253,7 +254,7 @@ const InvoiceManagement = () => {
                  <tr><td colSpan="6" className="p-8 text-center text-gray-500">Đang tải dữ liệu...</td></tr>
               ) : invoices.length > 0 ? (
                 invoices
-                // Client-side search (nếu API chưa hỗ trợ search)
+                // Client-side search logic if API doesn't support it directly yet
                 .filter(i => 
                     !searchTerm || 
                     (i.tenant_name && i.tenant_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -306,12 +307,12 @@ const InvoiceManagement = () => {
         </div>
 
         <Pagination 
-  currentPage={currentPage}
-  totalPages={totalPages}
-  totalItems={totalItems}
-  onPageChange={setCurrentPage} 
-  label="hóa đơn"              
-/>
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          onPageChange={setCurrentPage} 
+          label="hóa đơn"              
+        />
       </div>
 
       {/* MODALS */}

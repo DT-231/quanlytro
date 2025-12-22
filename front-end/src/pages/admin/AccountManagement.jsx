@@ -1,6 +1,6 @@
+// src/pages/admin/AccountManagement.jsx
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { FaSearch, FaEdit, FaTrashAlt, FaPlus } from "react-icons/fa";
-import { FiFilter } from "react-icons/fi";
+import { FaEdit, FaTrashAlt, FaPlus } from "react-icons/fa";
 import { Toaster, toast } from "sonner";
 import { userService } from "@/services/userService";
 
@@ -8,6 +8,8 @@ import { userService } from "@/services/userService";
 import AddTenantModal from "@/components/modals/tenant/AddTenantModal";
 import DeleteConfirmationModal from "@/components/modals/DeleteConfirmationModal";
 import Pagination from "@/components/Pagination";
+// NEW: Import FilterBar
+import FilterBar from "@/components/FilterBar";
 
 const AccountManagement = () => {
   // --- STATES ---
@@ -44,7 +46,7 @@ const AccountManagement = () => {
   }, [tenants]);
 
   // --- 1. LẤY DANH SÁCH & SẮP XẾP ---
- const fetchTenants = useCallback(async () => {
+  const fetchTenants = useCallback(async () => {
     setLoading(true);
     try {
       const params = {
@@ -66,17 +68,12 @@ const AccountManagement = () => {
         items = dataSource;
       }
       
-      // --- LOGIC SẮP XẾP MỚI (FIX LỖI BỊ ĐẨY XUỐNG CUỐI) ---
       const sortedItems = items.sort((a, b) => {
-        // Ưu tiên 1: Sort theo CODE giảm dần (Người mới -> Code lớn hơn -> Lên đầu)
-        // Chuyển về Number để so sánh đúng (tránh lỗi "10" < "2")
         const codeA = Number(a.code) || 0;
         const codeB = Number(b.code) || 0;
         if (codeB !== codeA) {
             return codeB - codeA; 
         }
-
-        // Ưu tiên 2: Nếu Code bằng nhau (hiếm), dùng ngày tạo
         const timeA = new Date(a.created_at || 0).getTime();
         const timeB = new Date(b.created_at || 0).getTime();
         return timeB - timeA;
@@ -92,9 +89,61 @@ const AccountManagement = () => {
       setLoading(false);
     }
   }, [searchTerm, filterStatus, filterGender]);
+
   useEffect(() => {
     fetchTenants();
   }, [fetchTenants]);
+
+  // --- FILTER CONFIGURATION ---
+  
+  // 1. Status Options
+  const statusOptions = [
+    { id: "Đang thuê", name: "Đang thuê" },
+    { id: "Chưa thuê", name: "Chưa thuê" },
+  ];
+
+  // 2. Gender Options
+  const genderOptions = [
+    { id: "Nam", name: "Nam" },
+    { id: "Nữ", name: "Nữ" },
+  ];
+
+  // 3. Filter Configs
+  const filterConfigs = [
+    {
+      key: "status",
+      type: "select",
+      placeholder: "Trạng thái",
+      options: statusOptions,
+      value: filterStatus,
+    },
+    {
+      key: "gender",
+      type: "select",
+      placeholder: "Giới tính",
+      options: genderOptions,
+      value: filterGender,
+    },
+  ];
+
+  // 4. Handle Filter Change
+  const handleFilterChange = (key, value) => {
+    if (key === "status") {
+      setFilterStatus(value);
+    } else if (key === "gender") {
+      setFilterGender(value);
+    }
+    setCurrentPage(1);
+  };
+
+  // 5. Handle Clear Filters
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setFilterStatus("");
+    setFilterGender("");
+    setCurrentPage(1);
+    // REMOVED: toast.info("Đã xóa bộ lọc"); as requested
+  };
 
   // --- PAGINATION LOGIC ---
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -111,13 +160,9 @@ const AccountManagement = () => {
   };
 
   // --- HANDLERS ---
-  
-  // 2. XỬ LÝ KHI THÊM/SỬA THÀNH CÔNG
   const handleSuccess = () => {
-    fetchTenants(); // Tải lại dữ liệu mới nhất (sẽ kích hoạt logic sort ở trên)
-    setCurrentPage(1); // Bắt buộc quay về trang 1 để thấy item mới nhất
-    
-    // UX: Cuộn nhẹ lên đầu trang để người dùng thấy thay đổi
+    fetchTenants(); 
+    setCurrentPage(1); 
     window.scrollTo({ top: 0, behavior: 'smooth' }); 
   };
 
@@ -141,7 +186,6 @@ const AccountManagement = () => {
       try {
         await userService.delete(tenantToDelete.id);
         toast.success(`Đã xóa thành công khách thuê`);
-        // Khi xóa xong cũng nên refresh và về trang 1 (hoặc giữ trang hiện tại nếu muốn)
         fetchTenants(); 
         if (currentTenants.length === 1 && currentPage > 1) {
             setCurrentPage(currentPage - 1);
@@ -185,58 +229,15 @@ const AccountManagement = () => {
         </button>
       </div>
 
-      {/* Filter Bar */}
-      <div className="bg-white p-3 rounded-lg shadow-sm mb-4">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-3">
-          <div className="relative w-full md:w-1/2 flex items-center">
-            <div className="relative w-full">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FaSearch className="text-gray-400" />
-              </div>
-              <input
-                type="text"
-                className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50"
-                placeholder="Lọc theo tên, SĐT, Email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="flex gap-2 w-full md:w-auto justify-end">
-             {/* Select Filters ... (Giữ nguyên như cũ) */}
-             <div className="relative">
-              <select
-                className="w-full appearance-none border border-gray-200 px-3 py-1 pr-8 rounded-md bg-white hover:bg-gray-50 text-sm focus:outline-none cursor-pointer text-gray-700"
-                value={filterStatus}
-                onChange={(e) => {
-                  setFilterStatus(e.target.value);
-                  setCurrentPage(1);
-                }}
-              >
-                <option value="">Trạng thái</option>
-                <option value="Đang thuê">Đang thuê</option>
-                <option value="Chưa thuê">Chưa thuê</option>
-              </select>
-              <FiFilter className="absolute right-3 top-2.5 text-gray-400 w-3 h-3 pointer-events-none" />
-            </div>
-            <div className="relative">
-              <select
-                className="w-full appearance-none border border-gray-200 px-3 py-1 pr-8 rounded-md bg-white hover:bg-gray-50 text-sm focus:outline-none cursor-pointer text-gray-700"
-                value={filterGender}
-                onChange={(e) => {
-                  setFilterGender(e.target.value);
-                  setCurrentPage(1);
-                }}
-              >
-                <option value="">Giới tính</option>
-                <option value="Nam">Nam</option>
-                <option value="Nữ">Nữ</option>
-              </select>
-              <FiFilter className="absolute right-3 top-2.5 text-gray-400 w-3 h-3 pointer-events-none" />
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* REUSABLE FILTER BAR */}
+      <FilterBar
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Lọc theo tên, SĐT, Email..."
+        filters={filterConfigs}
+        onFilterChange={handleFilterChange}
+        onClear={handleClearFilters}
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
@@ -276,7 +277,7 @@ const AccountManagement = () => {
                 <tr>
                   <td colSpan="7" className="p-6 text-center text-gray-500">
                     <div className="flex justify-center items-center gap-2">
-                         <span>Đang tải dữ liệu...</span>
+                          <span>Đang tải dữ liệu...</span>
                     </div>
                   </td>
                 </tr>
@@ -331,7 +332,7 @@ const AccountManagement = () => {
       <AddTenantModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onAddSuccess={handleSuccess} // Sử dụng hàm handleSuccess mới
+        onAddSuccess={handleSuccess}
         tenantToEdit={tenantToEdit}
       />
 

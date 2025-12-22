@@ -19,6 +19,11 @@ export default function Header({ user, onLogout, onToggleSidebar }) {
     };
   }, []);
 
+  // --- LOGIC XỬ LÝ ĐƯỜNG DẪN LOGO ---
+  // Bạn kiểm tra role chính xác mà backend trả về (ví dụ: 'ADMIN', 'admin', hay 'super_admin')
+  // Và đường dẫn admin dashboard của bạn (ví dụ: '/admin', '/dashboard', hay '/admin/dashboard')
+  const logoPath = user?.role === 'ADMIN' ? '/admin' : '/';
+
   return (
     <header className="w-full bg-white border-b shadow-sm h-14 flex items-center justify-between px-4 sticky top-0 z-20">
       
@@ -29,7 +34,8 @@ export default function Header({ user, onLogout, onToggleSidebar }) {
         </button>
 
         {/* --- LOGO --- */}
-        <Link to="/" className="flex items-center gap-3">
+        {/* Thay đổi to="/" thành to={logoPath} */}
+        <Link to={logoPath} className="flex items-center gap-3">
           <div className="w-9 h-9 bg-black text-white rounded-lg flex items-center justify-center text-sm font-bold shrink-0">N1</div>
           <div className="leading-tight hidden sm:block">
             <h1 className="text-xm font-bold text-gray-900">Nhóm 1</h1>
@@ -51,11 +57,11 @@ export default function Header({ user, onLogout, onToggleSidebar }) {
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="w-8 h-8 rounded-full bg-gray-200 border overflow-hidden hover:ring-2 hover:ring-gray-300 transition focus:outline-none"
             >
-                <img 
-                  src="https://github.com/shadcn.png"
-                  alt="Avatar" 
-                  className="w-full h-full object-cover"
-                />
+              <img 
+                src="https://github.com/shadcn.png"
+                alt="Avatar" 
+                className="w-full h-full object-cover"
+              />
             </button>
 
             {/* --- DROPDOWN MENU --- */}

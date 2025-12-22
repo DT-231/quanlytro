@@ -1,25 +1,28 @@
+// src/pages/admin/BuildingManagement.jsx
 import React, { useState, useEffect, useMemo } from "react";
 import {
-  FaSearch,
   FaEdit,
   FaTrashAlt,
   FaPlus,
   FaBuilding,
 } from "react-icons/fa";
-import { FiFilter } from "react-icons/fi";
-
-// 1. Import Sonner
 import { Toaster, toast } from "sonner";
 
-// Import các Modal
+// Services
+import { buildingService } from "@/services/buildingService";
+
+// Components & Modals
 import AddBuildingModal from "@/components/modals/building/AddBuildingModal";
 import EditBuildingModal from "@/components/modals/building/EditBuildingModal";
 import BuildingDetailModal from "@/components/modals/building/BuildingDetailModal";
-import { buildingService } from "@/services/buildingService";
 import DeleteConfirmationModal from "@/components/modals/DeleteConfirmationModal";
 import Pagination from "@/components/Pagination";
 
+// NEW: Import FilterBar
+import FilterBar from "@/components/FilterBar";
+
 const BuildingManagement = () => {
+  // --- STATES ---
   const [buildings, setBuildings] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -52,7 +55,6 @@ const BuildingManagement = () => {
       const response = await buildingService.getAll();
 
       let listData = [];
-      // Xử lý response linh hoạt
       if (response?.data?.data && Array.isArray(response.data.data.items)) {
         listData = response.data.data.items;
       } else if (response?.data?.items && Array.isArray(response.data.items)) {
@@ -63,12 +65,14 @@ const BuildingManagement = () => {
         listData = response;
       }
 
+      // Sort by creation date (newest first)
       listData.sort((a, b) => {
         const dateA = new Date(a.created_at || 0).getTime();
         const dateB = new Date(b.created_at || 0).getTime();
         return dateB - dateA;
       });
 
+      // Move priority item to top (e.g. newly created/edited)
       if (priorityId) {
         const index = listData.findIndex((item) => item.id === priorityId);
         if (index > -1) {
@@ -91,7 +95,43 @@ const BuildingManagement = () => {
     fetchBuildings();
   }, []);
 
-  // 2. Add Building
+  // --- FILTER CONFIGURATION ---
+  
+  // 1. Danh sách trạng thái cho FilterBar
+  const statusOptions = [
+    { id: "Hoạt động", name: "Hoạt động" },
+    { id: "SUSPENDED", name: "Tạm dừng" },
+    { id: "INACTIVE", name: "Ngừng hoạt động" },
+  ];
+
+  // 2. Cấu hình FilterBar
+  const filterConfigs = [
+    {
+      key: "status",
+      type: "select",
+      placeholder: "Trạng thái",
+      options: statusOptions,
+      value: filterStatus,
+    },
+  ];
+
+  // 3. Xử lý thay đổi filter
+  const handleFilterChange = (key, value) => {
+    if (key === "status") {
+      setFilterStatus(value);
+    }
+    setCurrentPage(1);
+  };
+
+  // 4. Xóa bộ lọc
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setFilterStatus("");
+    setCurrentPage(1);
+  };
+
+  // --- CRUD HANDLERS ---
+
   const handleAddBuilding = async (newBuildingData) => {
     try {
       const response = await buildingService.create(newBuildingData);
@@ -115,7 +155,6 @@ const BuildingManagement = () => {
     setIsEditModalOpen(true);      
   };
 
-  // 3. Update Building
   const handleUpdateBuilding = async (id, updatedData) => {
     try {
       const response = await buildingService.update(id, updatedData);
@@ -134,28 +173,6 @@ const BuildingManagement = () => {
     }
   };
 
-  // 4. View Detail
-  const handleViewDetail = async (id) => {
-    setIsDetailModalOpen(true);
-    setLoadingDetail(true);
-    setDetailBuildingData(null);
-
-    try {
-      const response = await buildingService.getById(id);
-      if (response && response.data) {
-        setDetailBuildingData(response.data);
-      } else {
-        toast.error("Không tìm thấy thông tin chi tiết");
-      }
-    } catch (error) {
-      console.error("Lỗi lấy chi tiết:", error);
-      toast.error("Không thể tải chi tiết tòa nhà");
-    } finally {
-      setLoadingDetail(false);
-    }
-  };
-
-  // 5. Delete Building
   const handleDeleteClick = (building) => {
     setBuildingToDelete(building);
     setDeleteModalOpen(true);
@@ -178,6 +195,25 @@ const BuildingManagement = () => {
     } finally {
       setDeleteModalOpen(false);
       setBuildingToDelete(null);
+    }
+  };
+
+  const handleViewDetail = async (id) => {
+    setIsDetailModalOpen(true);
+    setLoadingDetail(true);
+    setDetailBuildingData(null);
+    try {
+      const response = await buildingService.getById(id);
+      if (response && response.data) {
+        setDetailBuildingData(response.data);
+      } else {
+        toast.error("Không tìm thấy thông tin chi tiết");
+      }
+    } catch (error) {
+      console.error("Lỗi lấy chi tiết:", error);
+      toast.error("Không thể tải chi tiết tòa nhà");
+    } finally {
+      setLoadingDetail(false);
     }
   };
 
@@ -212,16 +248,19 @@ const BuildingManagement = () => {
     return "---";
   };
 
-  // --- FILTER & PAGINATION ---
+  // --- FILTER LOGIC ---
   const filteredBuildings = useMemo(() => {
     if (!Array.isArray(buildings)) return [];
+    
     return buildings.filter((building) => {
       const name = building.building_name || "";
       const address = building.address_line || "";
       const status = building.status || "";
+      
       const matchesSearch =
         name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         address.toLowerCase().includes(searchTerm.toLowerCase());
+        
       let matchesStatus = true;
       if (filterStatus) {
         if (filterStatus === "Hoạt động") matchesStatus = status === "ACTIVE";
@@ -231,9 +270,8 @@ const BuildingManagement = () => {
     });
   }, [buildings, searchTerm, filterStatus]);
 
-  // Logic phân trang client-side (vì API Building hiện tại trả về toàn bộ danh sách)
   const totalPages = Math.ceil(filteredBuildings.length / itemsPerPage);
-  const totalItems = filteredBuildings.length; // Thêm biến này cho Pagination component
+  const totalItems = filteredBuildings.length;
   
   const currentData = filteredBuildings.slice(
     (currentPage - 1) * itemsPerPage,
@@ -255,43 +293,15 @@ const BuildingManagement = () => {
         </button>
       </div>
 
-      {/* FILTER */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-3">
-          <div className="relative w-full md:w-2/3 flex items-center">
-            <div className="relative w-full">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FaSearch className="text-gray-400" />
-              </div>
-              <input
-                type="text"
-                className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-900 bg-gray-50"
-                placeholder="Nhập tên toà nhà, địa chỉ..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <button className="ml-2 bg-gray-900 text-white px-4 py-2 rounded-md text-sm hover:bg-gray-800 font-medium">
-              Tìm
-            </button>
-          </div>
-          <div className="flex gap-2 w-full md:w-auto justify-end">
-            <div className="relative w-full md:w-48">
-              <select
-                className="w-full appearance-none border border-gray-200 px-3 py-2 pr-8 rounded-md bg-white hover:bg-gray-50 text-sm focus:outline-none cursor-pointer text-gray-700"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-              >
-                <option value="">Tất cả trạng thái</option>
-                <option value="Hoạt động">Hoạt động</option>
-                <option value="SUSPENDED">Tạm dừng </option>
-                <option value="INACTIVE">Ngừng hoạt động</option>
-              </select>
-              <FiFilter className="absolute right-3 top-2.5 text-gray-400 w-4 h-4 pointer-events-none" />
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* REUSABLE FILTER BAR */}
+      <FilterBar
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Nhập tên toà nhà, địa chỉ..."
+        filters={filterConfigs}
+        onFilterChange={handleFilterChange}
+        onClear={handleClearFilters}
+      />
 
       {/* TABLE */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
@@ -376,7 +386,7 @@ const BuildingManagement = () => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleEditClick(item); // SỬA: Gọi đúng hàm
+                            handleEditClick(item);
                           }}
                           className="p-2 border border-gray-200 rounded hover:bg-gray-900 hover:text-white text-gray-500 transition-all shadow-sm"
                           title="Sửa toà nhà"
@@ -408,7 +418,7 @@ const BuildingManagement = () => {
           </table>
         </div>
 
-        {/* REUSABLE PAGINATION */}
+        {/* PAGINATION */}
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
