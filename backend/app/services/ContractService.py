@@ -25,6 +25,7 @@ from app.schemas.contract_schema import (
     ContractOut,
     ContractListItem
 )
+from app.models.user import User
 from app.core.Enum.contractEnum import ContractStatus
 from app.core.Enum.roomEnum import RoomStatus
 
@@ -169,7 +170,8 @@ class ContractService:
         pageSize: int = 20,
         status: Optional[str] = None,
         building: Optional[str] = None,
-        search: Optional[str] = None
+        search: Optional[str] = None,
+        current_user: User = None,
     ) -> dict:
         """Lấy danh sách hợp đồng với pagination và filters.
         
@@ -179,6 +181,7 @@ class ContractService:
             status: Lọc theo trạng thái (ACTIVE, EXPIRED, TERMINATED, PENDING)
             building: Lọc theo tên tòa nhà
             search: Tìm kiếm theo mã hợp đồng, tên khách, sđt
+            current_user: User hiện tại
             
         Returns:
             Dict chứa items và pagination (totalItems, page, pageSize, totalPages).
@@ -193,13 +196,18 @@ class ContractService:
             
         offset = (page - 1) * pageSize
         
+        tenant_id = None
+        if current_user and current_user.role.role_code == "TENANT":
+            tenant_id = current_user.id
+        
         # Lấy dữ liệu từ repository
         items_dict = self.contract_repo.list_with_details(
             offset=offset,
             limit=pageSize,
             status_filter=status,
             building_filter=building,
-            search_query=search
+            search_query=search,
+            tenant_id=tenant_id
         )
         
         # Convert sang ContractListItem schemas
@@ -209,7 +217,8 @@ class ContractService:
         totalItems = self.contract_repo.count_contracts(
             status_filter=status,
             building_filter=building,
-            search_query=search
+            search_query=search,
+            tenant_id=tenant_id
         )
         
         totalPages = (totalItems + pageSize - 1) // pageSize if totalItems > 0 else 1

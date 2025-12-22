@@ -138,7 +138,7 @@ const HomePage = () => {
           )}
         </div>
 
-        <div className="flex flex-col md:flex-row gap-4 justify-between">
+        <div className="flex flex-col lg:flex-row gap-4 justify-between">
           <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
@@ -156,7 +156,7 @@ const HomePage = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          <div className="flex flex-row gap-2">
             <Select
               value={capacity?.toString() || ""}
               onValueChange={(v) => setCapacity(v ? Number(v) : null)}
@@ -212,7 +212,6 @@ const HomePage = () => {
                 key={room.id}
                 className="flex w-full h-auto max-h-80 bg-white rounded-lg p-2.5 gap-2.5 shadow-md border border-gray-100 cursor-pointer hover:shadow-xl transition-shadow duration-300"
               >
-                {console.log(room)}
                 <img
                   src={(() => {
                     const photoToShow = room.primary_photo;

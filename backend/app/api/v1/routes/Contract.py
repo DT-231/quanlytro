@@ -27,6 +27,8 @@ from app.schemas.contract_schema import (
 )
 from app.core import response
 from app.schemas.response_schema import Response
+from app.core.security import get_current_user
+from app.models.user import User
 from app.core.exceptions import (
     BadRequestException,
     NotFoundException,
@@ -132,6 +134,7 @@ async def list_contracts(
         None, description="Tìm kiếm theo mã hợp đồng, tên khách hàng, số điện thoại"
     ),
     session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Lấy danh sách hợp đồng với pagination và filters.
 
@@ -146,7 +149,12 @@ async def list_contracts(
     try:
         service = ContractService(session)
         result = service.list_contracts(
-            page=page, pageSize=pageSize, status=status, building=building, search=search
+            page=page,
+            pageSize=pageSize,
+            status=status,
+            building=building,
+            search=search,
+            current_user=current_user,
         )
         return response.success(data=result, message="success")
     except ValueError as e:

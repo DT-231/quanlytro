@@ -83,7 +83,8 @@ class ContractRepository:
         limit: int = 20,
         status_filter: Optional[str] = None,
         building_filter: Optional[str] = None,
-        search_query: Optional[str] = None
+        search_query: Optional[str] = None,
+        tenant_id: Optional[UUID] = None
     ) -> list[dict]:
         """Lấy danh sách hợp đồng với thông tin chi tiết cho UI table.
         
@@ -103,6 +104,7 @@ class ContractRepository:
             status_filter: Lọc theo trạng thái (ACTIVE, EXPIRED, TERMINATED, PENDING)
             building_filter: Lọc theo tên tòa nhà
             search_query: Tìm kiếm theo mã hợp đồng, tên khách hàng, số điện thoại
+            tenant_id: Lọc theo ID của người thuê
             
         Returns:
             List[dict] chứa thông tin hợp đồng đã join
@@ -147,6 +149,9 @@ class ContractRepository:
                     User.phone.ilike(f"%{search_query}%")
                 )
             )
+
+        if tenant_id:
+            query = query.filter(Contract.tenant_id == tenant_id)
         
         # Order by created_at desc (mới nhất trước)
         query = query.order_by(Contract.created_at.desc())
@@ -176,7 +181,8 @@ class ContractRepository:
         self,
         status_filter: Optional[str] = None,
         building_filter: Optional[str] = None,
-        search_query: Optional[str] = None
+        search_query: Optional[str] = None,
+        tenant_id: Optional[UUID] = None
     ) -> int:
         """Đếm tổng số hợp đồng (để hỗ trợ pagination).
         
@@ -184,6 +190,7 @@ class ContractRepository:
             status_filter: Lọc theo trạng thái
             building_filter: Lọc theo tên tòa nhà
             search_query: Tìm kiếm theo mã/tên/sđt
+            tenant_id: Lọc theo ID của người thuê
             
         Returns:
             Số lượng hợp đồng thỏa mãn điều kiện
@@ -213,6 +220,9 @@ class ContractRepository:
                     User.phone.ilike(f"%{search_query}%")
                 )
             )
+
+        if tenant_id:
+            query = query.filter(Contract.tenant_id == tenant_id)
         
         return query.scalar()
     

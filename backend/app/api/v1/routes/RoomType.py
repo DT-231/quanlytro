@@ -65,12 +65,12 @@ def list_room_types_simple(
         service = RoomTypeService(db)
         room_types = service.list_room_types_simple(is_active=is_active, search=search)
         
-        return response.success_response(
+        return response.success(
             data=room_types,
             message="Lấy danh sách loại phòng thành công"
         )
     except Exception as e:
-        raise BadRequestException(detail=str(e))
+        raise BadRequestException(message=str(e))
 
 
 @router.post(

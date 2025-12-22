@@ -23,6 +23,7 @@ import ProfilePage from "./pages/member/ProfilePage";
 import MyContractsPage from "./pages/member/MyContractsPage";
 import IssueReport from "./pages/member/IssueReport";
 import MyInvoicesPage from "./pages/member/MyInvoicesPage";
+import ContractDetailPage from "./pages/member/ContractDetailPage";
 
 // ================== Account Pages ==================
 import AccountProfile from "./pages/member/account/AccountProfile";
@@ -57,6 +58,7 @@ const router = createBrowserRouter([
           { index: true, element: <ProfilePage /> },
           { path: "profile", element: <ProfilePage /> },
           { path: "my-contracts", element: <MyContractsPage /> },
+          { path: "my-contracts/:id", element: <ContractDetailPage /> },
           { path: "my-invoices", element: <MyInvoicesPage /> },
           { path: "incidents", element: <IssueReport /> },
           { path: "account/profile", element: <AccountProfile /> },

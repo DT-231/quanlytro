@@ -295,6 +295,19 @@ const RoomDetailPage = () => {
               </CardContent>
             </Card>
 
+            {/* Description */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl">Mô tả chi tiết</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-base text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  {roomInfor?.description ||
+                    "Chủ phòng chưa cung cấp mô tả chi tiết cho phòng này."}
+                </p>
+              </CardContent>
+            </Card>
+
             {/* Pricing */}
             <Card className="gap-2 py-4">
               <CardHeader>

@@ -1,7 +1,8 @@
 import axios from "axios";
 
 const request = axios.create({
-  baseURL: "/api/address",
+  baseURL: "https://tailieu365.com/api/address",
+  // baseURL: "https://vn-public-apis.fpo.vn/",
   //   headers: {
   //     "Content-Type": "application/json",
   //   },
@@ -21,10 +22,14 @@ request.interceptors.response.use(
 );
 
 const getCity = () => {
+  // return request.get(`/provinces/getAll?limit=-1`);
   return request.get(`/province?mode=1`);
 };
 
 const getWard = (province_id) => {
+  // return request.get(
+  //   `/districts/getByProvince?provinceCode=${province_id}&limit=-1`
+  // );
   return request.get(`/district?provinceId=${province_id}`);
 };
 
