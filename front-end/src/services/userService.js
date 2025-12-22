@@ -19,6 +19,7 @@ export const userService = {
   uploadCCCD: async (id, file, type) => {
     const formData = new FormData();
     const fieldName = type === "front" ? "cccd_front" : "cccd_back";
+    formData.append(fieldName, file);
     const response = await api.put(`/users/${id}`, formData, {
       headers: {
         "Content-Type": "multipart/form-data",

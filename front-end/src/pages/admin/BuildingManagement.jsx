@@ -17,7 +17,7 @@ import EditBuildingModal from "@/components/modals/building/EditBuildingModal";
 import BuildingDetailModal from "@/components/modals/building/BuildingDetailModal";
 import { buildingService } from "@/services/buildingService";
 import DeleteConfirmationModal from "@/components/modals/DeleteConfirmationModal";
-import Pagination from "@/components/Pagination"; // Import Pagination dùng chung
+import Pagination from "@/components/Pagination";
 
 const BuildingManagement = () => {
   const [buildings, setBuildings] = useState([]);
@@ -59,7 +59,7 @@ const BuildingManagement = () => {
         listData = response.data.items;
       } else if (response?.items && Array.isArray(response.items)) {
         listData = response.items;
-      } else if (Array.isArray(response)) { // Trường hợp trả về mảng trực tiếp
+      } else if (Array.isArray(response)) {
         listData = response;
       }
 
@@ -109,11 +109,10 @@ const BuildingManagement = () => {
     }
   };
 
-  // --- SỬA LỖI: Thêm hàm handleEditClick ---
   const handleEditClick = (building) => {
     if (!building) return;
-    setSelectedBuilding(building); // Set data để EditModal nhận
-    setIsEditModalOpen(true);      // Mở Modal
+    setSelectedBuilding(building); 
+    setIsEditModalOpen(true);      
   };
 
   // 3. Update Building

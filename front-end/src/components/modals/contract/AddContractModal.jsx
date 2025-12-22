@@ -87,17 +87,12 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
     setSelectedTenant(tenant);
     if (tenant) {
       form.setValue("tenantId", tenant.id);
-      if (tenant.cccd) {
-        setTempCCCD(tenant.cccd); 
-      } else {
-        setTempCCCD("");
-      }
-      
+      setTempCCCD(tenant.cccd || ""); 
     } else {
       form.setValue("tenantId", "");
       setTempCCCD("");
     }
-  };
+};
 
   const handleDurationClick = (months) => {
     const start = form.getValues("startDate");

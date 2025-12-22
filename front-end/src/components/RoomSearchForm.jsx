@@ -14,7 +14,7 @@ const RoomSearchForm = ({ filters, setFilters }) => {
       </h2>
 
       <div className="flex flex-wrap items-center gap-2">
-        {/* Ô nhập số tiền */}
+
         <input
           type="text"
           name="priceRange"

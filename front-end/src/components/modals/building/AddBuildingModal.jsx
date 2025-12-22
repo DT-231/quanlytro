@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Plus } from "lucide-react";
 import AddUtilityModal from "../utility/AddUtilityModal";
+import AddressSelector from "../AddressSelector";
 
 import {
   Dialog,
@@ -65,20 +66,17 @@ export default function AddBuildingModal({ isOpen, onClose, onAddSuccess }) {
 
   const handleAddNewUtility = (name) => {
     const newId = name.toLowerCase().replace(/\s+/g, "-");
-    setUtilities([
-      ...utilities,
-      { id: newId, label: name, checked: true },
-    ]);
+    setUtilities([...utilities, { id: newId, label: name, checked: true }]);
   };
 
   const onSubmit = (values) => {
     // 1. Xử lý tiện ích (Gộp vào description vì API chưa có trường riêng)
     const selectedUtils = utilities.filter((u) => u.checked);
     const utilitiesString = selectedUtils.map((u) => u.label).join(", ");
-    
+
     let finalDescription = values.description || "";
     if (utilitiesString) {
-        finalDescription += `\n[Tiện ích: ${utilitiesString}]`;
+      finalDescription += `\n[Tiện ích: ${utilitiesString}]`;
     }
 
     // 2. Xử lý địa chỉ
@@ -92,23 +90,24 @@ export default function AddBuildingModal({ isOpen, onClose, onAddSuccess }) {
     // 4. Tạo payload đúng chuẩn Swagger API (Quan trọng nhất để fix lỗi 422)
     const apiPayload = {
       building_code: autoCode,
-      building_name: values.name,      // Map 'name' -> 'building_name'
+      building_name: values.name, // Map 'name' -> 'building_name'
       description: finalDescription.trim(),
-      status: "ACTIVE",                // Bắt buộc phải là "ACTIVE" (viết hoa), không phải "Hoạt động"
-      address_id: null,                // null để Backend tự tạo địa chỉ mới
-      address: {                       // Object address lồng nhau
+      status: "ACTIVE", // Bắt buộc phải là "ACTIVE" (viết hoa), không phải "Hoạt động"
+      address_id: null, // null để Backend tự tạo địa chỉ mới
+      address: {
+        // Object address lồng nhau
         address_line: addressLine,
         ward: values.ward,
         city: values.city,
         country: "Vietnam",
-        full_address: fullAddress
-      }
+        full_address: fullAddress,
+      },
     };
 
     console.log("Dữ liệu gửi đi (Đã sửa):", apiPayload);
 
     if (onAddSuccess) onAddSuccess(apiPayload);
-    
+
     // Reset form
     onClose();
     form.reset();
@@ -183,33 +182,19 @@ export default function AddBuildingModal({ isOpen, onClose, onAddSuccess }) {
                 </div>
 
                 {/* Phường & Thành Phố */}
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="ward"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phường / Xã</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Hải Châu" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                <div className="mt-2">
+                  <AddressSelector
+                    showWard={true} 
+                    city={form.watch("city")}
+                    ward={form.watch("ward")}
+                    onCityChange={(val) =>
+                      form.setValue("city", val, { shouldValidate: true })
+                    }
+                    onWardChange={(val) =>
+                      form.setValue("ward", val, { shouldValidate: true })
+                    }
                   />
-                  <FormField
-                    control={form.control}
-                    name="city"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Thành phố</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Đà Nẵng" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  
                 </div>
 
                 {/* Mô tả */}

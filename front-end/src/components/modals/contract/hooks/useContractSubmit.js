@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { contractService } from "@/services/contractService";
+import { roomService } from "@/services/roomService"; // 1. Import roomService
 import { validateCCCD, createContractPayload } from "../utils/contractHelpers";
 
 export function useContractSubmit(onAddSuccess, onClose, form, setSelectedTenant, setTempCCCD) {
@@ -19,15 +20,26 @@ export function useContractSubmit(onAddSuccess, onClose, form, setSelectedTenant
       }
 
       const apiPayload = createContractPayload(values, cccdToUse, services);
+      
       const res = await contractService.create(apiPayload);
 
       if (res && (res.success || res.data || res.id)) {
         const createdContract = res.data || res;
+        if (values.roomId) {
+            try {
+                await roomService.update(values.roomId, { status: "OCCUPIED" });
+            } catch (roomError) {
+                console.error("Lỗi cập nhật trạng thái phòng:", roomError);
+                toast.warning("Hợp đồng đã tạo nhưng chưa cập nhật được trạng thái phòng.");
+            }
+        }
+
         toast.success(
           `Tạo thành công hợp đồng ${
             createdContract?.contract_number || values.contractCode
           }!`
         );
+
         if (onAddSuccess) onAddSuccess(createdContract);
         setSelectedTenant(null);
         setTempCCCD("");

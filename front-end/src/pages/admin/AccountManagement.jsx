@@ -2,8 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { FaSearch, FaEdit, FaTrashAlt, FaPlus } from "react-icons/fa";
 import { FiFilter } from "react-icons/fi";
 import { Toaster, toast } from "sonner";
-
-// Services
 import { userService } from "@/services/userService";
 
 // Components
@@ -13,13 +11,7 @@ import Pagination from "@/components/Pagination";
 
 const AccountManagement = () => {
   // --- STATES ---
-  const [tenants, setTenants] = useState([]); 
-  const [stats, setStats] = useState({
-    total_tenants: 0,
-    active_tenants: 0,
-    returned_rooms: 0,
-    not_rented: 0,
-  });
+  const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // --- FILTERS & PAGINATION ---
@@ -36,36 +28,23 @@ const AccountManagement = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tenantToDelete, setTenantToDelete] = useState(null);
 
-  // --- API CALLS ---
+  // --- TÍNH TOÁN THỐNG KÊ (useMemo) ---
+  const stats = useMemo(() => {
+    const total = tenants.length;
+    const active = tenants.filter(t => t.status === "ACTIVE" || t.status === "Đang thuê").length;
+    const inactive = tenants.filter(t => t.status === "INACTIVE" || t.status === "Chưa thuê").length;
+    const returned = tenants.filter(t => t.status === "RETURNED").length;
 
-  // 1. Lấy thống kê
-  const fetchStats = async () => {
-    try {
-      const rolesData = await userService.getRoles();
-      const rolesList = Array.isArray(rolesData) ? rolesData : (rolesData.data || []);
-      const tenantRole = rolesList.find(role => role.role_code === "TENANT");
+    return {
+      total_tenants: total,
+      active_tenants: active,
+      not_rented: inactive,
+      returned_rooms: returned,
+    };
+  }, [tenants]);
 
-      if (tenantRole) {
-        const params = { role_id: tenantRole.id };
-        const res = await userService.getStats(params);
-        const statsData = res && res.data ? res.data : res;
-
-        if (statsData) {
-          setStats({
-            total_tenants: statsData.total_tenants || 0,
-            active_tenants: statsData.active_tenants || 0,
-            returned_rooms: statsData.returned_rooms || 0,
-            not_rented: statsData.not_rented || 0,
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Lỗi khi tải thống kê:", error);
-    }
-  };
-
-  // 2. Lấy danh sách khách thuê (Lấy tất cả và xử lý tại Client)
-  const fetchTenants = useCallback(async () => {
+  // --- 1. LẤY DANH SÁCH & SẮP XẾP ---
+ const fetchTenants = useCallback(async () => {
     setLoading(true);
     try {
       const params = {
@@ -86,7 +65,22 @@ const AccountManagement = () => {
       } else if (Array.isArray(dataSource)) {
         items = dataSource;
       }
-      const sortedItems = items.sort((a, b) => b.id - a.id);
+      
+      // --- LOGIC SẮP XẾP MỚI (FIX LỖI BỊ ĐẨY XUỐNG CUỐI) ---
+      const sortedItems = items.sort((a, b) => {
+        // Ưu tiên 1: Sort theo CODE giảm dần (Người mới -> Code lớn hơn -> Lên đầu)
+        // Chuyển về Number để so sánh đúng (tránh lỗi "10" < "2")
+        const codeA = Number(a.code) || 0;
+        const codeB = Number(b.code) || 0;
+        if (codeB !== codeA) {
+            return codeB - codeA; 
+        }
+
+        // Ưu tiên 2: Nếu Code bằng nhau (hiếm), dùng ngày tạo
+        const timeA = new Date(a.created_at || 0).getTime();
+        const timeB = new Date(b.created_at || 0).getTime();
+        return timeB - timeA;
+      });
       
       setTenants(sortedItems);
 
@@ -97,34 +91,36 @@ const AccountManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, filterStatus, filterGender]); 
-
-  // Init data
+  }, [searchTerm, filterStatus, filterGender]);
   useEffect(() => {
-    fetchStats();
     fetchTenants();
   }, [fetchTenants]);
 
-  // --- CLIENT SIDE PAGINATION LOGIC ---
-
+  // --- PAGINATION LOGIC ---
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  
-
   const currentTenants = useMemo(() => {
-      return tenants.slice(indexOfFirstItem, indexOfLastItem);
+    return tenants.slice(indexOfFirstItem, indexOfLastItem);
   }, [tenants, currentPage]);
-
   const totalPages = Math.ceil(tenants.length / itemsPerPage);
 
-  // --- HELPER: FULL NAME ---
-
+  // --- HELPER ---
   const renderFullName = (tenant) => {
     if (tenant.full_name) return tenant.full_name;
     return [tenant.last_name, tenant.first_name].filter(Boolean).join(" ");
   };
 
   // --- HANDLERS ---
+  
+  // 2. XỬ LÝ KHI THÊM/SỬA THÀNH CÔNG
+  const handleSuccess = () => {
+    fetchTenants(); // Tải lại dữ liệu mới nhất (sẽ kích hoạt logic sort ở trên)
+    setCurrentPage(1); // Bắt buộc quay về trang 1 để thấy item mới nhất
+    
+    // UX: Cuộn nhẹ lên đầu trang để người dùng thấy thay đổi
+    window.scrollTo({ top: 0, behavior: 'smooth' }); 
+  };
+
   const handleOpenAdd = () => {
     setTenantToEdit(null);
     setIsAddModalOpen(true);
@@ -133,13 +129,6 @@ const AccountManagement = () => {
   const handleOpenEdit = (tenant) => {
     setTenantToEdit(tenant);
     setIsAddModalOpen(true);
-  };
-
-  const handleSuccess = () => {
-    fetchTenants();
-    fetchStats();
-    // Khi thêm mới hoặc update xong, reset về trang 1 để thấy kết quả ngay
-    setCurrentPage(1); 
   };
 
   const handleDeleteClick = (tenant) => {
@@ -152,11 +141,14 @@ const AccountManagement = () => {
       try {
         await userService.delete(tenantToDelete.id);
         toast.success(`Đã xóa thành công khách thuê`);
-        fetchTenants();
-        fetchStats();
+        // Khi xóa xong cũng nên refresh và về trang 1 (hoặc giữ trang hiện tại nếu muốn)
+        fetchTenants(); 
+        if (currentTenants.length === 1 && currentPage > 1) {
+            setCurrentPage(currentPage - 1);
+        }
       } catch (error) {
         console.error("Lỗi xóa:", error);
-        toast.error("Không thể xóa khách thuê này (Có thể đang có hợp đồng).");
+        toast.error("Không thể xóa khách thuê này.");
       } finally {
         setDeleteModalOpen(false);
         setTenantToDelete(null);
@@ -166,11 +158,8 @@ const AccountManagement = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "ACTIVE":
-      case "Đang thuê": return "bg-green-500 text-white";
-      case "INACTIVE":
-      case "Chưa thuê":
-      case "Đã trả phòng": return "bg-red-500 text-white";
+      case "ACTIVE": return "bg-green-500 text-white";
+      case "INACTIVE": return "bg-gray-200 text-gray-800";
       default: return "bg-gray-200 text-gray-800";
     }
   };
@@ -181,9 +170,8 @@ const AccountManagement = () => {
     return status || "Chưa xác định";
   };
 
-  // --- RENDER ---
   return (
-    <div className="min-h-screen bg-gray-50 font-sans relative">
+    <div className="min-h-screen bg-gray-50 font-sans relative pb-10">
       <Toaster position="top-right" richColors />
 
       {/* Header */}
@@ -197,7 +185,7 @@ const AccountManagement = () => {
         </button>
       </div>
 
-      {/* FILTER SECTIONS (Giữ nguyên như cũ) */}
+      {/* Filter Bar */}
       <div className="bg-white p-3 rounded-lg shadow-sm mb-4">
         <div className="flex flex-col md:flex-row justify-between items-center gap-3">
           <div className="relative w-full md:w-1/2 flex items-center">
@@ -215,8 +203,8 @@ const AccountManagement = () => {
             </div>
           </div>
           <div className="flex gap-2 w-full md:w-auto justify-end">
-             {/* Select Filters giữ nguyên */}
-            <div className="relative">
+             {/* Select Filters ... (Giữ nguyên như cũ) */}
+             <div className="relative">
               <select
                 className="w-full appearance-none border border-gray-200 px-3 py-1 pr-8 rounded-md bg-white hover:bg-gray-50 text-sm focus:outline-none cursor-pointer text-gray-700"
                 value={filterStatus}
@@ -250,13 +238,13 @@ const AccountManagement = () => {
         </div>
       </div>
 
-      {/* Stats - Giữ nguyên */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         {[
           { title: "Tổng người thuê", value: stats.total_tenants },
           { title: "Đang Thuê", value: stats.active_tenants },
           { title: "Đã trả phòng", value: stats.returned_rooms },
-          { title: "Chưa thuê", value: stats.not_rented || 0 },
+          { title: "Chưa thuê", value: stats.not_rented },
         ].map((stat, index) => (
           <div key={index} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
             <h3 className="text-sm font-medium mb-1">{stat.title}</h3>
@@ -268,9 +256,7 @@ const AccountManagement = () => {
       {/* Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-4 border-b border-gray-100">
-          <h3 className="text-base font-bold text-gray-800">
-            Danh sách khách thuê
-          </h3>
+          <h3 className="text-base font-bold text-gray-800">Danh sách khách thuê</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -289,18 +275,15 @@ const AccountManagement = () => {
               {loading ? (
                 <tr>
                   <td colSpan="7" className="p-6 text-center text-gray-500">
-                    Đang tải dữ liệu...
+                    <div className="flex justify-center items-center gap-2">
+                         <span>Đang tải dữ liệu...</span>
+                    </div>
                   </td>
                 </tr>
               ) : currentTenants.length > 0 ? (
-                // LƯU Ý: Ở đây dùng currentTenants thay vì tenants
                 currentTenants.map((tenant) => (
-                  <tr
-                    key={tenant.id}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
+                  <tr key={tenant.id} className="hover:bg-gray-50 transition-colors">
                     <td className="p-3 font-semibold text-gray-900">
-                      {/* GỌI HÀM HELPER HIỂN THỊ TÊN */}
                       {renderFullName(tenant)}
                       <div className="text-xs text-gray-400 font-normal">
                         {tenant.code ? `#${tenant.code}` : "---"}
@@ -309,29 +292,17 @@ const AccountManagement = () => {
                     <td className="p-3">{tenant.phone || "---"}</td>
                     <td className="p-3 text-gray-500">{tenant.email || "---"}</td>
                     <td className="p-3">{tenant.gender || "---"}</td>
-                    <td className="p-3">
-                      {tenant.district || tenant.address || "---"}
-                    </td>
+                    <td className="p-3">{tenant.district || tenant.address || "---"}</td>
                     <td className="p-3 text-center">
-                      <span
-                        className={`${getStatusColor(
-                          tenant.status
-                        )} px-2 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap`}
-                      >
+                      <span className={`${getStatusColor(tenant.status)} px-2 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap`}>
                         {getStatusLabel(tenant.status)}
                       </span>
                     </td>
                     <td className="p-3 flex justify-center gap-2">
-                      <button
-                        onClick={() => handleOpenEdit(tenant)}
-                        className="p-1.5 border rounded hover:bg-gray-100 text-gray-600"
-                      >
+                      <button onClick={() => handleOpenEdit(tenant)} className="p-1.5 border rounded hover:bg-gray-100 text-gray-600">
                         <FaEdit size={12} />
                       </button>
-                      <button
-                        onClick={() => handleDeleteClick(tenant)}
-                        className="p-1.5 border rounded hover:bg-red-50 text-red-500 transition-colors"
-                      >
+                      <button onClick={() => handleDeleteClick(tenant)} className="p-1.5 border rounded hover:bg-red-50 text-red-500 transition-colors">
                         <FaTrashAlt size={12} />
                       </button>
                     </td>
@@ -348,12 +319,11 @@ const AccountManagement = () => {
           </table>
         </div>
 
-        {/* Pagination Component */}
         <Pagination
           currentPage={currentPage}
-          totalPages={totalPages} 
+          totalPages={totalPages}
           onPageChange={setCurrentPage}
-          totalItems={tenants.length} 
+          totalItems={tenants.length}
           itemName="khách thuê"
         />
       </div>
@@ -361,7 +331,7 @@ const AccountManagement = () => {
       <AddTenantModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onAddSuccess={handleSuccess}
+        onAddSuccess={handleSuccess} // Sử dụng hàm handleSuccess mới
         tenantToEdit={tenantToEdit}
       />
 
