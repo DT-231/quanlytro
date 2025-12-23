@@ -12,11 +12,12 @@ import RoomDetailPage from "./pages/public/Room/RoomDetailPage";
 // ================== Admin Pages ==================
 import DashboardAdmin from "./pages/admin/DashboardAdmin";
 import AccountManagement from "./pages/admin/AccountManagement";
-import InvoiceManagement from "./pages/admin/InvoiceManagement";
+import InvoiceManagement from "./pages/admin/Invoice/InvoiceManagement";
 import BuildingManagement from "./pages/admin/BuildingManagement";
 import RoomManagement from "./pages/admin/RoomManagement";
 import ContractManagement from "./pages/admin/ContractManagement";
 import IssueManagement from "./pages/admin/IssueManagement";
+import InvoiceDetailPage from "./pages/admin/Invoice/InvoiceDetailPage";
 
 // ================== Member Pages ==================
 import ProfilePage from "./pages/member/ProfilePage";
@@ -84,6 +85,7 @@ const router = createBrowserRouter([
           { path: "buildings", element: <BuildingManagement /> },
           { path: "rooms", element: <RoomManagement /> },
           { path: "invoices", element: <InvoiceManagement /> },
+          { path: "invoices/:id", element: <InvoiceDetailPage /> },
           { path: "contracts", element: <ContractManagement /> },
           { path: "incidents", element: <IssueManagement /> },
         ],

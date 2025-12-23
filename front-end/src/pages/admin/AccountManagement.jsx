@@ -1,4 +1,3 @@
-// src/pages/admin/AccountManagement.jsx
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { FaEdit, FaTrashAlt, FaPlus } from "react-icons/fa";
 import { Toaster, toast } from "sonner";
@@ -8,21 +7,31 @@ import { userService } from "@/services/userService";
 import AddTenantModal from "@/components/modals/tenant/AddTenantModal";
 import DeleteConfirmationModal from "@/components/modals/DeleteConfirmationModal";
 import Pagination from "@/components/Pagination";
-// NEW: Import FilterBar
 import FilterBar from "@/components/FilterBar";
+
+// Hook
+import useDebounce from "@/hooks/useDebounce"; // Đảm bảo bạn đã có hook này
 
 const AccountManagement = () => {
   // --- STATES ---
-  const [tenants, setTenants] = useState([]);
+  const [tenants, setTenants] = useState([]); // Chứa TOÀN BỘ dữ liệu từ server
   const [loading, setLoading] = useState(true);
 
-  // --- FILTERS & PAGINATION ---
+  // Pagination State (Logic mới)
+  const [pagination, setPagination] = useState({
+    totalItems: 0,
+    page: 1,
+    pageSize: 5, // Client-side: 5 dòng/trang
+    totalPages: 0,
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // --- FILTERS ---
   const [searchTerm, setSearchTerm] = useState("");
+  const debounceSearchValue = useDebounce(searchTerm, 500); // Debounce search
+  
   const [filterStatus, setFilterStatus] = useState("");
   const [filterGender, setFilterGender] = useState("");
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
 
   // --- MODALS ---
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -30,7 +39,116 @@ const AccountManagement = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tenantToDelete, setTenantToDelete] = useState(null);
 
-  // --- TÍNH TOÁN THỐNG KÊ (useMemo) ---
+  // --- 1. API CALL (LẤY TOÀN BỘ DỮ LIỆU) ---
+  const fetchTenants = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Gọi API lấy tất cả (size lớn)
+      const params = {
+        page: 1,
+        size: 1000, 
+        role_code: "TENANT",
+      };
+
+      const res = await userService.getAll(params);
+      const dataSource = res && res.data ? res.data : res;
+
+      let items = [];
+      if (dataSource && Array.isArray(dataSource.items)) {
+        items = dataSource.items;
+      } else if (Array.isArray(dataSource)) {
+        items = dataSource;
+      }
+      
+      setTenants(items);
+
+      // Cập nhật thông tin phân trang ban đầu
+      setPagination(prev => ({
+          ...prev,
+          totalItems: items.length,
+          totalPages: Math.ceil(items.length / prev.pageSize),
+      }));
+
+    } catch (error) {
+      console.error("Lỗi lấy danh sách:", error);
+      toast.error("Không thể tải danh sách khách thuê");
+      setTenants([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []); // Chỉ gọi 1 lần khi mount
+
+  useEffect(() => {
+    fetchTenants();
+  }, [fetchTenants]);
+
+  // --- 2. LOGIC LỌC & SẮP XẾP (CLIENT-SIDE) ---
+  const filteredTenants = useMemo(() => {
+    let result = [...tenants]; // Copy mảng để không mutate state gốc
+
+    // 2.1 Filter Search
+    if (debounceSearchValue) {
+        const lowerSearch = debounceSearchValue.toLowerCase();
+        result = result.filter(t => {
+            const name = t.full_name ? t.full_name : [t.last_name, t.first_name].filter(Boolean).join(" ");
+            return (
+                (name && name.toLowerCase().includes(lowerSearch)) ||
+                (t.phone && t.phone.includes(lowerSearch)) ||
+                (t.email && t.email.toLowerCase().includes(lowerSearch)) ||
+                (t.code && String(t.code).includes(lowerSearch))
+            );
+        });
+    }
+
+    // 2.2 Filter Status
+    if (filterStatus) {
+        const statusKey = filterStatus === "Đang thuê" ? "ACTIVE" 
+                        : filterStatus === "Chưa thuê" ? "INACTIVE" 
+                        : null;
+        if (statusKey) {
+            result = result.filter(t => t.status === statusKey);
+        }
+    }
+
+    // 2.3 Filter Gender
+    if (filterGender) {
+        result = result.filter(t => t.gender === filterGender);
+    }
+
+    // 2.4 Sorting (Giữ logic sắp xếp cũ)
+    return result.sort((a, b) => {
+        const codeA = Number(a.code) || 0;
+        const codeB = Number(b.code) || 0;
+        if (codeB !== codeA) {
+            return codeB - codeA; 
+        }
+        const timeA = new Date(a.created_at || 0).getTime();
+        const timeB = new Date(b.created_at || 0).getTime();
+        return timeB - timeA;
+    });
+  }, [tenants, debounceSearchValue, filterStatus, filterGender]);
+
+  // Cập nhật lại totalPages khi kết quả lọc thay đổi
+  useEffect(() => {
+      setPagination(prev => ({
+          ...prev,
+          totalItems: filteredTenants.length,
+          totalPages: Math.ceil(filteredTenants.length / prev.pageSize)
+      }));
+      // Reset về trang 1 nếu đang ở trang xa
+      if (Math.ceil(filteredTenants.length / pagination.pageSize) < currentPage && currentPage > 1) {
+          setCurrentPage(1);
+      }
+  }, [filteredTenants.length, pagination.pageSize]);
+
+  // --- 3. LOGIC CẮT TRANG (CLIENT-SIDE SLICING) ---
+  const paginatedTenants = useMemo(() => {
+      const startIndex = (currentPage - 1) * pagination.pageSize;
+      const endIndex = startIndex + pagination.pageSize;
+      return filteredTenants.slice(startIndex, endIndex);
+  }, [filteredTenants, currentPage, pagination.pageSize]);
+
+  // --- TÍNH TOÁN THỐNG KÊ (Giữ nguyên) ---
   const stats = useMemo(() => {
     const total = tenants.length;
     const active = tenants.filter(t => t.status === "ACTIVE" || t.status === "Đang thuê").length;
@@ -45,70 +163,15 @@ const AccountManagement = () => {
     };
   }, [tenants]);
 
-  // --- 1. LẤY DANH SÁCH & SẮP XẾP ---
-  const fetchTenants = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = {
-        search: searchTerm || null,
-        status: filterStatus === "Đang thuê" ? "ACTIVE" 
-              : filterStatus === "Chưa thuê" ? "INACTIVE" 
-              : null,
-        gender: filterGender || null,
-        role_code: "TENANT",
-      };
-
-      const res = await userService.getAll(params);
-      const dataSource = res && res.data ? res.data : res;
-
-      let items = [];
-      if (dataSource && Array.isArray(dataSource.items)) {
-        items = dataSource.items;
-      } else if (Array.isArray(dataSource)) {
-        items = dataSource;
-      }
-      
-      const sortedItems = items.sort((a, b) => {
-        const codeA = Number(a.code) || 0;
-        const codeB = Number(b.code) || 0;
-        if (codeB !== codeA) {
-            return codeB - codeA; 
-        }
-        const timeA = new Date(a.created_at || 0).getTime();
-        const timeB = new Date(b.created_at || 0).getTime();
-        return timeB - timeA;
-      });
-      
-      setTenants(sortedItems);
-
-    } catch (error) {
-      console.error("Lỗi lấy danh sách:", error);
-      toast.error("Không thể tải danh sách khách thuê");
-      setTenants([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [searchTerm, filterStatus, filterGender]);
-
-  useEffect(() => {
-    fetchTenants();
-  }, [fetchTenants]);
-
-  // --- FILTER CONFIGURATION ---
-  
-  // 1. Status Options
+  // --- CONFIGURATION ---
   const statusOptions = [
     { id: "Đang thuê", name: "Đang thuê" },
     { id: "Chưa thuê", name: "Chưa thuê" },
   ];
-
-  // 2. Gender Options
   const genderOptions = [
     { id: "Nam", name: "Nam" },
     { id: "Nữ", name: "Nữ" },
   ];
-
-  // 3. Filter Configs
   const filterConfigs = [
     {
       key: "status",
@@ -126,44 +189,29 @@ const AccountManagement = () => {
     },
   ];
 
-  // 4. Handle Filter Change
+  // --- HANDLERS ---
   const handleFilterChange = (key, value) => {
-    if (key === "status") {
-      setFilterStatus(value);
-    } else if (key === "gender") {
-      setFilterGender(value);
-    }
+    if (key === "status") setFilterStatus(value);
+    else if (key === "gender") setFilterGender(value);
     setCurrentPage(1);
   };
 
-  // 5. Handle Clear Filters
   const handleClearFilters = () => {
     setSearchTerm("");
     setFilterStatus("");
     setFilterGender("");
     setCurrentPage(1);
-    // REMOVED: toast.info("Đã xóa bộ lọc"); as requested
   };
 
-  // --- PAGINATION LOGIC ---
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentTenants = useMemo(() => {
-    return tenants.slice(indexOfFirstItem, indexOfLastItem);
-  }, [tenants, currentPage]);
-  const totalPages = Math.ceil(tenants.length / itemsPerPage);
-
-  // --- HELPER ---
   const renderFullName = (tenant) => {
     if (tenant.full_name) return tenant.full_name;
     return [tenant.last_name, tenant.first_name].filter(Boolean).join(" ");
   };
 
-  // --- HANDLERS ---
   const handleSuccess = () => {
     fetchTenants(); 
-    setCurrentPage(1); 
-    window.scrollTo({ top: 0, behavior: 'smooth' }); 
+    // Không cần reset currentPage về 1 ở đây nếu muốn giữ trải nghiệm tốt hơn, 
+    // hoặc reset về 1 nếu muốn về đầu danh sách.
   };
 
   const handleOpenAdd = () => {
@@ -186,10 +234,10 @@ const AccountManagement = () => {
       try {
         await userService.delete(tenantToDelete.id);
         toast.success(`Đã xóa thành công khách thuê`);
-        fetchTenants(); 
-        if (currentTenants.length === 1 && currentPage > 1) {
-            setCurrentPage(currentPage - 1);
-        }
+        
+        // Cập nhật state trực tiếp để đỡ gọi lại API
+        setTenants(prev => prev.filter(t => t.id !== tenantToDelete.id));
+        
       } catch (error) {
         console.error("Lỗi xóa:", error);
         toast.error("Không thể xóa khách thuê này.");
@@ -256,9 +304,15 @@ const AccountManagement = () => {
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-4 border-b border-gray-100">
+        <div className="p-4 border-b border-gray-100 flex justify-between items-center">
           <h3 className="text-base font-bold text-gray-800">Danh sách khách thuê</h3>
+          {!loading && pagination.totalItems > 0 && (
+             <span className="text-sm text-gray-500">
+                 Tổng: <span className="font-semibold text-gray-900">{pagination.totalItems}</span> khách
+             </span>
+          )}
         </div>
+        
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead className="bg-white text-xs font-bold border-b border-gray-200 uppercase">
@@ -281,8 +335,9 @@ const AccountManagement = () => {
                     </div>
                   </td>
                 </tr>
-              ) : currentTenants.length > 0 ? (
-                currentTenants.map((tenant) => (
+              ) : paginatedTenants.length > 0 ? (
+                /* SỬ DỤNG paginatedTenants ĐỂ RENDER */
+                paginatedTenants.map((tenant) => (
                   <tr key={tenant.id} className="hover:bg-gray-50 transition-colors">
                     <td className="p-3 font-semibold text-gray-900">
                       {renderFullName(tenant)}
@@ -320,11 +375,13 @@ const AccountManagement = () => {
           </table>
         </div>
 
+        {/* PAGINATION COMPONENT */}
         <Pagination
           currentPage={currentPage}
-          totalPages={totalPages}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.totalItems}
           onPageChange={setCurrentPage}
-          totalItems={tenants.length}
+          pageSize={pagination.pageSize}
           itemName="khách thuê"
         />
       </div>

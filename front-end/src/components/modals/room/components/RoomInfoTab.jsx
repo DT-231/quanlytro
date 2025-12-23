@@ -26,16 +26,24 @@ export default function RoomInfoTab({
   toggleAmenity,
   onOpenUtilityModal,
 }) {
-  const { control, setValue } = useFormContext();
+  const { control } = useFormContext();
 
+  // Chuẩn hóa dữ liệu Tòa nhà
   const buildingOptions = useMemo(() => {
-    return buildings.map((b) => ({
+    return (buildings || []).map((b) => ({
       ...b,
-      name: b.building_name,
+      name: b.building_name, // Map building_name sang name cho Combobox hiểu
     }));
   }, [buildings]);
 
-  const roomTypeOptions = roomTypes || [];
+  // Chuẩn hóa dữ liệu Loại phòng (Thêm useMemo để tối ưu)
+  const roomTypeOptions = useMemo(() => {
+    return (roomTypes || []).map((t) => ({
+      ...t,
+      name: t.name || t.label || "", // Đảm bảo luôn có trường name
+      id: t.id || t.value,           // Đảm bảo luôn có id
+    }));
+  }, [roomTypes]);
 
   return (
     <div className="space-y-4">
@@ -69,17 +77,16 @@ export default function RoomInfoTab({
         />
       </div>
 
-      {/* Hàng 2: Tòa nhà & Loại phòng (DÙNG COMBOBOX MỚI) */}
+      {/* Hàng 2: Tòa nhà & Loại phòng */}
       <div className="grid grid-cols-2 gap-4">
-        
         {/* --- COMBOBOX TÒA NHÀ --- */}
         <FormField
           control={control}
           name="building_id"
           render={({ field }) => {
-            // Tìm tên tòa nhà dựa trên ID đang lưu trong form
-            const selectedName = buildingOptions.find(b => b.id === field.value)?.name || "";
-            
+            const selectedName =
+              buildingOptions.find((b) => b.id === field.value)?.name || "";
+
             return (
               <FormItem className="flex flex-col">
                 <FormLabel className="font-semibold text-sm">Tòa nhà</FormLabel>
@@ -87,10 +94,10 @@ export default function RoomInfoTab({
                   <GenericCombobox
                     placeholder="Tìm tòa nhà"
                     options={buildingOptions}
-                    value={selectedName} 
+                    value={selectedName}
                     onChange={(name) => {
                       const found = buildingOptions.find((b) => b.name === name);
-                      field.onChange(found?.id || ""); 
+                      field.onChange(found?.id || "");
                     }}
                   />
                 </FormControl>
@@ -100,22 +107,27 @@ export default function RoomInfoTab({
           }}
         />
 
-        {/* --- COMBOBOX LOẠI PHÒNG --- */}
+        {/* --- COMBOBOX LOẠI PHÒNG (Đã sửa) --- */}
         <FormField
           control={control}
           name="room_type_id"
           render={({ field }) => {
-             const selectedName = roomTypeOptions.find(t => t.id === field.value)?.name || "";
+            // Tìm tên loại phòng dựa trên ID đang chọn
+            const selectedName =
+              roomTypeOptions.find((t) => t.id === field.value)?.name || "";
 
-             return (
+            return (
               <FormItem className="flex flex-col">
-                <FormLabel className="font-semibold text-sm">Loại phòng</FormLabel>
+                <FormLabel className="font-semibold text-sm">
+                  Loại phòng
+                </FormLabel>
                 <FormControl>
                   <GenericCombobox
                     placeholder="Tìm loại phòng"
                     options={roomTypeOptions}
                     value={selectedName}
                     onChange={(name) => {
+                      // Tìm ID dựa trên tên được chọn
                       const found = roomTypeOptions.find((t) => t.name === name);
                       field.onChange(found?.id || "");
                     }}
@@ -123,7 +135,7 @@ export default function RoomInfoTab({
                 </FormControl>
                 <FormMessage />
               </FormItem>
-             );
+            );
           }}
         />
       </div>
@@ -172,7 +184,11 @@ export default function RoomInfoTab({
               <FormLabel className="font-semibold text-sm">
                 Trạng thái
               </FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+                value={field.value} // Thêm value để bind đúng state
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Chọn trạng thái" />
@@ -198,7 +214,11 @@ export default function RoomInfoTab({
           <FormItem>
             <FormLabel className="font-semibold text-sm">Mô tả</FormLabel>
             <FormControl>
-              <Textarea placeholder="..." {...field} className="min-h-[80px]" />
+              <Textarea
+                placeholder="..."
+                {...field}
+                className="min-h-[80px]"
+              />
             </FormControl>
             <FormMessage />
           </FormItem>

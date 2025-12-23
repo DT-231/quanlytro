@@ -14,7 +14,7 @@ export function useContractData(isOpen) {
       setLoadingData(true);
       try {
         const [resRooms, resTenants] = await Promise.all([
-          roomService.getAll({ size: 100, status: "AVAILABLE" }),
+          roomService.getAll({ size: 100 }),
           userService.getAll({ size: 100, role_code: "TENANT" }),
         ]);
 

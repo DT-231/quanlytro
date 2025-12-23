@@ -6,6 +6,7 @@ const Pagination = ({
   totalPages,
   onPageChange,
   totalItems = 0,
+  pageSize = 20, 
   itemName = "kết quả",
 }) => {
   const handlePageChange = (page) => {
@@ -13,18 +14,25 @@ const Pagination = ({
       onPageChange(page);
     }
   };
-  const itemsPerPage =
-    totalPages > 0 && totalItems > 0 ? Math.ceil(totalItems / totalPages) : 0;
-  const startItem = itemsPerPage > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
-  const endItem =
-    itemsPerPage > 0 ? Math.min(currentPage * itemsPerPage, totalItems) : 0;
+
+  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(currentPage * pageSize, totalItems);
+  let startPage = 1;
+  if (totalPages > 5) {
+    if (currentPage <= 3) {
+      startPage = 1;
+    } else if (currentPage >= totalPages - 2) {
+      startPage = totalPages - 4;
+    } else {
+      startPage = currentPage - 2;
+    }
+  }
 
   return (
-    <div className="my-2  flex flex-col sm:flex-row justify-between items-center gap-4 ">
+    <div className="my-2 px-2 flex flex-col sm:flex-row justify-between items-center gap-4">
       <span className="text-xs text-gray-500 font-medium">
         Trang {currentPage} / {totalPages || 1}
       </span>
-
       <div className="flex items-center gap-1">
         <button
           onClick={() => handlePageChange(currentPage - 1)}
@@ -33,12 +41,10 @@ const Pagination = ({
         >
           <FiChevronLeft /> Trước
         </button>
+
+        {/* --- SỬA LOGIC 3: Render số trang --- */}
         {[...Array(Math.min(5, totalPages))].map((_, idx) => {
-          let pageNum = idx + 1;
-          if (totalPages > 5 && currentPage > 3) {
-            pageNum = currentPage - 2 + idx;
-          }
-          if (pageNum > totalPages) return null;
+          const pageNum = startPage + idx; // Logic mới đơn giản và ổn định hơn
 
           return (
             <button

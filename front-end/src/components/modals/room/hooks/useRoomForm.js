@@ -1,4 +1,3 @@
-// src/components/modals/room/hooks/useRoomForm.js
 import { useState, useEffect, useRef } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -69,17 +68,24 @@ export const useRoomForm = ({ isOpen, onClose, onSuccess, initialData }) => {
         try {
           const [buildingRes, roomTypeRes] = await Promise.all([
             buildingService.getAll(),
-            // roomTypeService.getSimpleList(),
+            roomTypeService.getSimpleList(),
           ]);
+          const rawBuildings = buildingRes?.data;
+          const listBuildings = Array.isArray(rawBuildings)
+            ? rawBuildings
+            : rawBuildings?.data || rawBuildings?.items || [];
+          setBuildings(listBuildings);
+          const responseBody = roomTypeRes?.data;
+          let listTypes = [];
 
-          if (buildingRes?.data?.items) setBuildings(buildingRes.data.items);
-          else if (Array.isArray(buildingRes?.data))
-            setBuildings(buildingRes.data);
-
-          const types =
-            roomTypeRes?.data?.items ||
-            (Array.isArray(roomTypeRes?.data) ? roomTypeRes.data : []);
-          setRoomTypes(types);
+          if (responseBody?.data && Array.isArray(responseBody.data)) {
+            listTypes = responseBody.data;
+          } else if (Array.isArray(responseBody)) {
+            listTypes = responseBody;
+          } else if (responseBody?.items && Array.isArray(responseBody.items)) {
+            listTypes = responseBody.items;
+          }
+          setRoomTypes(listTypes);
         } catch (error) {
           console.error("Lỗi lấy danh mục:", error);
           toast.error("Không thể tải danh sách tòa nhà/loại phòng");
@@ -88,7 +94,6 @@ export const useRoomForm = ({ isOpen, onClose, onSuccess, initialData }) => {
       fetchCategories();
     }
   }, [isOpen]);
-
   useEffect(() => {
     if (isOpen && initialData) {
       const fetchRoomDetail = async () => {
@@ -101,8 +106,8 @@ export const useRoomForm = ({ isOpen, onClose, onSuccess, initialData }) => {
               room_number: data.room_number,
               room_name: data.room_name,
               status: data.status,
-              building_id: data.building_id,
-              room_type_id: data.room_type_id,
+              building_id: data.building_id || data.building?.id || "",
+              room_type_id: data.room_type_id || data.room_type?.id || "",
               area: data.area,
               capacity: data.capacity,
               description: data.description,
@@ -263,7 +268,6 @@ export const useRoomForm = ({ isOpen, onClose, onSuccess, initialData }) => {
       console.log("Payload:", finalData);
 
       if (initialData) {
-        // UPDATE MODE
         await roomService.update(initialData.id, finalData);
         toast.success("Cập nhật phòng thành công!");
       } else {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, UserCheck, Users } from "lucide-react"; // Import thêm icon
 import { toast } from "sonner";
 
 import {
@@ -20,6 +20,7 @@ import { useRoomSearch } from "./hooks/useRoomSearch";
 import { useTenantSearch } from "./hooks/useTenantSearch";
 import { useContractSubmit } from "./hooks/useContractSubmit";
 
+// ... imports components (ContractInfoSection, etc.) giữ nguyên ...
 import ContractInfoSection from "./components/ContractInfoSection";
 import LandlordInfoSection from "./components/LandlordInfoSection";
 import TenantInfoSection from "./components/TenantInfoSection";
@@ -40,15 +41,22 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [selectedTenant, setSelectedTenant] = useState(null);
   const [tempCCCD, setTempCCCD] = useState("");
+  
+  // STATE MỚI: Theo dõi xem hợp đồng này có phải là đại diện không
+  const [isRepresentative, setIsRepresentative] = useState(false);
+
   const [services, setServices] = useState([
-    { id: 1, name: "Phí rác", amount: 20000, description: "Phí thu gớm rác hàng tháng" },
+    { id: 1, name: "Phí rác", amount: 20000, description: "Phí thu gom rác hàng tháng" },
     { id: 2, name: "Phí giữ xe", amount: 50000, description: "Phí giữ xe máy" },
   ]);
   const [newService, setNewService] = useState({ name: "", amount: 0, description: "" });
 
   const form = useForm({
     resolver: zodResolver(contractFormSchema),
-    defaultValues: getDefaultFormValues(),
+    defaultValues: {
+        ...getDefaultFormValues(),
+        isRepresentative: false, // Thêm trường này vào default values
+    }
   });
 
   const { rooms, tenants, loadingData } = useContractData(isOpen);
@@ -70,7 +78,6 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
   useEffect(() => {
     setTenantSearchResults(tenants);
   }, [tenants, setTenantSearchResults]);
-
   const handleRoomSelect = (room) => {
     setSelectedRoom(room);
     if (room) {
@@ -78,12 +85,25 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
       const price = room.rental_price || room.price || room.base_price || 0;
       form.setValue("rentPrice", price);
       form.setValue("deposit", price);
+      const currentOccupants = room.current_occupants || 0;
+      if (currentOccupants === 0) {
+        setIsRepresentative(true);
+        form.setValue("isRepresentative", true);
+        toast.info("Phòng trống: Khách thuê này sẽ là Đại diện phòng.");
+      } else {
+        setIsRepresentative(false);
+        form.setValue("isRepresentative", false);
+        toast.info(`Phòng đang có ${currentOccupants} người. Khách này là thành viên.`);
+      }
+
     } else {
       form.setValue("roomId", "");
+      setIsRepresentative(false); 
+      form.setValue("isRepresentative", false);
     }
   };
 
- const handleTenantSelect = (tenant) => {
+  const handleTenantSelect = (tenant) => {
     setSelectedTenant(tenant);
     if (tenant) {
       form.setValue("tenantId", tenant.id);
@@ -92,7 +112,7 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
       form.setValue("tenantId", "");
       setTempCCCD("");
     }
-};
+  };
 
   const handleDurationClick = (months) => {
     const start = form.getValues("startDate");
@@ -102,6 +122,7 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
     }
   };
 
+  // ... (Các hàm handleService giữ nguyên) ...
   const handleAddService = () => {
     if (!newService.name.trim()) return;
     setServices([
@@ -121,12 +142,16 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
   };
 
   const onSubmit = (values) => {
-    handleSubmit(values, selectedTenant, tempCCCD, services);
+    // Đưa thêm flag isRepresentative vào payload gửi đi nếu hàm handleSubmit chưa xử lý
+    const payload = { ...values, isRepresentative, services };
+    handleSubmit(payload, selectedTenant, tempCCCD, services);
   };
 
   const handleClose = () => {
     setSelectedTenant(null);
     setTempCCCD("");
+    setSelectedRoom(null); // Reset room khi đóng
+    setIsRepresentative(false); // Reset representative
     onClose();
   };
 
@@ -149,6 +174,32 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-6">
+                  
+                  {/* --- HIỂN THỊ THÔNG BÁO TRẠNG THÁI ĐẠI DIỆN --- */}
+                  {selectedRoom && (
+                    <div className={`p-4 rounded-lg border flex items-start gap-3 ${
+                      isRepresentative 
+                        ? "bg-blue-50 border-blue-200 text-blue-800" 
+                        : "bg-gray-50 border-gray-200 text-gray-800"
+                    }`}>
+                      {isRepresentative ? (
+                        <UserCheck className="h-5 w-5 mt-0.5" />
+                      ) : (
+                        <Users className="h-5 w-5 mt-0.5" />
+                      )}
+                      <div>
+                        <h4 className="font-semibold">
+                          {isRepresentative ? "Đại diện phòng" : "Thành viên phòng"}
+                        </h4>
+                        <p className="text-sm opacity-90">
+                          {isRepresentative 
+                            ? "Đây là hợp đồng đầu tiên của phòng này. Khách thuê sẽ chịu trách nhiệm chính." 
+                            : "Phòng này đã có người thuê. Hợp đồng này được tính là thành viên ở ghép."}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <ContractInfoSection
                     form={form}
                     selectedRoom={selectedRoom}

@@ -1,5 +1,5 @@
 // src/pages/admin/IssueManagement.jsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   FaTools,
   FaInfoCircle,
@@ -21,9 +21,12 @@ import Pagination from "@/components/Pagination";
 // NEW: Import FilterBar
 import FilterBar from "@/components/FilterBar";
 
+// Hook
+import useDebounce from "@/hooks/useDebounce";
+
 const IssueManagement = () => {
   // --- STATES ---
-  const [issues, setIssues] = useState([]);
+  const [issues, setIssues] = useState([]); // Chứa TOÀN BỘ dữ liệu
   const [stats, setStats] = useState({
     total_requests: 0,
     pending: 0,
@@ -33,15 +36,21 @@ const IssueManagement = () => {
   const [buildings, setBuildings] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Pagination State (Client-side)
+  const [pagination, setPagination] = useState({
+    totalItems: 0,
+    page: 1,
+    pageSize: 5, // Client-side pagination: 5 dòng/trang
+    totalPages: 0,
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
+  const debounceSearchValue = useDebounce(searchTerm, 500);
+  
   const [filterBuilding, setFilterBuilding] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
-
-  // Pagination States
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const itemsPerPage = 10;
 
   // Modal States
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -49,14 +58,14 @@ const IssueManagement = () => {
 
   // --- FETCH DATA ---
 
-  // 1. Fetch Buildings for Filter
+  // 1. Fetch Buildings
   useEffect(() => {
     const fetchBuildings = async () => {
       try {
         const res = await buildingService.getAll();
         if (res?.data?.items) {
           setBuildings(res.data.items);
-        } else if (Array.isArray(res?.data)) { // Handle different response structure if any
+        } else if (Array.isArray(res?.data)) {
             setBuildings(res.data);
         }
       } catch (error) {
@@ -69,8 +78,6 @@ const IssueManagement = () => {
   // 2. Fetch Stats
   const fetchStats = async () => {
     try {
-      // Find building ID if a name is selected in filter (since API might need ID)
-      // Or pass name if API supports name filtering. Assuming API needs ID for stats filtering:
       const selectedBuildingObj = buildings.find(b => b.building_name === filterBuilding);
       const buildingId = selectedBuildingObj ? selectedBuildingObj.id : null;
 
@@ -83,56 +90,109 @@ const IssueManagement = () => {
     }
   };
 
-  // 3. Fetch Issues List
-  const fetchIssues = async () => {
+  // 3. Fetch Issues List (Lấy toàn bộ)
+  const fetchIssues = useCallback(async () => {
     setLoading(true);
     try {
-      // Map UI Status to API Status if needed, or pass directly
-      // API expects: PENDING, IN_PROGRESS, COMPLETED, CANCELLED
-      // Filter values are: PENDING, IN_PROGRESS, COMPLETED, CANCELLED
-      
-      // Find building ID if needed for filtering
-      const selectedBuildingObj = buildings.find(b => b.building_name === filterBuilding);
-      const buildingId = selectedBuildingObj ? selectedBuildingObj.id : null;
-
+      // Gọi API lấy toàn bộ (size lớn)
       const params = {
-        page: currentPage,
-        pageSize: itemsPerPage,
-        search: searchTerm || null,
-        building_id: buildingId, // Passing ID is safer for API
-        status: filterStatus || null,
+        page: 1,
+        pageSize: 1000,
+        // search: searchTerm || null, // Bỏ search server-side
+        // building_id: buildingId, // Bỏ filter server-side để client tự lọc
+        // status: filterStatus || null,
       };
 
       const res = await maintenanceService.getAll(params);
       
-      if (res?.data) {
-        setIssues(res.data.items || []);
-        if (res.data.pagination) {
-            setTotalPages(res.data.pagination.totalPages);
-        }
+      let items = [];
+      if (res?.data?.items) {
+        items = res.data.items;
+      } else if (Array.isArray(res?.data)) {
+        items = res.data;
       }
+
+      setIssues(items);
+
+      // Cập nhật pagination ban đầu
+      setPagination(prev => ({
+          ...prev,
+          totalItems: items.length,
+          totalPages: Math.ceil(items.length / prev.pageSize),
+      }));
+
     } catch (error) {
       console.error("Lỗi tải danh sách sự cố:", error);
       toast.error("Không thể tải danh sách sự cố");
+      setIssues([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // Chỉ gọi 1 lần khi mount
 
-  // Trigger fetch when filters change
   useEffect(() => {
     fetchIssues();
-    fetchStats(); 
-  }, [currentPage, searchTerm, filterBuilding, filterStatus]); // Dependencies trigger re-fetch
+  }, [fetchIssues]);
+
+  useEffect(() => {
+    fetchStats();
+  }, [filterBuilding, buildings]); // Update stats khi chọn tòa nhà
+
+  // --- LOGIC LỌC & PHÂN TRANG (CLIENT-SIDE) ---
+
+  // 1. Lọc dữ liệu
+  const filteredIssues = useMemo(() => {
+    let result = [...issues];
+
+    // Search
+    if (debounceSearchValue) {
+        const lowerSearch = debounceSearchValue.toLowerCase();
+        result = result.filter(i => 
+            (i.request_code && String(i.request_code).toLowerCase().includes(lowerSearch)) ||
+            (i.room_code && String(i.room_code).toLowerCase().includes(lowerSearch)) ||
+            (i.tenant_name && i.tenant_name.toLowerCase().includes(lowerSearch)) ||
+            (i.content && i.content.toLowerCase().includes(lowerSearch))
+        );
+    }
+
+    // Filter Building
+    if (filterBuilding) {
+        result = result.filter(i => i.building_name === filterBuilding || i.building_id === filterBuilding);
+    }
+
+    // Filter Status
+    if (filterStatus) {
+        result = result.filter(i => i.status === filterStatus);
+    }
+
+    return result;
+  }, [issues, debounceSearchValue, filterBuilding, filterStatus]);
+
+  // 2. Cập nhật Pagination khi Filter thay đổi
+  useEffect(() => {
+      setPagination(prev => ({
+          ...prev,
+          totalItems: filteredIssues.length,
+          totalPages: Math.ceil(filteredIssues.length / prev.pageSize)
+      }));
+      if (Math.ceil(filteredIssues.length / pagination.pageSize) < currentPage && currentPage > 1) {
+          setCurrentPage(1);
+      }
+  }, [filteredIssues.length, pagination.pageSize]);
+
+  // 3. Cắt trang
+  const paginatedIssues = useMemo(() => {
+      const startIndex = (currentPage - 1) * pagination.pageSize;
+      const endIndex = startIndex + pagination.pageSize;
+      return filteredIssues.slice(startIndex, endIndex);
+  }, [filteredIssues, currentPage, pagination.pageSize]);
+
 
   // --- FILTER CONFIGURATION ---
-
-  // 1. Building Options
   const buildingOptions = useMemo(() => {
     return buildings.map(b => ({ id: b.id, name: b.building_name }));
   }, [buildings]);
 
-  // 2. Status Options (Based on API Enum)
   const statusOptions = [
     { id: "PENDING", name: "Chưa xử lý" },
     { id: "IN_PROGRESS", name: "Đang xử lý" },
@@ -140,7 +200,6 @@ const IssueManagement = () => {
     { id: "CANCELLED", name: "Đã hủy" },
   ];
 
-  // 3. Filter Configs
   const filterConfigs = [
     {
       key: "building",
@@ -154,30 +213,23 @@ const IssueManagement = () => {
       type: "select",
       placeholder: "Trạng thái",
       options: statusOptions,
-      value: filterStatus, // Ensure this matches ID in statusOptions
+      value: filterStatus,
     },
   ];
 
-  // 4. Handle Filter Change
+  // --- HANDLERS ---
   const handleFilterChange = (key, value) => {
-    if (key === "building") {
-        setFilterBuilding(value); // Value is building NAME from GenericCombobox
-    } else if (key === "status") {
-        setFilterStatus(value); // Value is status ID (e.g., PENDING)
-    }
+    if (key === "building") setFilterBuilding(value);
+    else if (key === "status") setFilterStatus(value);
     setCurrentPage(1);
   };
 
-  // 5. Handle Clear Filters
   const handleClearFilters = () => {
     setSearchTerm("");
     setFilterBuilding("");
     setFilterStatus("");
     setCurrentPage(1);
-    // Removed toast notification
   };
-
-  // --- HANDLERS ---
 
   const handleDeleteClick = (issue) => {
     setIssueToDelete(issue);
@@ -189,8 +241,11 @@ const IssueManagement = () => {
     try {
       await maintenanceService.delete(issueToDelete.id);
       toast.success(`Đã xóa sự cố #${issueToDelete.request_code}`);
-      fetchIssues(); 
+      
+      // Update state trực tiếp
+      setIssues(prev => prev.filter(i => i.id !== issueToDelete.id));
       fetchStats(); 
+
     } catch (error) {
       console.error("Lỗi xóa:", error);
       toast.error("Xóa thất bại (Có thể do trạng thái không hợp lệ)");
@@ -315,8 +370,8 @@ const IssueManagement = () => {
             <tbody className="text-sm text-gray-700 divide-y divide-gray-100">
               {loading ? (
                  <tr><td colSpan="8" className="p-8 text-center">Đang tải dữ liệu...</td></tr>
-              ) : issues.length > 0 ? (
-                issues.map((issue) => (
+              ) : paginatedIssues.length > 0 ? ( /* SỬ DỤNG paginatedIssues */
+                paginatedIssues.map((issue) => (
                   <tr key={issue.id} className="hover:bg-gray-50 transition-colors group">
                     <td className="p-4 font-bold text-gray-900">#{issue.request_code}</td>
                     <td className="p-4 font-bold text-gray-800">{issue.room_code}</td>
@@ -366,8 +421,10 @@ const IssueManagement = () => {
 
         <Pagination 
             currentPage={currentPage}
-            totalPages={totalPages}
+            totalPages={pagination.totalPages}
             onPageChange={setCurrentPage}
+            totalItems={pagination.totalItems}
+            pageSize={pagination.pageSize}
             label="sự cố"
          />
       </div>

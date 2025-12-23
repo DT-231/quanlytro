@@ -4,36 +4,38 @@ const DeleteConfirmationModal = ({
   isOpen, 
   onClose, 
   onConfirm, 
-  itemName, 
-  itemType = "mục" 
+  itemName 
 }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50  animate-in fade-in duration-200">
-      <div className="bg-white fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-lg duration-200 sm:rounded-lg md:w-full">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/20  fade-in duration-200">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-[400px] p-5 animate-in zoom-in-95 duration-200 mx-4">
         
-        <div className="flex flex-col space-y-2 text-center sm:text-left">
-          <h2 className="text-lg font-semibold leading-none tracking-tight">
-            Bạn có chắc chắn muốn xóa?
-          </h2>
-          <p className="text-sm text-gray-500">
-            Hành động này không thể hoàn tác. {itemType} <strong>{itemName}</strong> sẽ bị xóa vĩnh viễn khỏi hệ thống.
-          </p>
-        </div>
+        {/* Title */}
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          Xác nhận xóa
+        </h3>
 
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 gap-2 sm:gap-0">
+        {/* Content */}
+        <p className="text-sm text-gray-600 mb-6">
+          Bạn có chắc chắn muốn xóa <strong>{itemName}</strong> không?
+        </p>
+
+        {/* Actions */}
+        <div className="flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-gray-100 h-10 px-4 py-2"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
           >
-            Hủy bỏ
+            Hủy
           </button>
+          
           <button
             onClick={onConfirm}
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2"
+            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
           >
-            Đồng ý
+            Xóa
           </button>
         </div>
 

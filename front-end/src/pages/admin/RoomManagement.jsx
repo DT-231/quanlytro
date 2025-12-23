@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   FaEdit,
   FaTrashAlt,
@@ -22,11 +22,46 @@ import RoomTypeManagerModal from "@/components/modals/room/RoomTypeManagerModal"
 // Import FilterBar
 import FilterBar from "@/components/FilterBar";
 
+// Helper Functions (Giống InvoiceManagement)
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(amount || 0);
+};
+
+const getStatusColor = (status) => {
+  switch (status) {
+    case "OCCUPIED": return "bg-blue-500 text-white";
+    case "AVAILABLE": return "bg-green-500 text-white";
+    case "MAINTENANCE": return "bg-yellow-400 text-gray-800";
+    default: return "bg-gray-200 text-gray-800";
+  }
+};
+
+const getStatusLabel = (status) => {
+  switch (status) {
+    case "OCCUPIED": return "Đang thuê";
+    case "AVAILABLE": return "Còn trống";
+    case "MAINTENANCE": return "Bảo trì";
+    default: return status;
+  }
+};
+
 const RoomManagement = () => {
   // --- STATES ---
   const [rooms, setRooms] = useState([]);
   const [buildings, setBuildings] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Pagination State 
+  const [pagination, setPagination] = useState({
+    totalItems: 0,
+    page: 1,
+    pageSize: 5, 
+    totalPages: 0,
+  });
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
@@ -43,22 +78,28 @@ const RoomManagement = () => {
   const [roomToDelete, setRoomToDelete] = useState(null);
   const [isTypeManagerOpen, setIsTypeManagerOpen] = useState(false);
 
-  // Pagination States
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
-
-  // --- FETCH DATA ---
-  const fetchRooms = async () => {
+  // --- FETCH DATA (Sửa logic lấy toàn bộ) ---
+  const fetchRooms = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await roomService.getAll();
+      const response = await roomService.getAll({ page: 1, size: 1000 });
+      
+      let items = [];
       if (response?.data?.items) {
-        setRooms(response.data.items);
+        items = response.data.items;
       } else if (Array.isArray(response?.data)) {
-        setRooms(response.data);
-      } else {
-        setRooms([]);
+        items = response.data;
+      } else if (Array.isArray(response)) { 
+        items = response;
       }
+
+      setRooms(items);
+      setPagination(prev => ({
+          ...prev,
+          totalItems: items.length,
+          totalPages: Math.ceil(items.length / prev.pageSize),
+      }));
+
     } catch (error) {
       console.error("Lỗi tải danh sách phòng:", error);
       toast.error("Không thể tải danh sách phòng");
@@ -66,7 +107,7 @@ const RoomManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const fetchBuildings = async () => {
     try {
@@ -84,23 +125,19 @@ const RoomManagement = () => {
   useEffect(() => {
     fetchRooms();
     fetchBuildings();
-  }, []);
+  }, [fetchRooms]);
 
   // --- FILTER CONFIGURATION ---
-  
   const buildingOptions = useMemo(() => {
-
     return buildings.map(b => ({ id: b.id, name: b.building_name }));
   }, [buildings]);
 
-  // 2. Danh sách trạng thái
   const statusOptions = [
     { id: "AVAILABLE", name: "Còn trống" },
     { id: "OCCUPIED", name: "Đang thuê" },
     { id: "MAINTENANCE", name: "Bảo trì" },
   ];
 
-  // 3. Cấu hình FilterBar
   const filterConfigs = [
     {
       key: "building",
@@ -118,25 +155,9 @@ const RoomManagement = () => {
     },
   ];
 
-  // 4. Xử lý thay đổi bộ lọc
-  const handleFilterChange = (key, value) => {
-    if (key === "building") {
-       setFilterBuilding(value); 
-    } else if (key === "status") {
-      setFilterStatus(value);
-    }
-    setCurrentPage(1);
-  };
-
-  // 5. Xóa bộ lọc
-  const handleClearFilters = () => {
-    setSearchTerm("");
-    setFilterBuilding("");
-    setFilterStatus("");
-    setCurrentPage(1);
-  };
-
-  // --- FILTER LOGIC ---
+  // --- FILTER & PAGINATION LOGIC (Client-side) ---
+  
+  // 1. Lọc dữ liệu
   const filteredRooms = useMemo(() => {
     if (!Array.isArray(rooms)) return [];
 
@@ -146,32 +167,59 @@ const RoomManagement = () => {
       const buildingName = room.building_name || "";
       const status = room.status || "";
 
-      // 1. Search
+      // Search
       const matchesSearch =
         roomNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
         representative.toLowerCase().includes(searchTerm.toLowerCase());
 
-      // 2. Filter Building (ĐÃ SỬA LOGIC)
-      // Nếu filterBuilding có giá trị thì so sánh, nếu rỗng thì luôn đúng (hiện tất cả)
       const matchesBuilding = filterBuilding 
-        ? (buildingName || "").toLowerCase() === filterBuilding.toLowerCase()
+        ? (buildingName || "").toLowerCase() === filterBuilding.toLowerCase() || room.building_id === filterBuilding
         : true;
         
-      // 3. Filter Status
+      // Filter Status
       const matchesStatus = filterStatus ? status === filterStatus : true;
 
       return matchesSearch && matchesBuilding && matchesStatus;
     });
   }, [rooms, searchTerm, filterBuilding, filterStatus]);
 
-  const totalItems = filteredRooms.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const currentData = filteredRooms.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // 2. Cập nhật Total Pages khi Filter thay đổi
+  useEffect(() => {
+      setPagination(prev => ({
+          ...prev,
+          totalItems: filteredRooms.length,
+          totalPages: Math.ceil(filteredRooms.length / prev.pageSize)
+      }));
+      if (Math.ceil(filteredRooms.length / pagination.pageSize) < currentPage) {
+          setCurrentPage(1);
+      }
+  }, [filteredRooms.length, pagination.pageSize]);
+
+  // 3. Cắt trang (Pagination Logic)
+  const paginatedRooms = useMemo(() => {
+    const startIndex = (currentPage - 1) * pagination.pageSize;
+    const endIndex = startIndex + pagination.pageSize;
+    return filteredRooms.slice(startIndex, endIndex);
+  }, [filteredRooms, currentPage, pagination.pageSize]);
+
 
   // --- HANDLERS ---
+  const handleFilterChange = (key, value) => {
+    if (key === "building") {
+       setFilterBuilding(value); 
+    } else if (key === "status") {
+      setFilterStatus(value);
+    }
+    setCurrentPage(1);
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setFilterBuilding("");
+    setFilterStatus("");
+    setCurrentPage(1);
+  };
+
   const handleOpenAdd = () => {
     setEditingRoom(null);
     setIsRoomFormOpen(true);
@@ -218,32 +266,6 @@ const RoomManagement = () => {
       toast.error("Không thể tải chi tiết phòng");
     } finally {
       setLoadingDetail(false);
-    }
-  };
-
-  // Helper
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(amount || 0);
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "OCCUPIED": return "bg-blue-500 text-white";
-      case "AVAILABLE": return "bg-green-500 text-white";
-      case "MAINTENANCE": return "bg-yellow-400 text-gray-800";
-      default: return "bg-gray-200 text-gray-800";
-    }
-  };
-
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case "OCCUPIED": return "Đang thuê";
-      case "AVAILABLE": return "Còn trống";
-      case "MAINTENANCE": return "Bảo trì";
-      default: return status;
     }
   };
 
@@ -320,8 +342,8 @@ const RoomManagement = () => {
             <tbody className="text-sm text-gray-700 divide-y divide-gray-100">
               {loading ? (
                 <tr><td colSpan="9" className="p-8 text-center">Đang tải dữ liệu...</td></tr>
-              ) : currentData.length > 0 ? (
-                currentData.map((room) => (
+              ) : paginatedRooms.length > 0 ? ( /* ĐỔI currentData THÀNH paginatedRooms */
+                paginatedRooms.map((room) => (
                   <tr key={room.id} className="hover:bg-gray-50 transition-colors group">
                     <td 
                       className="p-4 font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
@@ -374,11 +396,13 @@ const RoomManagement = () => {
           </table>
         </div>
 
+        {/* PAGINATION COMPONENT (Cập nhật props) */}
         <Pagination
           currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={totalItems}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.totalItems}
           onPageChange={setCurrentPage}
+          pageSize={pagination.pageSize} 
           label="phòng"
         />
       </div>

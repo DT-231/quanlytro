@@ -1,5 +1,4 @@
-// src/pages/admin/BuildingManagement.jsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   FaEdit,
   FaTrashAlt,
@@ -21,13 +20,26 @@ import Pagination from "@/components/Pagination";
 // NEW: Import FilterBar
 import FilterBar from "@/components/FilterBar";
 
+// Hook
+import useDebounce from "@/hooks/useDebounce";
+
 const BuildingManagement = () => {
   // --- STATES ---
-  const [buildings, setBuildings] = useState([]);
+  const [buildings, setBuildings] = useState([]); // Chứa toàn bộ dữ liệu
   const [loading, setLoading] = useState(true);
+
+  // Pagination State (Client-side)
+  const [pagination, setPagination] = useState({
+    totalItems: 0,
+    page: 1,
+    pageSize: 5, // 5 dòng mỗi trang
+    totalPages: 0,
+  });
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
+  const debounceSearchValue = useDebounce(searchTerm, 500);
   const [filterStatus, setFilterStatus] = useState("");
 
   // Modal States
@@ -42,16 +54,11 @@ const BuildingManagement = () => {
   const [buildingToDelete, setBuildingToDelete] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
-
-  // --- API HANDLERS ---
-
-  // 1. Fetch List
-  const fetchBuildings = async (priorityId = null) => {
+  // --- API HANDLERS (Lấy toàn bộ) ---
+  const fetchBuildings = useCallback(async () => {
     try {
       setLoading(true);
+      // Gọi API lấy toàn bộ danh sách
       const response = await buildingService.getAll();
 
       let listData = [];
@@ -72,16 +79,15 @@ const BuildingManagement = () => {
         return dateB - dateA;
       });
 
-      // Move priority item to top (e.g. newly created/edited)
-      if (priorityId) {
-        const index = listData.findIndex((item) => item.id === priorityId);
-        if (index > -1) {
-          const [item] = listData.splice(index, 1);
-          listData.unshift(item);
-        }
-      }
-
       setBuildings(listData);
+      
+      // Cập nhật pagination ban đầu
+      setPagination(prev => ({
+          ...prev,
+          totalItems: listData.length,
+          totalPages: Math.ceil(listData.length / prev.pageSize),
+      }));
+
     } catch (error) {
       console.error("Lỗi tải dữ liệu:", error);
       toast.error("Không thể tải danh sách tòa nhà");
@@ -89,22 +95,66 @@ const BuildingManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // Chỉ gọi 1 lần khi mount
 
   useEffect(() => {
     fetchBuildings();
-  }, []);
+  }, [fetchBuildings]);
+
+  // --- LOGIC LỌC & PHÂN TRANG (CLIENT-SIDE) ---
+  
+  // 1. Lọc dữ liệu
+  const filteredBuildings = useMemo(() => {
+    let result = [...buildings];
+
+    // Search
+    if (debounceSearchValue) {
+        const lowerSearch = debounceSearchValue.toLowerCase();
+        result = result.filter(b => 
+            (b.building_name && b.building_name.toLowerCase().includes(lowerSearch)) ||
+            (b.address_line && b.address_line.toLowerCase().includes(lowerSearch))
+        );
+    }
+
+    // Filter Status
+    if (filterStatus) {
+        if (filterStatus === "Hoạt động") {
+            result = result.filter(b => b.status === "ACTIVE");
+        } else {
+            result = result.filter(b => b.status === filterStatus);
+        }
+    }
+
+    return result;
+  }, [buildings, debounceSearchValue, filterStatus]);
+
+  // 2. Cập nhật Pagination khi Filter thay đổi
+  useEffect(() => {
+      setPagination(prev => ({
+          ...prev,
+          totalItems: filteredBuildings.length,
+          totalPages: Math.ceil(filteredBuildings.length / prev.pageSize)
+      }));
+      if (Math.ceil(filteredBuildings.length / pagination.pageSize) < currentPage && currentPage > 1) {
+          setCurrentPage(1);
+      }
+  }, [filteredBuildings.length, pagination.pageSize]);
+
+  // 3. Cắt trang
+  const paginatedBuildings = useMemo(() => {
+      const startIndex = (currentPage - 1) * pagination.pageSize;
+      const endIndex = startIndex + pagination.pageSize;
+      return filteredBuildings.slice(startIndex, endIndex);
+  }, [filteredBuildings, currentPage, pagination.pageSize]);
+
 
   // --- FILTER CONFIGURATION ---
-  
-  // 1. Danh sách trạng thái cho FilterBar
   const statusOptions = [
     { id: "Hoạt động", name: "Hoạt động" },
     { id: "SUSPENDED", name: "Tạm dừng" },
     { id: "INACTIVE", name: "Ngừng hoạt động" },
   ];
 
-  // 2. Cấu hình FilterBar
   const filterConfigs = [
     {
       key: "status",
@@ -115,30 +165,26 @@ const BuildingManagement = () => {
     },
   ];
 
-  // 3. Xử lý thay đổi filter
+  // --- HANDLERS ---
   const handleFilterChange = (key, value) => {
-    if (key === "status") {
-      setFilterStatus(value);
-    }
+    if (key === "status") setFilterStatus(value);
     setCurrentPage(1);
   };
 
-  // 4. Xóa bộ lọc
   const handleClearFilters = () => {
     setSearchTerm("");
     setFilterStatus("");
     setCurrentPage(1);
   };
 
-  // --- CRUD HANDLERS ---
-
   const handleAddBuilding = async (newBuildingData) => {
     try {
       const response = await buildingService.create(newBuildingData);
       if (response && (response.code === 200 || response.code === 201 || response.message)) {
         toast.success("Thêm toà nhà thành công!");
-        await fetchBuildings();
+        await fetchBuildings(); // Refresh toàn bộ list
         setIsAddModalOpen(false);
+        setCurrentPage(1); // Reset về trang 1 để thấy item mới nhất
       } else {
         toast.error("Thêm thất bại: Phản hồi không hợp lệ");
       }
@@ -160,9 +206,11 @@ const BuildingManagement = () => {
       const response = await buildingService.update(id, updatedData);
       if (response && (response.code === 200 || response.data)) {
         toast.success("Cập nhật thành công!");
-        await fetchBuildings(id);
+        
+        // Cập nhật state trực tiếp để đỡ gọi lại API toàn bộ
+        setBuildings(prev => prev.map(b => b.id === id ? { ...b, ...updatedData } : b));
+        
         setIsEditModalOpen(false);
-        setCurrentPage(1);
       } else {
         toast.error("Cập nhật thất bại");
       }
@@ -248,36 +296,6 @@ const BuildingManagement = () => {
     return "---";
   };
 
-  // --- FILTER LOGIC ---
-  const filteredBuildings = useMemo(() => {
-    if (!Array.isArray(buildings)) return [];
-    
-    return buildings.filter((building) => {
-      const name = building.building_name || "";
-      const address = building.address_line || "";
-      const status = building.status || "";
-      
-      const matchesSearch =
-        name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        address.toLowerCase().includes(searchTerm.toLowerCase());
-        
-      let matchesStatus = true;
-      if (filterStatus) {
-        if (filterStatus === "Hoạt động") matchesStatus = status === "ACTIVE";
-        else matchesStatus = status === filterStatus;
-      }
-      return matchesSearch && matchesStatus;
-    });
-  }, [buildings, searchTerm, filterStatus]);
-
-  const totalPages = Math.ceil(filteredBuildings.length / itemsPerPage);
-  const totalItems = filteredBuildings.length;
-  
-  const currentData = filteredBuildings.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
   return (
     <div className="min-h-screen bg-gray-50 font-sans relative">
       <Toaster position="top-right" richColors />
@@ -330,8 +348,8 @@ const BuildingManagement = () => {
                     Đang tải dữ liệu...
                   </td>
                 </tr>
-              ) : currentData.length > 0 ? (
-                currentData.map((item) => (
+              ) : paginatedBuildings.length > 0 ? ( /* Đổi currentData -> paginatedBuildings */
+                paginatedBuildings.map((item) => (
                   <tr
                     key={item.id}
                     className="hover:bg-gray-50 transition-colors group"
@@ -421,9 +439,10 @@ const BuildingManagement = () => {
         {/* PAGINATION */}
         <Pagination
           currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={totalItems}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.totalItems}
           onPageChange={setCurrentPage}
+          pageSize={pagination.pageSize}
           label="tòa nhà"
         />
       </div>
