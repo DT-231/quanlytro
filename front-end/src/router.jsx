@@ -17,13 +17,15 @@ import BuildingManagement from "./pages/admin/BuildingManagement";
 import RoomManagement from "./pages/admin/RoomManagement";
 import ContractManagement from "./pages/admin/ContractManagement";
 import IssueManagement from "./pages/admin/IssueManagement";
+import AppointmentManagementPage from "./pages/admin/AppointmentManagementPage";
 
 // ================== Member Pages ==================
 import ProfilePage from "./pages/member/ProfilePage";
-import MyContractsPage from "./pages/member/MyContractsPage";
+import ContractListPage from "./pages/member/contract/ContractListPage";
 import IssueReport from "./pages/member/IssueReport";
 import MyInvoicesPage from "./pages/member/MyInvoicesPage";
-import ContractDetailPage from "./pages/member/ContractDetailPage";
+import ContractDetailPage from "./pages/member/contract/ContractDetailPage";
+import MyAppointmentPage from "./pages/member/MyAppointmentPage";
 
 // ================== Account Pages ==================
 import AccountProfile from "./pages/member/account/AccountProfile";
@@ -57,9 +59,10 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <ProfilePage /> },
           { path: "profile", element: <ProfilePage /> },
-          { path: "my-contracts", element: <MyContractsPage /> },
+          { path: "my-contracts", element: <ContractListPage /> },
           { path: "my-contracts/:id", element: <ContractDetailPage /> },
           { path: "my-invoices", element: <MyInvoicesPage /> },
+          { path: "my-appointments", element: <MyAppointmentPage /> },
           { path: "incidents", element: <IssueReport /> },
           { path: "account/profile", element: <AccountProfile /> },
           {
@@ -86,6 +89,7 @@ const router = createBrowserRouter([
           { path: "invoices", element: <InvoiceManagement /> },
           { path: "contracts", element: <ContractManagement /> },
           { path: "incidents", element: <IssueManagement /> },
+          { path: "appointments", element: <AppointmentManagementPage /> },
         ],
       },
     ],

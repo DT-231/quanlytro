@@ -2,35 +2,21 @@ import React, { useEffect, useState } from "react";
 import {
   Phone,
   MessageCircle,
-  Calendar,
   ChevronLeft,
   ChevronRight,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import formatPrice from "@/Utils/formatPrice";
 import { useParams } from "react-router-dom";
 import { roomService } from "@/services/roomService";
+import AppointmentBookingForm from "@/components/AppointmentBookingForm";
 
 const RoomDetailPage = () => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [isBookingOpen, setIsBookingOpen] = useState(false);
   const { id } = useParams();
   const [roomInfor, setRoomInfor] = useState(null);
-  const [bookingForm, setBookingForm] = useState({
-    fullName: "",
-    phone: "",
-    email: "",
-    date: "",
-    time: "",
-    note: "",
-    agree: false,
-  });
 
   useEffect(() => {
     const fetchDataRoom = async () => {
@@ -42,55 +28,6 @@ const RoomDetailPage = () => {
     };
     fetchDataRoom();
   }, [id]);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setBookingForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleCheckboxChange = (checked) => {
-    setBookingForm((prev) => ({
-      ...prev,
-      agree: checked,
-    }));
-  };
-
-  const handleBookingSubmit = (e) => {
-    e.preventDefault();
-    if (!bookingForm.agree) {
-      alert("Vui lòng đồng ý với điều khoản trước khi đặt lịch");
-      return;
-    }
-    console.log("Booking data:", bookingForm);
-    // TODO: Call API to submit booking
-    alert("Đặt lịch thành công!");
-    setIsBookingOpen(false);
-    setBookingForm({
-      fullName: "",
-      phone: "",
-      email: "",
-      date: "",
-      time: "",
-      note: "",
-      agree: false,
-    });
-  };
-
-  const closeBookingModal = () => {
-    setIsBookingOpen(false);
-    setBookingForm({
-      fullName: "",
-      phone: "",
-      email: "",
-      date: "",
-      time: "",
-      note: "",
-      agree: false,
-    });
-  };
 
   const nextImage = () => {
     if (!roomInfor?.photos?.length) return;
@@ -222,14 +159,11 @@ const RoomDetailPage = () => {
                 </a>
               </Button>
 
-              <Button
-                size="lg"
-                className="bg-black hover:bg-gray-800 text-white"
-                onClick={() => setIsBookingOpen(true)}
-              >
-                <Calendar className="w-5 h-5 mr-2" />
-                Đặt lịch
-              </Button>
+              <AppointmentBookingForm
+                roomId={id}
+                roomNumber={roomInfor?.room_number}
+                buildingName={roomInfor?.building_name}
+              />
             </div>
 
             {/* Notice */}
@@ -358,162 +292,6 @@ const RoomDetailPage = () => {
             </Card>
           </div>
         </div>
-
-        {/* Booking Modal Placeholder */}
-        {isBookingOpen && (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-            <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto relative">
-              {/* Close Button */}
-              <button
-                onClick={closeBookingModal}
-                className="absolute right-4 top-4 text-gray-500 hover:text-gray-700 z-10"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <CardHeader>
-                <CardTitle className="text-2xl">Đặt lịch xem phòng</CardTitle>
-                <p className="text-sm text-gray-600 mt-2">
-                  Người xem phòng cần cung cấp họ tên, số điện thoại, thời gian
-                  mong muốn và phòng muốn xem.
-                </p>
-              </CardHeader>
-
-              <CardContent>
-                <form onSubmit={handleBookingSubmit} className="space-y-4">
-                  {/* Full Name and Phone */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Họ tên
-                      </label>
-                      <Input
-                        type="text"
-                        name="fullName"
-                        placeholder="Nguyễn Văn A"
-                        value={bookingForm.fullName}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Số điện thoại
-                      </label>
-                      <Input
-                        type="tel"
-                        name="phone"
-                        placeholder="12312312323"
-                        value={bookingForm.phone}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Email, Date and Time */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Email
-                      </label>
-                      <Input
-                        type="email"
-                        name="email"
-                        placeholder="Email"
-                        value={bookingForm.email}
-                        onChange={handleInputChange}
-                        className="w-full"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Ngày
-                      </label>
-                      <Input
-                        type="date"
-                        name="date"
-                        value={bookingForm.date}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Giờ
-                      </label>
-                      <Input
-                        type="time"
-                        name="time"
-                        value={bookingForm.time}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Note */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Ghi chú
-                    </label>
-                    <Textarea
-                      name="note"
-                      placeholder="Ghi chú các mong muốn của bạn để (chủ trọ) có thể chuẩn bị trước"
-                      value={bookingForm.note}
-                      onChange={handleInputChange}
-                      rows={4}
-                      className="w-full resize-none"
-                    />
-                  </div>
-
-                  {/* Agreement Checkbox */}
-                  <div className="flex items-start space-x-2">
-                    <Checkbox
-                      id="agree"
-                      checked={bookingForm.agree}
-                      onCheckedChange={handleCheckboxChange}
-                      className="mt-1"
-                    />
-                    <label
-                      htmlFor="agree"
-                      className="text-sm text-gray-700 leading-relaxed cursor-pointer"
-                    >
-                      Tôi đồng ý đặt lịch xem phòng và xác nhận thông tin là
-                      chính xác.{" "}
-                      <span className="text-gray-500">
-                        Lưu ý: đặt trước 1 ngày
-                      </span>
-                    </label>
-                  </div>
-
-                  {/* Buttons */}
-                  <div className="flex gap-3 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={closeBookingModal}
-                    >
-                      Huỷ
-                    </Button>
-                    <Button
-                      type="submit"
-                      className="flex-1 bg-black hover:bg-gray-800 text-white"
-                      disabled={!bookingForm.agree}
-                    >
-                      Đặt lịch
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
-        )}
       </div>
     </div>
   );

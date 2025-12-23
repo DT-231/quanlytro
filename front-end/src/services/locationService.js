@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const request = axios.create({
-  baseURL: "https://tailieu365.com/api/address",
+  baseURL: "api/address",
   // baseURL: "https://vn-public-apis.fpo.vn/",
   //   headers: {
   //     "Content-Type": "application/json",

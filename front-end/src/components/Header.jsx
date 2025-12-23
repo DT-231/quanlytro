@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu } from 'lucide-react';
+import NotificationCenter from './NotificationCenter';
 
 export default function Header({ user, onLogout, onToggleSidebar }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -47,6 +48,7 @@ export default function Header({ user, onLogout, onToggleSidebar }) {
       <div className="flex items-center gap-2">
         {user ? (
           <div className="flex items-center gap-3 relative" ref={dropdownRef}>
+            <NotificationCenter />
             <div className="text-right hidden sm:block">
               <p className="text-sm font-bold text-gray-800"> {user.last_name} {user.first_name}</p>
               <p className="text-[10px] text-gray-500 uppercase">{user.role}</p>
