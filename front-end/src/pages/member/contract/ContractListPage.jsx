@@ -13,7 +13,7 @@ import {
   XCircleIcon,
 } from "@heroicons/react/24/solid";
 
-const MyContractsPage = () => {
+const ContractListPage = () => {
   const [contracts, setContracts] = useState([]);
   const [status, setStatus] = useState("ALL");
   const [loading, setLoading] = useState(false);
@@ -24,6 +24,8 @@ const MyContractsPage = () => {
       try {
         const params = status === "ALL" ? {} : { status };
         const response = await contractService.getAll(params);
+
+        
         setContracts(response.data.items);
       } catch (error) {
         console.error("Error fetching contracts:", error);
@@ -153,4 +155,4 @@ const MyContractsPage = () => {
   );
 };
 
-export default MyContractsPage;
+export default ContractListPage;
