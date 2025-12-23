@@ -16,12 +16,16 @@ class ContractStatus(BaseEnum):
     - EXPIRED: Hợp đồng đã hết hạn
     - TERMINATED: Hợp đồng đã bị chấm dứt trước hạn
     - PENDING: Hợp đồng đang chờ xử lý/ký
+    - TERMINATION_REQUESTED_BY_TENANT: Người thuê yêu cầu chấm dứt hợp đồng
+    - TERMINATION_REQUESTED_BY_LANDLORD: Chủ nhà yêu cầu chấm dứt hợp đồng
     """
     
     ACTIVE = "ACTIVE"           # Hợp đồng đang có hiệu lực
     EXPIRED = "EXPIRED"         # Hợp đồng đã hết hạn
     TERMINATED = "TERMINATED"   # Hợp đồng đã bị chấm dứt trước hạn  
     PENDING = "PENDING"         # Hợp đồng đang chờ xử lý/ký
+    TERMINATION_REQUESTED_BY_TENANT = "TERMINATION_REQUESTED_BY_TENANT"
+    TERMINATION_REQUESTED_BY_LANDLORD = "TERMINATION_REQUESTED_BY_LANDLORD"
 
 
 class ContractDocumentType(BaseEnum):

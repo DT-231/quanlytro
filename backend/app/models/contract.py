@@ -29,7 +29,7 @@ class Contract(BaseModel):
     deposit_amount = Column(DECIMAL(10, 2), nullable=False)  # Tiền đặt cọc
     payment_day = Column(Integer, nullable=True)  # Ngày thanh toán hàng tháng (1-31)
     number_of_tenants = Column(Integer, nullable=False, default=1)  # Số người ở trong phòng
-    status = Column(String(20), nullable=False, default=ContractStatus.ACTIVE.value, index=True)
+    status = Column(String(50), nullable=False, default=ContractStatus.ACTIVE.value, index=True)
     
     # Thông tin thanh toán chi tiết
     payment_cycle_months = Column(Integer, nullable=True, default=1)  # Chu kỳ thanh toán (tháng)
@@ -40,11 +40,13 @@ class Contract(BaseModel):
     terms_and_conditions = Column(Text, nullable=True)  # Các điều khoản, quy định
     notes = Column(Text, nullable=True)
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
-    
+    termination_requester_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
     # Relationships
     room = relationship("Room", back_populates="contracts")
     tenant = relationship("User", foreign_keys=[tenant_id], back_populates="tenant_contracts")
     creator = relationship("User", foreign_keys=[created_by], back_populates="created_contracts")
+    termination_requester = relationship("User", foreign_keys=[termination_requester_id])
     invoices = relationship("Invoice", back_populates="contract")
     reviews = relationship("Review", back_populates="contract")
     contract_documents = relationship("ContractDocument", back_populates="contract")

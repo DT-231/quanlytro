@@ -35,6 +35,7 @@ from .payment import Payment
 from .maintenance_request import MaintenanceRequest
 from .notification import Notification
 from .review import Review
+from .appointment import Appointment
 
 
 __all__ = [
@@ -61,6 +62,7 @@ __all__ = [
     "MaintenanceRequest",
     "Notification",
     "Review",
+    "Appointment",
     
     # Media/Document models
     "BuildingPhoto",

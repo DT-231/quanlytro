@@ -492,29 +492,26 @@ class RoomService:
                 name=room.room_type.name
             )
         
-        # Lấy thông tin contract active (nếu có)
-        active_contract = self.contract_repo.get_active_contract_by_room(room_id)
-        current_occupants = 0
-        is_available = room.status == RoomStatus.AVAILABLE.value
-        tenant_info = None
+        # Lấy thông tin tất cả hợp đồng active và tính toán occupants
+        active_contracts = self.contract_repo.get_active_contracts_by_room(room_id)
+        current_occupants = self.contract_repo.get_total_tenants_in_room(room_id)
+        is_available = room.status == RoomStatus.AVAILABLE.value and not active_contracts
+        tenants = []
         
-        if active_contract:
-            # Đếm số người trong contract (có thể là số member hoặc 1 nếu chỉ có tenant)
-            current_occupants = 1  # TODO: Cập nhật nếu có bảng contract_members
-            
-            # Nếu là admin, lấy thông tin tenant
-            if user_role == "ADMIN":
-                tenant = active_contract.tenant if hasattr(active_contract, 'tenant') else None
+        # Nếu là admin, lấy thông tin của tất cả tenants
+        if user_role == "ADMIN" and active_contracts:
+            for contract in active_contracts:
+                tenant = contract.tenant if hasattr(contract, 'tenant') else None
                 if tenant:
-                    tenant_info = TenantInfo(
+                    tenants.append(TenantInfo(
                         tenant_id=tenant.id,
                         tenant_name=f"{tenant.first_name} {tenant.last_name}",
                         tenant_email=tenant.email,
                         tenant_phone=tenant.phone,
-                        contract_id=active_contract.id,
-                        contract_start_date=active_contract.start_date,
-                        contract_end_date=active_contract.end_date
-                    )
+                        contract_id=contract.id,
+                        contract_start_date=contract.start_date,
+                        contract_end_date=contract.end_date
+                    ))
         
         # Base data chung cho cả admin và public
         base_data = {
@@ -543,7 +540,7 @@ class RoomService:
         if user_role == "ADMIN":
             return RoomAdminDetail(
                 **base_data,
-                tenant_info=tenant_info,
+                tenants=tenants,
                 created_at=room.created_at,
                 updated_at=room.updated_at
             )

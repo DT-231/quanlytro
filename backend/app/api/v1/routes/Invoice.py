@@ -31,6 +31,7 @@ from app.schemas.invoice_schema import (
     BuildingOption, RoomOption
 )
 from app.services.InvoiceService import InvoiceService
+from app.services.NotificationService import NotificationService
 from app.core import response
 from app.schemas.response_schema import Response
 
@@ -140,7 +141,7 @@ def list_invoices(
     summary="Tạo hóa đơn mới",
     description="Chủ nhà tạo hóa đơn cho phòng"
 )
-def create_invoice(
+async def create_invoice(
     invoice_data: InvoiceCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -148,6 +149,7 @@ def create_invoice(
     """Tạo hóa đơn mới.
     
     Chỉ chủ nhà (ADMIN) mới được tạo.
+    Tự động gửi thông báo cho tenant.
     
     Request body:
     {
@@ -172,7 +174,28 @@ def create_invoice(
             raise ForbiddenException(message="Chỉ chủ nhà mới có quyền tạo hóa đơn")
         
         invoice_service = InvoiceService(db)
+        notification_service = NotificationService(db)
+        
         invoice = invoice_service.create_invoice(invoice_data, current_user.id)
+        
+        # Gửi thông báo cho tenant
+        try:
+            # Get contract to get tenant_id
+            if invoice.contract and invoice.contract.tenant_id:
+                # Calculate total amount (simplified - you may need to adjust based on your invoice calculation logic)
+                total_amount = float(invoice.room_price) if invoice.room_price else 0
+                
+                await notification_service.create_invoice_notification(
+                    user_id=invoice.contract.tenant_id,
+                    invoice_id=invoice.id,
+                    invoice_number=invoice.invoice_number,
+                    amount=total_amount,
+                    due_date=invoice.due_date.strftime("%d/%m/%Y") if invoice.due_date else ""
+                )
+        except Exception as notify_error:
+            # Log error but don't fail the invoice creation
+            print(f"Warning: Failed to send notification: {notify_error}")
+        
         return response.created(data=invoice, message="Tạo hóa đơn thành công")
     except ValueError as e:
         raise ConflictException(message=str(e))

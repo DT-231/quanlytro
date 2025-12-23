@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
 from app.services.ContractService import ContractService
+from app.services.NotificationService import NotificationService
 from app.schemas.contract_schema import (
     ContractCreate,
     ContractUpdate,
@@ -31,10 +32,6 @@ from app.core.security import get_current_user
 from app.models.user import User
 from app.core.exceptions import (
     BadRequestException,
-    NotFoundException,
-    ForbiddenException,
-    UnauthorizedException,
-    ConflictException,
     InternalServerException,
 )
 
@@ -196,13 +193,28 @@ async def create_contract(payload: ContractCreate, session: Session = Depends(ge
     - end_date phải sau start_date
     - Sau khi tạo, phòng chuyển sang OCCUPIED
     - Mã hợp đồng tự động: HD001, HD002, ...
+    - Tự động gửi thông báo cho tenant
     """
     service = ContractService(session)
+    notification_service = NotificationService(session)
+    
     try:
         # TODO: Lấy user_id từ JWT token khi có authentication
         created_by = None  # Placeholder
 
         contract = service.create_contract(payload, created_by)
+        
+        # Gửi thông báo cho tenant
+        try:
+            await notification_service.create_contract_notification(
+                user_id=contract.tenant_id,
+                contract_id=contract.id,
+                contract_number=contract.contract_number
+            )
+        except Exception as notify_error:
+            # Log error but don't fail the contract creation
+            print(f"Warning: Failed to send notification: {notify_error}")
+        
         return response.success(data=contract, message="success")
     except ValueError as e:
         raise BadRequestException(message=str(e))
@@ -284,6 +296,88 @@ async def delete_contract(contract_id: UUID, session: Session = Depends(get_db))
     try:
         service.delete_contract(contract_id)
         return response.success(message="success")
+    except ValueError as e:
+        raise BadRequestException(message=str(e))
+    except Exception as e:
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
+
+
+@router.post("/{contract_id}/request-termination", response_model=Response[ContractOut])
+async def request_termination(
+    contract_id: UUID,
+    session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Gửi yêu cầu chấm dứt hợp đồng.
+    
+    **Path Parameters:**
+    - `contract_id`: UUID của hợp đồng
+    
+    **Business Rules:**
+    - Chỉ người thuê hoặc chủ nhà (admin) của hợp đồng mới có quyền yêu cầu.
+    - Hợp đồng phải ở trạng thái ACTIVE.
+    - Gửi thông báo cho bên còn lại.
+    """
+    service = ContractService(session)
+    notification_service = NotificationService(session)
+    try:
+        contract, requester_role = await service.request_contract_termination(
+            contract_id=contract_id,
+            requester_id=current_user.id,
+            current_user=current_user
+        )
+        
+        # Gửi thông báo cho bên còn lại
+        try:
+            await notification_service.create_termination_request_notification(
+                contract=contract,
+                requester_role=requester_role
+            )
+        except Exception as notify_error:
+            # Log lỗi nhưng không làm fail request
+            print(f"Warning: Failed to send termination request notification: {notify_error}")
+            
+        return response.success(data=contract, message="Termination request sent successfully")
+    except ValueError as e:
+        raise BadRequestException(message=str(e))
+    except Exception as e:
+        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
+
+
+@router.post("/{contract_id}/approve-termination", response_model=Response[ContractOut])
+async def approve_termination(
+    contract_id: UUID,
+    session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Phê duyệt yêu cầu chấm dứt hợp đồng.
+    
+    **Path Parameters:**
+    - `contract_id`: UUID của hợp đồng
+    
+    **Business Rules:**
+    - Chỉ bên nhận được yêu cầu mới có quyền phê duyệt.
+    - Hợp đồng phải ở trạng thái TERMINATION_REQUESTED_...
+    - Sau khi phê duyệt, hợp đồng chuyển sang TERMINATED.
+    - Gửi thông báo xác nhận cho cả hai bên.
+    """
+    service = ContractService(session)
+    notification_service = NotificationService(session)
+    try:
+        contract = await service.approve_contract_termination(
+            contract_id=contract_id,
+            approver_id=current_user.id,
+            current_user=current_user
+        )
+        
+        # Gửi thông báo xác nhận
+        try:
+            await notification_service.create_termination_approval_notification(contract)
+        except Exception as notify_error:
+            # Log lỗi nhưng không làm fail request
+            print(f"Warning: Failed to send termination approval notification: {notify_error}")
+            
+        return response.success(data=contract, message="Contract terminated successfully")
     except ValueError as e:
         raise BadRequestException(message=str(e))
     except Exception as e:

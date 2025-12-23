@@ -466,3 +466,83 @@ class ContractService:
             "primary_tenant": primary_tenant,
             "other_tenants": other_tenants
         }
+        
+    async def request_contract_termination(self, contract_id: UUID, requester_id: UUID, current_user: User) -> tuple[ContractOut, str]:
+        """Xử lý yêu cầu chấm dứt hợp đồng.
+        
+        Args:
+            contract_id: ID của hợp đồng
+            requester_id: ID của người yêu cầu
+            current_user: User object của người yêu cầu
+            
+        Returns:
+            Tuple (ContractOut, requester_role)
+            
+        Raises:
+            ValueError nếu vi phạm business rules
+        """
+        contract = self.contract_repo.get_by_id_with_relations(contract_id)
+        if not contract:
+            raise ValueError(f"Không tìm thấy hợp đồng với ID: {contract_id}")
+
+        if contract.status != ContractStatus.ACTIVE.value:
+            raise ValueError("Chỉ có thể yêu cầu chấm dứt hợp đồng đang hoạt động (ACTIVE)")
+
+        # Xác định vai trò của người yêu cầu
+        requester_role = None
+        if requester_id == contract.tenant_id:
+            requester_role = "TENANT"
+        elif current_user.role.role_code in ["ADMIN", "LANDLORD"]:
+            # Giả định admin/landlord có quyền với tất cả hợp đồng
+            requester_role = "LANDLORD"
+        else:
+            raise ValueError("Bạn không có quyền thực hiện hành động này")
+
+        # Cập nhật trạng thái hợp đồng
+        if requester_role == "TENANT":
+            new_status = ContractStatus.TERMINATION_REQUESTED_BY_TENANT.value
+        else: # LANDLORD
+            new_status = ContractStatus.TERMINATION_REQUESTED_BY_LANDLORD.value
+            
+        update_data = ContractUpdate(status=new_status, termination_requester_id=requester_id)
+        
+        updated_contract_orm = self.contract_repo.update(contract, update_data)
+        
+        return ContractOut.model_validate(updated_contract_orm), requester_role
+
+    async def approve_contract_termination(self, contract_id: UUID, approver_id: UUID, current_user: User) -> ContractOut:
+        """Phê duyệt yêu cầu chấm dứt hợp đồng.
+        
+        Args:
+            contract_id: ID của hợp đồng
+            approver_id: ID của người phê duyệt
+            current_user: User object của người phê duyệt
+            
+        Returns:
+            ContractOut schema
+            
+        Raises:
+            ValueError nếu vi phạm business rules
+        """
+        contract = self.contract_repo.get_by_id_with_relations(contract_id)
+        if not contract:
+            raise ValueError(f"Không tìm thấy hợp đồng với ID: {contract_id}")
+
+        is_approver_tenant = (approver_id == contract.tenant_id)
+        is_approver_landlord = current_user and current_user.role.role_code in ["ADMIN", "LANDLORD"]
+
+        # Validate quyền phê duyệt
+        if contract.status == ContractStatus.TERMINATION_REQUESTED_BY_LANDLORD.value:
+            if not is_approver_tenant:
+                raise ValueError("Chỉ người thuê mới có quyền phê duyệt yêu cầu này")
+        elif contract.status == ContractStatus.TERMINATION_REQUESTED_BY_TENANT.value:
+            if not is_approver_landlord:
+                raise ValueError("Chỉ chủ nhà/quản lý mới có quyền phê duyệt yêu cầu này")
+        else:
+            raise ValueError("Hợp đồng không ở trạng thái chờ chấm dứt")
+            
+        # Chuyển trạng thái sang TERMINATED
+        update_data = ContractUpdate(status=ContractStatus.TERMINATED.value)
+        
+        # Gọi hàm update đã có sẵn để xử lý logic chuyển phòng
+        return self.update_contract(contract_id, update_data)

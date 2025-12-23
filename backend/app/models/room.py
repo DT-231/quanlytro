@@ -41,3 +41,4 @@ class Room(BaseModel):
     reviews = relationship("Review", back_populates="room")
     utilities = relationship("RoomUtility", back_populates="room")
     room_photos = relationship("RoomPhoto", back_populates="room")
+    appointments = relationship("Appointment", back_populates="room")

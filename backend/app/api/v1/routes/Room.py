@@ -289,7 +289,7 @@ def create_room(
         return response.created(data=room_created, message="Tạo phòng thành công")
     except ValueError as e:
         # Business rule violations
-        raise ConflictException(message=str(e))
+        raise response.bad_request(message=str(e))
     except Exception as e:
         raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 

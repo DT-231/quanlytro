@@ -268,4 +268,21 @@ class UserRepository:
             "not_rented": 0,  # Cần logic phức tạp hơn với Contract
         }
     
+    async def get_admins(self):
+        """Lấy danh sách admin users.
+        
+        Returns:
+            List of admin users
+        """
+        from app.models.role import Role
+        
+        stmt = (
+            select(User)
+            .join(Role, User.role_id == Role.id)
+            .where(or_(Role.role_name == "ADMIN", Role.role_name == "MANAGER"))
+            .where(User.status == UserStatus.ACTIVE.value)
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
 

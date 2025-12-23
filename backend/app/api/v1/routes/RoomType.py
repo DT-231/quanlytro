@@ -17,17 +17,8 @@ from sqlalchemy.orm import Session
 from app.infrastructure.db.session import get_db
 from app.core.security import get_current_user
 from app.models.user import User
-from app.core.exceptions import (
-    BadRequestException,
-    NotFoundException,
-    ConflictException,
-)
-from app.schemas.room_type_schema import (
-    RoomTypeCreate,
-    RoomTypeUpdate,
-    RoomTypeOut,
-    RoomTypeSimple,
-)
+from app.core.exceptions import BadRequestException
+from app.schemas.room_type_schema import RoomTypeCreate, RoomTypeUpdate, RoomTypeOut
 from app.services.RoomTypeService import RoomTypeService
 from app.core import response
 from app.schemas.response_schema import Response

@@ -19,6 +19,7 @@ class NotificationType(BaseEnum):
     - SYSTEM: Thông báo hệ thống
     - PAYMENT: Thông báo thanh toán
     - REMINDER: Thông báo nhắc nhở
+    - APPOINTMENT: Thông báo về lịch hẹn xem phòng
     """
     
     INVOICE = "INVOICE"           # Thông báo về hóa đơn
@@ -27,6 +28,7 @@ class NotificationType(BaseEnum):
     SYSTEM = "SYSTEM"             # Thông báo hệ thống
     PAYMENT = "PAYMENT"           # Thông báo thanh toán
     REMINDER = "REMINDER"         # Thông báo nhắc nhở
+    APPOINTMENT = "APPOINTMENT"   # Thông báo về lịch hẹn
 
 
 class RelatedType(BaseEnum):

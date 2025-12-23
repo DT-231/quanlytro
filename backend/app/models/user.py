@@ -43,6 +43,7 @@ class User(BaseModel):
     maintenance_requests = relationship("MaintenanceRequest", back_populates="tenant")
     notifications = relationship("Notification", back_populates="user")
     reviews = relationship("Review", back_populates="tenant")
+    handled_appointments = relationship("Appointment", foreign_keys="Appointment.handled_by", back_populates="handler")
     
     # Media/Document relationships
     uploaded_building_photos = relationship("BuildingPhoto", back_populates="uploader")
