@@ -28,8 +28,8 @@ const InvoiceServiceTab = ({ formData, handleServiceChange, addService, removeSe
             <label className={labelClass}>Số tiền (VNĐ)</label>
             <input 
               type="number" className={inputClass} 
-              value={service.price} 
-              onChange={(e) => handleServiceChange(idx, 'price', e.target.value)} 
+              value={service.amount || 0} 
+              onChange={(e) => handleServiceChange(idx, 'amount', Number(e.target.value) || 0)} 
             />
           </div>
           <button 

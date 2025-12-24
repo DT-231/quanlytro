@@ -70,5 +70,17 @@ export const invoiceService = {
   getById: async (id) => {
     const response = await api.get(`/invoices/${id}`);
     return response.data;
+  },
+
+  // 6. Cập nhật hóa đơn
+  update: async (id, data) => {
+    const response = await api.put(`/invoices/${id}`, data);
+    return response.data;
+  },
+
+  // 7. Cập nhật trạng thái thanh toán (dành cho admin xác nhận COD)
+  updateStatus: async (id, status) => {
+    const response = await api.put(`/invoices/${id}`, { status });
+    return response.data;
   }
 };

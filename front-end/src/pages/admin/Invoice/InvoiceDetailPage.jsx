@@ -3,16 +3,18 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   FaPrint,
   FaEdit,
-  FaCheckCircle,
   FaFilePdf,
   FaShareAlt,
   FaArrowLeft,
+  FaCheckCircle,
+  FaSpinner,
 } from "react-icons/fa";
 import { toast } from "sonner";
 // 1. Import Button từ Shadcn (đảm bảo bạn đã cài component này)
 import { Button } from "@/components/ui/button";
 import { invoiceService } from "@/services/invoiceService";
 import { buildingService } from "@/services/buildingService";
+import { paymentService } from "@/services/paymentService";
 
 const InvoiceDetailPage = () => {
   const { id } = useParams();
@@ -84,47 +86,6 @@ const InvoiceDetailPage = () => {
     if (id) fetchData();
   }, [id, navigate]);
 
-  // --- ACTION: XÁC NHẬN THANH TOÁN ---
-  const handleConfirmPayment = async () => {
-    if (!invoice) return;
-
-    // Xác nhận trước khi thực hiện
-    const isConfirmed = window.confirm(
-      "Bạn có chắc chắn muốn xác nhận hóa đơn này đã được thanh toán?"
-    );
-    if (!isConfirmed) return;
-
-    setUpdating(true);
-    try {
-      // 1. Tạo payload cập nhật (Giả định Backend nhận object này)
-      const payload = {
-        ...invoice,
-        status: "PAID",
-        paid_amount: invoice.total_amount, // Gán số tiền đã trả = tổng tiền
-      };
-
-      // 2. Gọi API update
-      // Lưu ý: Đảm bảo invoiceService có hàm update(id, data)
-      await invoiceService.update(id, payload);
-
-      // 3. Cập nhật UI ngay lập tức (Optimistic UI)
-      setInvoice((prev) => ({
-        ...prev,
-        status: "PAID",
-        paid_amount: prev.total_amount,
-      }));
-
-      toast.success("Xác nhận thanh toán thành công!");
-    } catch (error) {
-      console.error("Lỗi cập nhật:", error);
-      const msg =
-        error.response?.data?.message || "Lỗi khi cập nhật trạng thái.";
-      toast.error(msg);
-    } finally {
-      setUpdating(false);
-    }
-  };
-
   // --- HELPER FUNCTIONS ---
   const formatVND = (amount) => {
     const value = parseFloat(amount) || 0;
@@ -142,6 +103,58 @@ const InvoiceDetailPage = () => {
     )
       .toString()
       .padStart(2, "0")}/${date.getFullYear()}`;
+  };
+
+  /**
+   * Xác nhận đã nhận tiền COD từ người thuê.
+   * Cập nhật hoá đơn thành PAID.
+   */
+  const handleConfirmCOD = async () => {
+    if (!invoice) return;
+    
+    setUpdating(true);
+    try {
+      // Lấy danh sách payments của invoice để tìm COD payment đang pending
+      // Sử dụng invoice_id (dùng cho payments) thay vì id (PK)
+      const invoiceIdToUse = invoice.invoice_id || invoice.id;
+      console.log("Fetching payments for invoice_id:", invoiceIdToUse);
+      
+      const paymentsRes = await paymentService.getPaymentsByInvoice(invoiceIdToUse);
+      const payments = Array.isArray(paymentsRes) ? paymentsRes : (paymentsRes?.data || paymentsRes?.payments || []);
+      console.log("Payments found:", payments);
+      
+      // Tìm COD payment đang pending
+      const pendingCOD = payments.find(
+        (p) => (p.method === "cod" || p.payment_method === "cod") && p.status === "pending"
+      );
+      console.log("Pending COD payment:", pendingCOD);
+      
+      if (pendingCOD) {
+        // Xác nhận COD payment - gửi object với payment_id
+        const paymentIdToConfirm = pendingCOD.payment_id || pendingCOD.id;
+        console.log("Confirming payment_id:", paymentIdToConfirm);
+        await paymentService.confirmCODPayment({ 
+          payment_id: paymentIdToConfirm
+        });
+      } else {
+        // Nếu không có COD payment, update trực tiếp invoice status
+        console.log("No pending COD found, updating invoice directly");
+        await invoiceService.update(invoice.id, { status: "PAID" });
+      }
+      
+      toast.success("Đã xác nhận thanh toán thành công!");
+      
+      // Cập nhật UI
+      setInvoice((prev) => ({
+        ...prev,
+        status: "PAID",
+      }));
+    } catch (error) {
+      console.error("Confirm COD error:", error);
+      toast.error(error.response?.data?.detail || "Lỗi khi xác nhận thanh toán");
+    } finally {
+      setUpdating(false);
+    }
   };
 
   if (loading)
@@ -347,6 +360,8 @@ const InvoiceDetailPage = () => {
               ? "bg-green-50 text-green-700 border-green-200"
               : invoice.status === "OVERDUE"
               ? "bg-red-50 text-red-700 border-red-200"
+              : invoice.status === "PROCESSING"
+              ? "bg-blue-50 text-blue-700 border-blue-200"
               : "bg-orange-50 text-orange-600 border-orange-200"
           }`}
         >
@@ -358,6 +373,8 @@ const InvoiceDetailPage = () => {
               ? "ĐÃ THANH TOÁN"
               : invoice.status === "OVERDUE"
               ? "QUÁ HẠN"
+              : invoice.status === "PROCESSING"
+              ? "ĐANG CHỜ XÁC NHẬN"
               : "CHƯA THANH TOÁN"}
           </span>
         </div>
@@ -371,6 +388,26 @@ const InvoiceDetailPage = () => {
             <FaPrint className="mr-2 h-4 w-4" /> In hoá đơn
           </Button>
 
+          {/* Nút xác nhận COD khi đang chờ */}
+          {invoice.status === "PROCESSING" && (
+            <Button
+              className="w-full bg-green-600 hover:bg-green-700 text-white shadow-sm"
+              size="lg"
+              onClick={handleConfirmCOD}
+              disabled={updating}
+            >
+              {updating ? (
+                <>
+                  <FaSpinner className="mr-2 h-4 w-4 animate-spin" /> Đang xử lý...
+                </>
+              ) : (
+                <>
+                  <FaCheckCircle className="mr-2 h-4 w-4" /> Xác nhận đã nhận tiền
+                </>
+              )}
+            </Button>
+          )}
+
           {invoice.status !== "PAID" && (
             <>
               <Button
@@ -378,21 +415,6 @@ const InvoiceDetailPage = () => {
                 size="lg"
               >
                 <FaEdit className="mr-2 h-4 w-4" /> Sửa hoá đơn
-              </Button>
-
-              <Button
-                onClick={handleConfirmPayment}
-                disabled={updating}
-                className="w-full bg-green-600 hover:bg-green-700 text-white shadow-sm"
-                size="lg"
-              >
-                {updating ? (
-                  // Spinner khi đang loading
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                ) : (
-                  <FaCheckCircle className="mr-2 h-4 w-4" />
-                )}
-                {updating ? "Đang xử lý..." : "Xác nhận thanh toán"}
               </Button>
             </>
           )}

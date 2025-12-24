@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FaTrashAlt,
   FaPlus,
@@ -6,7 +7,8 @@ import {
   FaCheckCircle,
   FaExclamationCircle,
   FaTimesCircle,
-  FaEdit
+  FaEdit,
+  FaEye,
 } from "react-icons/fa";
 import { Toaster, toast } from "sonner";
 
@@ -27,6 +29,7 @@ import FilterBar from "@/components/FilterBar";
 import useDebounce from "@/hooks/useDebounce";
 
 const ContractManagement = () => {
+  const navigate = useNavigate();
   // --- STATES ---
   const [contracts, setContracts] = useState([]); // Chứa TOÀN BỘ data
   const [buildings, setBuildings] = useState([]);
@@ -34,7 +37,7 @@ const ContractManagement = () => {
     total_contracts: 0,
     active_contracts: 0,
     expiring_soon: 0,
-    expired_contracts: 0
+    expired_contracts: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -50,7 +53,7 @@ const ContractManagement = () => {
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
   const debounceSearchValue = useDebounce(searchTerm, 500);
-  
+
   const [filterBuilding, setFilterBuilding] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
 
@@ -67,29 +70,28 @@ const ContractManagement = () => {
       setLoading(true);
       // Gọi API lấy toàn bộ (size lớn)
       const params = {
-        page: 1,      
-        size: 1000,   
+        page: 1,
+        size: 1000,
       };
 
       const response = await contractService.getAll(params);
-      const responseData = response?.data || response; 
-      
+      const responseData = response?.data || response;
+
       let items = [];
       if (responseData.items && Array.isArray(responseData.items)) {
-          items = responseData.items;
+        items = responseData.items;
       } else if (Array.isArray(responseData)) {
-          items = responseData;
+        items = responseData;
       }
 
-      setContracts(items); 
-      
-      // Cập nhật pagination ban đầu
-      setPagination(prev => ({
-          ...prev,
-          totalItems: items.length,
-          totalPages: Math.ceil(items.length / prev.pageSize),
-      }));
+      setContracts(items);
 
+      // Cập nhật pagination ban đầu
+      setPagination((prev) => ({
+        ...prev,
+        totalItems: items.length,
+        totalPages: Math.ceil(items.length / prev.pageSize),
+      }));
     } catch (error) {
       console.error("Failed to fetch contracts:", error);
       toast.error("Không thể tải danh sách hợp đồng.");
@@ -105,10 +107,10 @@ const ContractManagement = () => {
       const data = response?.data || response;
       if (data) {
         setStatsData({
-            total_contracts: data.total_contracts || 0,
-            active_contracts: data.active_contracts || 0,
-            expiring_soon: data.expiring_soon || 0,
-            expired_contracts: data.expired_contracts || 0
+          total_contracts: data.total_contracts || 0,
+          active_contracts: data.active_contracts || 0,
+          expiring_soon: data.expiring_soon || 0,
+          expired_contracts: data.expired_contracts || 0,
         });
       }
     } catch (error) {
@@ -137,10 +139,14 @@ const ContractManagement = () => {
   // --- LOGIC LỌC & PHÂN TRANG (CLIENT-SIDE) ---
   const mapStatusToApi = (uiStatus) => {
     switch (uiStatus) {
-      case "Đang hoạt động": return "ACTIVE";
-      case "Đã hết hạn": return "EXPIRED";
-      case "Chờ ký": return "PENDING";
-      default: return null;
+      case "Đang hoạt động":
+        return "ACTIVE";
+      case "Đã hết hạn":
+        return "EXPIRED";
+      case "Chờ ký":
+        return "PENDING";
+      default:
+        return null;
     }
   };
 
@@ -150,12 +156,15 @@ const ContractManagement = () => {
 
     // Search
     if (debounceSearchValue) {
-        const lowerSearch = debounceSearchValue.toLowerCase();
-        result = result.filter(c => 
-            (c.contract_number && c.contract_number.toLowerCase().includes(lowerSearch)) ||
-            (c.tenant_name && c.tenant_name.toLowerCase().includes(lowerSearch)) ||
-            (c.room_number && c.room_number.toLowerCase().includes(lowerSearch))
-        );
+      const lowerSearch = debounceSearchValue.toLowerCase();
+      result = result.filter(
+        (c) =>
+          (c.contract_number &&
+            c.contract_number.toLowerCase().includes(lowerSearch)) ||
+          (c.tenant_name &&
+            c.tenant_name.toLowerCase().includes(lowerSearch)) ||
+          (c.room_number && c.room_number.toLowerCase().includes(lowerSearch))
+      );
     }
 
     // Filter Building (So sánh name hoặc ID tùy data, ở đây tạm so sánh name vì buildingOptions value là name?)
@@ -163,16 +172,19 @@ const ContractManagement = () => {
     // Trong code cũ: options building map id, name.
     // Nếu filterBuilding có giá trị (thường là ID nếu dùng select, hoặc Name nếu dùng Combobox trả về value)
     if (filterBuilding) {
-         // Giả sử filterBuilding là Name của tòa nhà
-         result = result.filter(c => c.building_name === filterBuilding || c.building_id === filterBuilding);
+      // Giả sử filterBuilding là Name của tòa nhà
+      result = result.filter(
+        (c) =>
+          c.building_name === filterBuilding || c.building_id === filterBuilding
+      );
     }
 
     // Filter Status
     if (filterStatus) {
-        const statusKey = mapStatusToApi(filterStatus);
-        if (statusKey) {
-            result = result.filter(c => c.status === statusKey);
-        }
+      const statusKey = mapStatusToApi(filterStatus);
+      if (statusKey) {
+        result = result.filter((c) => c.status === statusKey);
+      }
     }
 
     return result;
@@ -180,27 +192,29 @@ const ContractManagement = () => {
 
   // 2. Cập nhật Pagination khi Filter thay đổi
   useEffect(() => {
-      setPagination(prev => ({
-          ...prev,
-          totalItems: filteredContracts.length,
-          totalPages: Math.ceil(filteredContracts.length / prev.pageSize)
-      }));
-      if (Math.ceil(filteredContracts.length / pagination.pageSize) < currentPage && currentPage > 1) {
-          setCurrentPage(1);
-      }
+    setPagination((prev) => ({
+      ...prev,
+      totalItems: filteredContracts.length,
+      totalPages: Math.ceil(filteredContracts.length / prev.pageSize),
+    }));
+    if (
+      Math.ceil(filteredContracts.length / pagination.pageSize) < currentPage &&
+      currentPage > 1
+    ) {
+      setCurrentPage(1);
+    }
   }, [filteredContracts.length, pagination.pageSize]);
 
   // 3. Cắt trang
   const paginatedContracts = useMemo(() => {
-      const startIndex = (currentPage - 1) * pagination.pageSize;
-      const endIndex = startIndex + pagination.pageSize;
-      return filteredContracts.slice(startIndex, endIndex);
+    const startIndex = (currentPage - 1) * pagination.pageSize;
+    const endIndex = startIndex + pagination.pageSize;
+    return filteredContracts.slice(startIndex, endIndex);
   }, [filteredContracts, currentPage, pagination.pageSize]);
-
 
   // --- CONFIGURATION ---
   const buildingOptions = useMemo(() => {
-    return buildings.map(b => ({ id: b.id, name: b.building_name }));
+    return buildings.map((b) => ({ id: b.id, name: b.building_name }));
   }, [buildings]);
 
   const statusOptions = [
@@ -230,7 +244,7 @@ const ContractManagement = () => {
   const handleFilterChange = (key, value) => {
     if (key === "building") setFilterBuilding(value);
     else if (key === "status") setFilterStatus(value);
-    setCurrentPage(1); 
+    setCurrentPage(1);
   };
 
   const handleClearFilters = () => {
@@ -260,13 +274,18 @@ const ContractManagement = () => {
   const confirmDelete = async () => {
     if (!contractToDelete) return;
     try {
-      await contractService.delete(contractToDelete.id);
-      toast.success(`Đã xóa hợp đồng: ${contractToDelete.contract_number}`);
-      
+      const response = await contractService.delete(contractToDelete.id);
+      if ( response.success) {
+        toast.success(`Đã xóa hợp đồng: ${contractToDelete.contract_number}`);
+      } else if (contractToDelete.status === "ACTIVE") {
+
+        toast.error("Không thể xoá hợp đồng đang hoạt động");
+      }else{
+        toast.error("Xóa hợp đồng thất bại.");
+      }
+      fetchContracts();
       // Update state trực tiếp
-      setContracts(prev => prev.filter(c => c.id !== contractToDelete.id));
       fetchStats();
-      
     } catch (error) {
       console.error("Error deleting contract:", error);
       toast.error("Xóa hợp đồng thất bại.");
@@ -274,6 +293,10 @@ const ContractManagement = () => {
       setDeleteModalOpen(false);
       setContractToDelete(null);
     }
+  };
+
+  const handleViewDetail = (contract) => {
+    navigate(`/admin/contracts/${contract.id}`);
   };
 
   const handleEditClick = (contract) => {
@@ -292,26 +315,36 @@ const ContractManagement = () => {
   const formatDate = (dateString) => {
     if (!dateString) return "-";
     const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN');
+    return date.toLocaleDateString("vi-VN");
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "ACTIVE": return "bg-green-500 text-white";
-      case "PENDING": return "bg-gray-200 text-gray-800";
-      case "EXPIRED": return "bg-red-600 text-white";
-      case "TERMINATED": return "bg-gray-500 text-white";
-      default: return "bg-gray-200 text-gray-800";
+      case "ACTIVE":
+        return "bg-green-500 text-white";
+      case "PENDING":
+        return "bg-gray-200 text-gray-800";
+      case "EXPIRED":
+        return "bg-red-600 text-white";
+      case "TERMINATED":
+        return "bg-gray-500 text-white";
+      default:
+        return "bg-gray-200 text-gray-800";
     }
   };
 
   const getStatusLabel = (status) => {
     switch (status) {
-      case "ACTIVE": return "Đang hoạt động";
-      case "EXPIRED": return "Đã hết hạn";
-      case "TERMINATED": return "Đã kết thúc";
-      case "PENDING": return "Chờ ký";
-      default: return status || "---";
+      case "ACTIVE":
+        return "Đang hoạt động";
+      case "EXPIRED":
+        return "Đã hết hạn";
+      case "TERMINATED":
+        return "Đã kết thúc";
+      case "PENDING":
+        return "Chờ ký";
+      default:
+        return status || "---";
     }
   };
 
@@ -342,12 +375,35 @@ const ContractManagement = () => {
       {/* STATS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         {[
-          { title: "Tổng hợp đồng", value: statsData.total_contracts, icon: FaFileContract, color: "text-gray-600" },
-          { title: "Đang hoạt động", value: statsData.active_contracts, icon: FaCheckCircle, color: "text-green-500" },
-          { title: "Sắp hết hạn (30 ngày)", value: statsData.expiring_soon, icon: FaExclamationCircle, color: "text-yellow-500" },
-          { title: "Đã hết hạn", value: statsData.expired_contracts, icon: FaTimesCircle, color: "text-red-500" },
+          {
+            title: "Tổng hợp đồng",
+            value: statsData.total_contracts,
+            icon: FaFileContract,
+            color: "text-gray-600",
+          },
+          {
+            title: "Đang hoạt động",
+            value: statsData.active_contracts,
+            icon: FaCheckCircle,
+            color: "text-green-500",
+          },
+          {
+            title: "Sắp hết hạn (30 ngày)",
+            value: statsData.expiring_soon,
+            icon: FaExclamationCircle,
+            color: "text-yellow-500",
+          },
+          {
+            title: "Đã hết hạn",
+            value: statsData.expired_contracts,
+            icon: FaTimesCircle,
+            color: "text-red-500",
+          },
         ].map((stat, index) => (
-          <div key={index} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+          <div
+            key={index}
+            className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"
+          >
             <div className="flex justify-between items-start">
               <h3 className="text-sm font-medium mb-1">{stat.title}</h3>
               <stat.icon className={`w-4 h-4 ${stat.color} opacity-80`} />
@@ -360,7 +416,9 @@ const ContractManagement = () => {
       {/* TABLE */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-5 border-b border-gray-100">
-          <h3 className="text-lg font-bold text-gray-800">Danh sách hợp đồng</h3>
+          <h3 className="text-lg font-bold text-gray-800">
+            Danh sách hợp đồng
+          </h3>
         </div>
 
         <div className="overflow-x-auto">
@@ -379,68 +437,103 @@ const ContractManagement = () => {
             </thead>
             <tbody className="text-sm text-gray-700 divide-y divide-gray-100">
               {loading ? (
-                 // LOADING SKELETON
-                 Array.from({ length: pagination.pageSize }).map((_, index) => (
-                    <tr key={index} className="h-[73px]">
-                        <td colSpan="8" className="p-4 text-center">
-                            {index === 2 && (
-                                <div className="flex justify-center items-center gap-2 text-gray-500">
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
-                                    Đang tải dữ liệu...
-                                </div>
-                            )}
-                        </td>
-                    </tr>
-                ))
-              ) : paginatedContracts.length > 0 ? ( /* ĐỔI visibleContracts THÀNH paginatedContracts */
-                paginatedContracts.map((contract) => (
-                    <tr key={contract.id} className="hover:bg-gray-50 transition-colors group h-[73px]">
-                      {/* ... Nội dung các cột giữ nguyên ... */}
-                      <td className="p-4 font-bold text-gray-900">{contract.contract_number}</td>
-                      <td className="p-4 font-bold text-gray-800">{contract.room_number}</td>
-                      <td className="p-4 font-medium">{contract.tenant_name}</td>
-                      <td className="p-4 text-gray-600 max-w-[150px] truncate" title={contract.building_name}>
-                        {contract.building_name}
-                      </td>
-                      <td className="p-4 text-sm font-medium">
-                        <div>Từ: <span className="text-gray-900">{formatDate(contract.start_date)}</span></div>
-                        <div>Đến: <span className="text-gray-900">{formatDate(contract.end_date)}</span></div>
-                      </td>
-                      <td className="p-4 font-medium text-gray-900">
-                        {formatCurrency(contract.rental_price)}
-                      </td>
-                      <td className="p-4 text-center">
-                        <span className={`${getStatusColor(contract.status)} px-2 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap`}>
-                          {getStatusLabel(contract.status)}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex justify-center gap-2">
-                          <button
-                            onClick={() => handleEditClick(contract)}
-                            className="p-2 border border-gray-200 rounded hover:bg-gray-900 hover:text-white text-gray-500 transition-all shadow-sm"
-                            title="Xem chi tiết"
-                          >
-                            <FaEdit size={12} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClick(contract)}
-                            className="p-2 border border-red-100 rounded hover:bg-red-500 hover:text-white text-red-500 transition-all shadow-sm bg-red-50"
-                            title="Xóa"
-                          >
-                            <FaTrashAlt size={12} />
-                          </button>
+                // LOADING SKELETON
+                Array.from({ length: pagination.pageSize }).map((_, index) => (
+                  <tr key={index} className="h-[73px]">
+                    <td colSpan="8" className="p-4 text-center">
+                      {index === 2 && (
+                        <div className="flex justify-center items-center gap-2 text-gray-500">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                          Đang tải dữ liệu...
                         </div>
-                      </td>
-                    </tr>
-                  ))
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : paginatedContracts.length >
+                0 /* ĐỔI visibleContracts THÀNH paginatedContracts */ ? (
+                paginatedContracts.map((contract) => (
+                  <tr
+                    key={contract.id}
+                    className="hover:bg-gray-50 transition-colors group h-[73px]"
+                  >
+                    {/* ... Nội dung các cột giữ nguyên ... */}
+                    <td className="p-4 font-bold text-gray-900">
+                      {contract.contract_number}
+                    </td>
+                    <td className="p-4 font-bold text-gray-800">
+                      {contract.room_number}
+                    </td>
+                    <td className="p-4 font-medium">{contract.tenant_name}</td>
+                    <td
+                      className="p-4 text-gray-600 max-w-[150px] truncate"
+                      title={contract.building_name}
+                    >
+                      {contract.building_name}
+                    </td>
+                    <td className="p-4 text-sm font-medium">
+                      <div>
+                        Từ:{" "}
+                        <span className="text-gray-900">
+                          {formatDate(contract.start_date)}
+                        </span>
+                      </div>
+                      <div>
+                        Đến:{" "}
+                        <span className="text-gray-900">
+                          {formatDate(contract.end_date)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-4 font-medium text-gray-900">
+                      {formatCurrency(contract.rental_price)}
+                    </td>
+                    <td className="p-4 text-center">
+                      <span
+                        className={`${getStatusColor(
+                          contract.status
+                        )} px-2 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap`}
+                      >
+                        {getStatusLabel(contract.status)}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex justify-center gap-2">
+                        <button
+                          onClick={() => handleViewDetail(contract)}
+                          className="p-2 border border-blue-200 rounded hover:bg-blue-500 hover:text-white text-blue-500 transition-all shadow-sm bg-blue-50"
+                          title="Xem chi tiết"
+                        >
+                          <FaEye size={12} />
+                        </button>
+                        <button
+                          onClick={() => handleEditClick(contract)}
+                          className="p-2 border border-gray-200 rounded hover:bg-gray-900 hover:text-white text-gray-500 transition-all shadow-sm"
+                          title="Chỉnh sửa"
+                        >
+                          <FaEdit size={12} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(contract)}
+                          className="p-2 border border-red-100 rounded hover:bg-red-500 hover:text-white text-red-500 transition-all shadow-sm bg-red-50"
+                          title="Xóa"
+                        >
+                          <FaTrashAlt size={12} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               ) : (
                 // EMPTY STATE
                 <tr>
-                  <td colSpan="8" className="p-8 text-center text-gray-500 italic h-[200px]">
-                    {searchTerm || filterStatus || filterBuilding 
-                        ? "Không tìm thấy hợp đồng nào phù hợp với bộ lọc." 
-                        : "Chưa có dữ liệu hợp đồng."}
+                  <td
+                    colSpan="8"
+                    className="p-8 text-center text-gray-500 italic h-[200px]"
+                  >
+                    {searchTerm || filterStatus || filterBuilding
+                      ? "Không tìm thấy hợp đồng nào phù hợp với bộ lọc."
+                      : "Chưa có dữ liệu hợp đồng."}
                   </td>
                 </tr>
               )}

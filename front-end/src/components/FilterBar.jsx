@@ -15,6 +15,8 @@ export default function FilterBar({
   onClear, 
 }) {
   const hasActiveFilters = searchValue || filters.some((f) => f.value);
+  // Nếu có nhiều hơn 3 filter thì chuyển sang layout dọc
+  const hasMultipleFilters = filters.length > 3;
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4">
@@ -31,9 +33,9 @@ export default function FilterBar({
         )}
       </div>
 
-      <div className="flex flex-col md:flex-row justify-between items-center gap-3">
- 
-        <div className="relative w-full md:w-1/2 flex items-center gap-2">
+      <div className={`flex flex-col gap-3 ${hasMultipleFilters ? '' : 'lg:flex-row lg:justify-between lg:items-center'}`}>
+        {/* Search Input */}
+        <div className={`relative flex items-center gap-2 ${hasMultipleFilters ? 'w-full' : 'w-full lg:w-1/2'}`}>
           <div className="relative w-full">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <FaSearch className="text-gray-400" />
@@ -53,9 +55,15 @@ export default function FilterBar({
             Tìm
           </Button>
         </div>
-        <div className="flex gap-2 w-full md:w-auto justify-end flex-wrap items-center">
+
+        {/* Filter Options */}
+        <div className={`grid gap-2 w-full ${
+          hasMultipleFilters 
+            ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6' 
+            : 'grid-cols-1 sm:grid-cols-2 lg:flex lg:w-auto lg:justify-end'
+        }`}>
           {filters.map((filter, index) => (
-            <div key={filter.key || index} className="w-full md:w-48 relative">
+            <div key={filter.key || index} className={hasMultipleFilters ? 'w-full' : 'w-full lg:w-44'}>
               {filter.type === 'combobox' ? (
                 <GenericCombobox
                   value={filter.value}

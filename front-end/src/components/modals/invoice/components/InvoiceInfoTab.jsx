@@ -50,11 +50,11 @@ const InvoiceInfoTab = ({
         </div>
 
         <div className="space-y-2">
-          <label className={labelClass}>Ngày xuất hóa đơn</label>
+          <label className={labelClass}>Tháng lập hóa đơn <span className="text-red-500">*</span></label>
           <input 
-            type="date" className={inputClass} 
-            value={formData.invoiceDate} 
-            onChange={e => setFormData({...formData, invoiceDate: e.target.value})} 
+            type="month" className={inputClass} 
+            value={formData.billingMonth} 
+            onChange={e => setFormData({...formData, billingMonth: e.target.value})} 
           />
         </div>
       </div>
@@ -62,23 +62,20 @@ const InvoiceInfoTab = ({
       {/* CỘT PHẢI */}
       <div className="space-y-4">
         <div className="space-y-2">
-          <label className={labelClass}>Trạng thái</label>
-          <select 
-            className={inputClass} 
-            value={formData.status} 
-            onChange={e => setFormData({...formData, status: e.target.value})}
-          >
-            <option value="PENDING">Chưa thanh toán</option>
-            <option value="PAID">Đã thanh toán</option>
-          </select>
-        </div>
-
-        <div className="space-y-2">
-          <label className={labelClass}>Hạn thanh toán</label>
+          <label className={labelClass}>Hạn thanh toán <span className="text-red-500">*</span></label>
           <input 
             type="date" className={inputClass} 
             value={formData.dueDate} 
             onChange={e => setFormData({...formData, dueDate: e.target.value})} 
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className={labelClass}>Số người ở</label>
+          <input 
+            type="number" className={inputClass} min="1"
+            value={formData.numberOfPeople} 
+            onChange={e => setFormData({...formData, numberOfPeople: parseInt(e.target.value) || 1})} 
           />
         </div>
 
@@ -96,15 +93,13 @@ const InvoiceInfoTab = ({
             </div>
           </div>
           <div className="space-y-2">
-            <label className={labelClass}>Đã thanh toán</label>
-            <div className="relative">
-                <input 
-                type="number" className={`${inputClass} pr-8`} placeholder="0" 
-                value={formData.paidAmount} 
-                onChange={e => setFormData({...formData, paidAmount: e.target.value})} 
-                />
-                <span className="absolute right-3 top-2.5 text-xs text-gray-400">đ</span>
-            </div>
+            <label className={labelClass}>Ghi chú</label>
+            <input 
+              className={inputClass} 
+              placeholder="Ghi chú thêm (nếu có)" 
+              value={formData.notes || ''} 
+              onChange={e => setFormData({...formData, notes: e.target.value})} 
+            />
           </div>
         </div>
       </div>

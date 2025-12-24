@@ -14,6 +14,7 @@ import {
   FaCheckCircle,
   FaUserFriends,
   FaPhone,
+  FaConciergeBell,
 } from "react-icons/fa";
 import { Image as LucideImage } from "lucide-react";
 
@@ -266,6 +267,37 @@ const RoomDetailModal = ({ isOpen, onClose, room, loading }) => {
                       </div>
                     </div>
                   </div>
+
+                  {/* 3.5. Phí dịch vụ mặc định (chỉ hiển thị cho Admin) */}
+                  {room.default_service_fees && room.default_service_fees.length > 0 && (
+                    <div>
+                      <Label className="text-xs font-bold text-gray-800 mb-2 flex items-center gap-1 uppercase">
+                        <FaConciergeBell className="text-purple-500" /> Phí dịch vụ mặc định
+                      </Label>
+                      <div className="grid grid-cols-1 gap-2">
+                        {room.default_service_fees.map((fee, idx) => (
+                          <div
+                            key={idx}
+                            className="p-3 bg-purple-50 rounded border border-purple-100 flex justify-between items-center shadow-sm"
+                          >
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium text-purple-900">
+                                {fee.name}
+                              </span>
+                              {fee.description && (
+                                <span className="text-xs text-purple-600">
+                                  {fee.description}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-sm font-bold text-purple-800">
+                              {formatMoney(fee.amount)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* 4. Tiện ích */}
                   <div>

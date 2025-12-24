@@ -203,7 +203,7 @@ export default function AppointmentManagementPage() {
 
       {/* Appointments List */}
       {appointments.length === 0 ? (
-        <Card>
+        <Card className="p-3">
           <CardContent className="pt-6">
             <p className="text-center text-gray-500">Không có lịch hẹn nào</p>
           </CardContent>
@@ -213,9 +213,9 @@ export default function AppointmentManagementPage() {
           {appointments.map((appointment) => (
             <Card
               key={appointment.id}
-              className="hover:shadow-lg transition-shadow"
+              className="hover:shadow-lg transition-shadow p-3 gap-0"
             >
-              <CardHeader>
+              <CardHeader className="p-2">
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="text-lg">
@@ -229,7 +229,7 @@ export default function AppointmentManagementPage() {
                   {getStatusBadge(appointment.status)}
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-2">
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center">
                     <Phone className="mr-2 h-4 w-4 text-gray-500" />

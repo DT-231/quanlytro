@@ -32,6 +32,7 @@ const mapStatusToApi = (uiStatus) => {
     case "Chưa thanh toán": return "PENDING";
     case "Đã thanh toán": return "PAID";
     case "Quá hạn": return "OVERDUE";
+    case "Đang xử lý": return "PROCESSING";
     default: return null;
   }
 };
@@ -41,6 +42,7 @@ const mapApiStatusToUi = (apiStatus) => {
     case "PENDING": return "Chưa thanh toán";
     case "PAID": return "Đã thanh toán";
     case "OVERDUE": return "Quá hạn";
+    case "PROCESSING": return "Đang xử lý";
     default: return apiStatus;
   }
 };
@@ -50,6 +52,7 @@ const getStatusColor = (status) => {
     case "PENDING": return "bg-yellow-100 text-yellow-700 border border-yellow-200";
     case "PAID": return "bg-green-100 text-green-700 border border-green-200";
     case "OVERDUE": return "bg-red-100 text-red-700 border border-red-200";
+    case "PROCESSING": return "bg-blue-100 text-blue-700 border border-blue-200";
     default: return "bg-gray-100 text-gray-600 border border-gray-200";
   }
 };

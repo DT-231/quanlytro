@@ -21,7 +21,7 @@ const AccountManagement = () => {
   const [pagination, setPagination] = useState({
     totalItems: 0,
     page: 1,
-    pageSize: 5, // Client-side: 5 dòng/trang
+    pageSize: 10, // Client-side: 5 dòng/trang
     totalPages: 0,
   });
   const [currentPage, setCurrentPage] = useState(1);

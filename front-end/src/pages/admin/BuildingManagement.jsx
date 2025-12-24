@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   FaEdit,
   FaTrashAlt,
@@ -9,6 +9,7 @@ import { Toaster, toast } from "sonner";
 
 // Services
 import { buildingService } from "@/services/buildingService";
+import { getCity, getWard } from "@/services/locationService";
 
 // Components & Modals
 import AddBuildingModal from "@/components/modals/building/AddBuildingModal";
@@ -20,27 +21,27 @@ import Pagination from "@/components/Pagination";
 // NEW: Import FilterBar
 import FilterBar from "@/components/FilterBar";
 
-// Hook
-import useDebounce from "@/hooks/useDebounce";
-
 const BuildingManagement = () => {
   // --- STATES ---
-  const [buildings, setBuildings] = useState([]); // Chứa toàn bộ dữ liệu
+  const [buildings, setBuildings] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [wards, setWards] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Pagination State (Client-side)
+  // Pagination State (Server-side)
   const [pagination, setPagination] = useState({
     totalItems: 0,
     page: 1,
-    pageSize: 5, // 5 dòng mỗi trang
+    pageSize: 10,
     totalPages: 0,
   });
-  const [currentPage, setCurrentPage] = useState(1);
 
-  // Filter states
+  // Filter states (Server-side)
   const [searchTerm, setSearchTerm] = useState("");
-  const debounceSearchValue = useDebounce(searchTerm, 500);
   const [filterStatus, setFilterStatus] = useState("");
+  const [filterCity, setFilterCity] = useState("");
+  const [filterWard, setFilterWard] = useState("");
+  const [sortBy, setSortBy] = useState("");
 
   // Modal States
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -54,40 +55,47 @@ const BuildingManagement = () => {
   const [buildingToDelete, setBuildingToDelete] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
-  // --- API HANDLERS (Lấy toàn bộ) ---
+  // --- API HANDLERS (Server-side filtering & pagination) ---
   const fetchBuildings = useCallback(async () => {
     try {
       setLoading(true);
-      // Gọi API lấy toàn bộ danh sách
-      const response = await buildingService.getAll();
+
+      // Build params cho API
+      const params = {
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+      };
+
+      // Thêm các filter nếu có giá trị
+      if (searchTerm) params.search = searchTerm;
+      if (filterStatus) params.status = filterStatus;
+      if (filterCity) params.city = filterCity;
+      if (filterWard) params.ward = filterWard;
+      if (sortBy) params.sort_by = sortBy;
+
+      const response = await buildingService.getAll(params);
 
       let listData = [];
-      if (response?.data?.data && Array.isArray(response.data.data.items)) {
-        listData = response.data.data.items;
-      } else if (response?.data?.items && Array.isArray(response.data.items)) {
+      let paginationData = null;
+
+      if (response?.data?.items && Array.isArray(response.data.items)) {
         listData = response.data.items;
+        paginationData = response.data.pagination;
       } else if (response?.items && Array.isArray(response.items)) {
         listData = response.items;
-      } else if (Array.isArray(response)) {
-        listData = response;
+        paginationData = response.pagination;
       }
 
-      // Sort by creation date (newest first)
-      listData.sort((a, b) => {
-        const dateA = new Date(a.created_at || 0).getTime();
-        const dateB = new Date(b.created_at || 0).getTime();
-        return dateB - dateA;
-      });
-
       setBuildings(listData);
-      
-      // Cập nhật pagination ban đầu
-      setPagination(prev => ({
-          ...prev,
-          totalItems: listData.length,
-          totalPages: Math.ceil(listData.length / prev.pageSize),
-      }));
 
+      // Cập nhật pagination từ server
+      if (paginationData) {
+        setPagination((prev) => ({
+          ...prev,
+          totalItems: paginationData.totalItems || 0,
+          totalPages: paginationData.totalPages || 0,
+        }));
+      }
     } catch (error) {
       console.error("Lỗi tải dữ liệu:", error);
       toast.error("Không thể tải danh sách tòa nhà");
@@ -95,67 +103,104 @@ const BuildingManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, []); // Chỉ gọi 1 lần khi mount
+  }, [
+    pagination.page,
+    pagination.pageSize,
+    searchTerm,
+    filterStatus,
+    filterCity,
+    filterWard,
+    sortBy,
+  ]);
 
-  useEffect(() => {
-    fetchBuildings();
-  }, [fetchBuildings]);
-
-  // --- LOGIC LỌC & PHÂN TRANG (CLIENT-SIDE) ---
-  
-  // 1. Lọc dữ liệu
-  const filteredBuildings = useMemo(() => {
-    let result = [...buildings];
-
-    // Search
-    if (debounceSearchValue) {
-        const lowerSearch = debounceSearchValue.toLowerCase();
-        result = result.filter(b => 
-            (b.building_name && b.building_name.toLowerCase().includes(lowerSearch)) ||
-            (b.address_line && b.address_line.toLowerCase().includes(lowerSearch))
-        );
-    }
-
-    // Filter Status
-    if (filterStatus) {
-        if (filterStatus === "Hoạt động") {
-            result = result.filter(b => b.status === "ACTIVE");
-        } else {
-            result = result.filter(b => b.status === filterStatus);
-        }
-    }
-
-    return result;
-  }, [buildings, debounceSearchValue, filterStatus]);
-
-  // 2. Cập nhật Pagination khi Filter thay đổi
-  useEffect(() => {
-      setPagination(prev => ({
-          ...prev,
-          totalItems: filteredBuildings.length,
-          totalPages: Math.ceil(filteredBuildings.length / prev.pageSize)
-      }));
-      if (Math.ceil(filteredBuildings.length / pagination.pageSize) < currentPage && currentPage > 1) {
-          setCurrentPage(1);
+  const fetchCities = async () => {
+    try {
+      const res = await getCity();
+      if (res) {
+        setCities(res);
       }
-  }, [filteredBuildings.length, pagination.pageSize]);
+    } catch (error) {
+      console.error("Lỗi tải thành phố:", error);
+    }
+  };
 
-  // 3. Cắt trang
-  const paginatedBuildings = useMemo(() => {
-      const startIndex = (currentPage - 1) * pagination.pageSize;
-      const endIndex = startIndex + pagination.pageSize;
-      return filteredBuildings.slice(startIndex, endIndex);
-  }, [filteredBuildings, currentPage, pagination.pageSize]);
+  // Fetch wards khi city thay đổi
+  useEffect(() => {
+    const fetchWardsData = async () => {
+      if (filterCity) {
+        const selectedCity = cities.find((c) => c.name === filterCity);
+        if (selectedCity) {
+          try {
+            const res = await getWard(selectedCity.id);
+            if (res) {
+              setWards(res);
+            }
+          } catch (error) {
+            console.error("Lỗi tải quận/huyện:", error);
+          }
+        }
+      } else {
+        setWards([]);
+        setFilterWard("");
+      }
+    };
+    fetchWardsData();
+  }, [filterCity, cities]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchCities();
+  }, []);
+
+  // Fetch buildings khi filter/pagination thay đổi (debounce search)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchBuildings();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [fetchBuildings]);
 
 
   // --- FILTER CONFIGURATION ---
+  const cityOptions = cities.map((c) => ({
+    id: c.name,
+    name: c.name,
+  }));
+
+  const wardOptions = wards.map((w) => ({
+    id: w.name,
+    name: w.name,
+  }));
+
   const statusOptions = [
-    { id: "Hoạt động", name: "Hoạt động" },
+    { id: "ACTIVE", name: "Hoạt động" },
     { id: "SUSPENDED", name: "Tạm dừng" },
     { id: "INACTIVE", name: "Ngừng hoạt động" },
   ];
 
+  const sortOptions = [
+    { id: "name_asc", name: "Tên A-Z" },
+    { id: "name_desc", name: "Tên Z-A" },
+    { id: "created_asc", name: "Cũ nhất" },
+    { id: "created_desc", name: "Mới nhất" },
+  ];
+
   const filterConfigs = [
+    {
+      key: "city",
+      type: "combobox",
+      placeholder: "Thành phố",
+      options: cityOptions,
+      value: filterCity,
+    },
+    {
+      key: "ward",
+      type: "combobox",
+      placeholder: "Quận/Huyện",
+      options: wardOptions,
+      value: filterWard,
+    },
     {
       key: "status",
       type: "select",
@@ -163,18 +208,55 @@ const BuildingManagement = () => {
       options: statusOptions,
       value: filterStatus,
     },
+    {
+      key: "sortBy",
+      type: "select",
+      placeholder: "Sắp xếp",
+      options: sortOptions,
+      value: sortBy,
+    },
   ];
 
   // --- HANDLERS ---
   const handleFilterChange = (key, value) => {
-    if (key === "status") setFilterStatus(value);
-    setCurrentPage(1);
+    // Reset về trang 1 khi filter thay đổi
+    setPagination((prev) => ({ ...prev, page: 1 }));
+
+    switch (key) {
+      case "city":
+        setFilterCity(value);
+        setFilterWard(""); // Reset ward khi đổi city
+        break;
+      case "ward":
+        setFilterWard(value);
+        break;
+      case "status":
+        setFilterStatus(value);
+        break;
+      case "sortBy":
+        setSortBy(value);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleSearchChange = (value) => {
+    setPagination((prev) => ({ ...prev, page: 1 }));
+    setSearchTerm(value);
   };
 
   const handleClearFilters = () => {
     setSearchTerm("");
     setFilterStatus("");
-    setCurrentPage(1);
+    setFilterCity("");
+    setFilterWard("");
+    setSortBy("");
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  const handlePageChange = (newPage) => {
+    setPagination((prev) => ({ ...prev, page: newPage }));
   };
 
   const handleAddBuilding = async (newBuildingData) => {
@@ -184,7 +266,7 @@ const BuildingManagement = () => {
         toast.success("Thêm toà nhà thành công!");
         await fetchBuildings(); // Refresh toàn bộ list
         setIsAddModalOpen(false);
-        setCurrentPage(1); // Reset về trang 1 để thấy item mới nhất
+        setPagination((prev) => ({ ...prev, page: 1 })); // Reset về trang 1 để thấy item mới nhất
       } else {
         toast.error("Thêm thất bại: Phản hồi không hợp lệ");
       }
@@ -314,7 +396,7 @@ const BuildingManagement = () => {
       {/* REUSABLE FILTER BAR */}
       <FilterBar
         searchValue={searchTerm}
-        onSearchChange={setSearchTerm}
+        onSearchChange={handleSearchChange}
         searchPlaceholder="Nhập tên toà nhà, địa chỉ..."
         filters={filterConfigs}
         onFilterChange={handleFilterChange}
@@ -348,8 +430,8 @@ const BuildingManagement = () => {
                     Đang tải dữ liệu...
                   </td>
                 </tr>
-              ) : paginatedBuildings.length > 0 ? ( /* Đổi currentData -> paginatedBuildings */
-                paginatedBuildings.map((item) => (
+              ) : buildings.length > 0 ? (
+                buildings.map((item) => (
                   <tr
                     key={item.id}
                     className="hover:bg-gray-50 transition-colors group"
@@ -438,10 +520,10 @@ const BuildingManagement = () => {
 
         {/* PAGINATION */}
         <Pagination
-          currentPage={currentPage}
+          currentPage={pagination.page}
           totalPages={pagination.totalPages}
           totalItems={pagination.totalItems}
-          onPageChange={setCurrentPage}
+          onPageChange={handlePageChange}
           pageSize={pagination.pageSize}
           label="tòa nhà"
         />

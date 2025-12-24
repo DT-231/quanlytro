@@ -9,6 +9,7 @@ import {
   UserCircle,
   Search,
   X,
+  CalendarDays,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Fragment } from "react";
@@ -17,6 +18,7 @@ const cn = (...classes) => classes.filter(Boolean).join(" ");
 
 const adminMenu = [
   { name: "Trang chủ", icon: Home, href: "/admin/dashboard" },
+  { name: "Lịch hẹn", icon: CalendarDays, href: "/admin/appointments" },
   { name: "Quản lý tài khoản", icon: Users, href: "/admin/users" },
   { name: "Toà nhà", icon: Building2, href: "/admin/buildings" },
   { name: "Phòng", icon: BedDouble, href: "/admin/rooms" },
@@ -64,7 +66,7 @@ export default function Sidebar({ role, isGuest, isOpen, setIsOpen }) {
 
       <div
         className={cn(
-          "w-[250px] h-full border-r bg-white py-4 flex flex-col shrink-0 transition-transform duration-300 ease-in-out z-40",
+          "w-[200px] h-full border-r bg-white py-4 flex flex-col shrink-0 transition-transform duration-300 ease-in-out z-40",
           // Mobile states
           "fixed top-0 left-0 lg:static",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"

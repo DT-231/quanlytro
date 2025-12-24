@@ -12,24 +12,27 @@ export const useInvoiceForm = ({ isOpen, buildings, onSuccess, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [rooms, setRooms] = useState([]);
   const [roomDetail, setRoomDetail] = useState(null);
+  const [contractId, setContractId] = useState(null);
 
   const [formData, setFormData] = useState({
     buildingId: "",
     roomId: "",
     tenantName: "",
-    invoiceDate: new Date().toISOString().split("T")[0],
+    billingMonth: new Date().toISOString().slice(0, 7), // YYYY-MM format
     dueDate: "",
-    status: "PENDING",
-    paidAmount: 0,
+    numberOfPeople: 1,
     elecOld: 0,
     elecNew: "",
+    internetFee: 0,
+    parkingFee: 0,
+    notes: "",
+    // service_fees format mới: {name, amount, description}
     services: [
-      { name: "Tiền rác", price: 30000 },
-      { name: "Tiền giữ xe", price: 100000 },
+      { name: "Tiền rác", amount: 30000, description: "" },
     ],
   });
 
-  // --- LOGIC TÍNH TOÁN (Giữ nguyên) ---
+  // --- LOGIC TÍNH TOÁN ---
   const calculations = useMemo(() => {
     const listRoomInfo = rooms.find((r) => r.id === formData.roomId) || {};
     const activeRoomData =
@@ -48,6 +51,7 @@ export const useInvoiceForm = ({ isOpen, buildings, onSuccess, onClose }) => {
         DEFAULT_PRICES.WATER_PERSON
     );
     const numPeople = Math.round(
+      Number(formData.numberOfPeople) || 
       Number(activeRoomData.current_occupants || activeRoomData.capacity) || 1
     );
 
@@ -60,18 +64,21 @@ export const useInvoiceForm = ({ isOpen, buildings, onSuccess, onClose }) => {
     const waterUsage = numPeople;
     const waterTotal = Math.round(numPeople * priceWaterPerson);
 
+    // Tính tổng service fees (dùng amount thay vì price)
     const servicesTotal = Math.round(
       formData.services.reduce(
-        (acc, curr) => acc + (Number(curr.price) || 0),
+        (acc, curr) => acc + (Number(curr.amount) || 0),
         0
       )
     );
 
+    // Thêm internet và parking fee
+    const internetFee = Math.round(Number(formData.internetFee) || 0);
+    const parkingFee = Math.round(Number(formData.parkingFee) || 0);
+
     const totalAmount = Math.round(
-      roomPrice + elecTotal + waterTotal + servicesTotal
+      roomPrice + elecTotal + waterTotal + servicesTotal + internetFee + parkingFee
     );
-    const remaining =
-      totalAmount - Math.round(Number(formData.paidAmount) || 0);
 
     return {
       priceElec,
@@ -83,12 +90,13 @@ export const useInvoiceForm = ({ isOpen, buildings, onSuccess, onClose }) => {
       waterTotal,
       numPeople,
       servicesTotal,
+      internetFee,
+      parkingFee,
       totalAmount,
-      remaining,
     };
   }, [formData, rooms, roomDetail]);
 
-  // --- EFFECTS (Giữ nguyên) ---
+  // --- EFFECTS ---
   useEffect(() => {
     if (!isOpen) {
       setFormData((prev) => ({
@@ -97,13 +105,16 @@ export const useInvoiceForm = ({ isOpen, buildings, onSuccess, onClose }) => {
         roomId: "",
         tenantName: "",
         elecNew: "",
-        paidAmount: 0,
+        numberOfPeople: 1,
+        internetFee: 0,
+        parkingFee: 0,
+        notes: "",
         services: [
-          { name: "Tiền rác", price: 30000 },
-          { name: "Tiền giữ xe", price: 100000 },
+          { name: "Tiền rác", amount: 30000, description: "" },
         ],
       }));
       setRoomDetail(null);
+      setContractId(null);
     }
   }, [isOpen]);
 
@@ -129,7 +140,14 @@ export const useInvoiceForm = ({ isOpen, buildings, onSuccess, onClose }) => {
 
   // --- ACTIONS ---
   const handleRoomChange = async (roomId) => {
+    // RoomOption từ API có: id, room_number, tenant_name, tenant_id, contract_id
     const basicRoom = rooms.find((r) => r.id === roomId);
+    
+    // Lưu contract_id từ dropdown
+    if (basicRoom?.contract_id) {
+      setContractId(basicRoom.contract_id);
+    }
+    
     setFormData((prev) => ({
       ...prev,
       roomId,
@@ -140,17 +158,43 @@ export const useInvoiceForm = ({ isOpen, buildings, onSuccess, onClose }) => {
     try {
       const res = await roomService.getById(roomId);
       const fullRoomData = res?.data || res;
+      console.log("Room detail:", fullRoomData);
 
       if (fullRoomData) {
         setRoomDetail(fullRoomData);
+        
+        // Lấy contract_id từ room detail nếu chưa có
+        const roomContractId = 
+          fullRoomData.tenants?.[0]?.contract_id ||
+          fullRoomData.current_contract_id ||
+          fullRoomData.contract_id;
+        
+        if (roomContractId && !contractId) {
+          setContractId(roomContractId);
+        }
+
+        // Lấy số người từ room
+        const numPeople = fullRoomData.current_occupants || fullRoomData.capacity || 1;
+
+        // Parse default_service_fees từ room -> services cho invoice
+        let roomServices = [{ name: "Tiền rác", amount: 30000, description: "" }]; // default
+        if (fullRoomData.default_service_fees && fullRoomData.default_service_fees.length > 0) {
+          roomServices = fullRoomData.default_service_fees.map(fee => ({
+            name: fee.name || "",
+            amount: parseFloat(fee.amount) || 0,
+            description: fee.description || "",
+          }));
+        }
 
         setFormData((prev) => ({
           ...prev,
           tenantName:
-            fullRoomData.tenant_info?.tenant_name ||
-            fullRoomData.tenant_name ||
-            "Chưa có khách",
+            fullRoomData.tenants?.length > 0
+              ? fullRoomData.tenants[0].tenant_name
+              : basicRoom?.tenant_name || "Chưa có khách",
           elecOld: fullRoomData.current_electricity_index || 0,
+          numberOfPeople: numPeople,
+          services: roomServices,
         }));
       }
     } catch (error) {
@@ -161,14 +205,16 @@ export const useInvoiceForm = ({ isOpen, buildings, onSuccess, onClose }) => {
 
   const handleServiceChange = (index, field, value) => {
     const newServices = [...formData.services];
-    newServices[index][field] = value;
+    // Convert field name: price -> amount (backward compat với UI cũ)
+    const actualField = field === 'price' ? 'amount' : field;
+    newServices[index][actualField] = value;
     setFormData({ ...formData, services: newServices });
   };
 
   const addService = () => {
     setFormData((prev) => ({
       ...prev,
-      services: [...prev.services, { name: "", price: 0 }],
+      services: [...prev.services, { name: "", amount: 0, description: "" }],
     }));
   };
 
@@ -177,16 +223,15 @@ export const useInvoiceForm = ({ isOpen, buildings, onSuccess, onClose }) => {
     setFormData({ ...formData, services: newServices });
   };
 
-  // --- HÀM SUBMIT QUAN TRỌNG (ĐÃ SỬA) ---
+  // --- HÀM SUBMIT ---
   const handleSubmit = async () => {
     if (!formData.roomId) return toast.error("Vui lòng chọn phòng!");
+    if (!formData.dueDate) return toast.error("Vui lòng chọn hạn thanh toán!");
 
-    const contractId =
-      roomDetail?.tenant_info?.contract_id ||
-      roomDetail?.current_contract_id ||
-      roomDetail?.contract_id;
+    // Lấy contract_id từ state hoặc từ rooms dropdown
+    const activeContractId = contractId || rooms.find(r => r.id === formData.roomId)?.contract_id;
 
-    if (!contractId) {
+    if (!activeContractId) {
       return toast.error(
         "Phòng này chưa có hợp đồng đang hoạt động! Không thể tạo hóa đơn."
       );
@@ -194,32 +239,36 @@ export const useInvoiceForm = ({ isOpen, buildings, onSuccess, onClose }) => {
 
     setLoading(true);
     try {
-      const invoiceDateObj = new Date(formData.invoiceDate);
-      const year = invoiceDateObj.getFullYear();
-      const month = String(invoiceDateObj.getMonth() + 1).padStart(2, "0");
-      const billingMonth = `${year}-${month}-01`;
+      // Format billing_month thành YYYY-MM-01
+      const billingMonth = `${formData.billingMonth}-01`;
 
+      // Chuẩn bị payload theo InvoiceCreate schema
       const payload = {
-        contract_id: contractId,
+        contract_id: activeContractId,
         billing_month: billingMonth,
         due_date: formData.dueDate,
-
-        room_id: formData.roomId,
-        building_id: formData.buildingId,
-        invoice_date: formData.invoiceDate,
-        status: formData.status,
-
-        electricity_old_index: formData.elecOld,
-        electricity_new_index: Number(formData.elecNew),
-        electricity_usage: calculations.elecUsage, 
-        electricity_cost: calculations.elecTotal, 
-        water_cost: calculations.waterTotal,
-        room_price: calculations.roomPrice,
-        service_fee: calculations.servicesTotal,
-        total_amount: calculations.totalAmount,
-        paid_amount: Number(formData.paidAmount),
-        services_detail: formData.services,
+        
+        // Chỉ số điện nước
+        electricity_old_index: Number(formData.elecOld) || 0,
+        electricity_new_index: Number(formData.elecNew) || 0,
+        number_of_people: Number(formData.numberOfPeople) || 1,
+        
+        // Phí internet và gửi xe (optional)
+        internet_fee: Number(formData.internetFee) || null,
+        parking_fee: Number(formData.parkingFee) || null,
+        
+        // Service fees với format {name, amount, description}
+        service_fees: formData.services
+          .filter(s => s.name && s.amount > 0)
+          .map(s => ({
+            name: s.name,
+            amount: Number(s.amount) || 0,
+            description: s.description || null,
+          })),
+        
+        notes: formData.notes || null,
       };
+      
       console.log("Payload gửi đi:", payload);
 
       await invoiceService.create(payload);
@@ -242,6 +291,7 @@ export const useInvoiceForm = ({ isOpen, buildings, onSuccess, onClose }) => {
     rooms,
     loading,
     calculations,
+    contractId,
     handleRoomChange,
     handleServiceChange,
     addService,

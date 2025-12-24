@@ -16,6 +16,7 @@ import InvoiceManagement from "./pages/admin/Invoice/InvoiceManagement";
 import BuildingManagement from "./pages/admin/BuildingManagement";
 import RoomManagement from "./pages/admin/RoomManagement";
 import ContractManagement from "./pages/admin/ContractManagement";
+import ContractDetailPageAdmin from "./pages/admin/ContractDetailPage";
 import IssueManagement from "./pages/admin/IssueManagement";
 
 import InvoiceDetailPage from "./pages/admin/Invoice/InvoiceDetailPage";
@@ -26,7 +27,8 @@ import AppointmentManagementPage from "./pages/admin/AppointmentManagementPage";
 import ProfilePage from "./pages/member/ProfilePage";
 import ContractListPage from "./pages/member/contract/ContractListPage";
 import IssueReport from "./pages/member/IssueReport";
-import MyInvoicesPage from "./pages/member/MyInvoicesPage";
+import MyInvoicesPage from "./pages/member/invoice/MyInvoicesPage";
+import MyInvoiceDetailPage from "./pages/member/invoice/MyInvoiceDetailPage";
 import ContractDetailPage from "./pages/member/contract/ContractDetailPage";
 import MyAppointmentPage from "./pages/member/MyAppointmentPage";
 
@@ -65,6 +67,7 @@ const router = createBrowserRouter([
           { path: "my-contracts", element: <ContractListPage /> },
           { path: "my-contracts/:id", element: <ContractDetailPage /> },
           { path: "my-invoices", element: <MyInvoicesPage /> },
+          { path: "my-invoices/:id", element: <MyInvoiceDetailPage /> },
           { path: "my-appointments", element: <MyAppointmentPage /> },
           { path: "incidents", element: <IssueReport /> },
           { path: "account/profile", element: <AccountProfile /> },
@@ -92,6 +95,7 @@ const router = createBrowserRouter([
           { path: "invoices", element: <InvoiceManagement /> },
           { path: "invoices/:id", element: <InvoiceDetailPage /> },
           { path: "contracts", element: <ContractManagement /> },
+          { path: "contracts/:id", element: <ContractDetailPageAdmin /> },
           { path: "incidents", element: <IssueManagement /> },
           { path: "appointments", element: <AppointmentManagementPage /> },
         ],

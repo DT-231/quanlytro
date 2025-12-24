@@ -102,6 +102,18 @@ export const useRoomForm = ({ isOpen, onClose, onSuccess, initialData }) => {
           const data = res.data;
 
           if (data) {
+            // Parse default_service_fees thành extraCosts format
+            let extraCostsData = [];
+            if (data.default_service_fees && data.default_service_fees.length > 0) {
+              extraCostsData = data.default_service_fees.map(fee => ({
+                name: fee.name,
+                price: fee.amount || 0
+              }));
+            } else if (data.extra_costs && data.extra_costs.length > 0) {
+              // Fallback cho data cũ
+              extraCostsData = data.extra_costs;
+            }
+            
             form.reset({
               room_number: data.room_number,
               room_name: data.room_name,
@@ -115,11 +127,11 @@ export const useRoomForm = ({ isOpen, onClose, onSuccess, initialData }) => {
               deposit_amount: data.deposit_amount,
               electricity_cost: data.electricity_price,
               water_cost: data.water_price_per_person,
-              extraCosts: data.extra_costs || [],
+              extraCosts: extraCostsData.length > 0 ? extraCostsData : [],
             });
 
-            if (data.extra_costs && data.extra_costs.length > 0) {
-              replace(data.extra_costs);
+            if (extraCostsData.length > 0) {
+              replace(extraCostsData);
             }
 
             const currentUtils = data.utilities || [];
@@ -260,7 +272,12 @@ export const useRoomForm = ({ isOpen, onClose, onSuccess, initialData }) => {
         status: values.status,
         description: values.description || "",
         utilities: selectedAmenities,
-        extra_costs: values.extraCosts,
+        // Gửi default_service_fees với format {name, amount}
+        default_service_fees: (values.extraCosts || []).map(cost => ({
+          name: cost.name,
+          amount: cost.price || 0,
+          description: ""
+        })),
         new_photos: newPhotos,
         keep_photo_ids: keepPhotoIds,
       };

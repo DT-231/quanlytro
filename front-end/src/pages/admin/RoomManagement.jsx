@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   FaEdit,
   FaTrashAlt,
@@ -10,7 +10,8 @@ import { Toaster, toast } from "sonner";
 
 // Services
 import { roomService } from "@/services/roomService";
-import { buildingService } from "@/services/buildingService";
+import { invoiceService } from "@/services/invoiceService";
+import { getCity, getWard } from "@/services/locationService";
 
 // Components & Modals
 import Pagination from "@/components/Pagination";
@@ -32,19 +33,27 @@ const formatCurrency = (amount) => {
 
 const getStatusColor = (status) => {
   switch (status) {
-    case "OCCUPIED": return "bg-blue-500 text-white";
-    case "AVAILABLE": return "bg-green-500 text-white";
-    case "MAINTENANCE": return "bg-yellow-400 text-gray-800";
-    default: return "bg-gray-200 text-gray-800";
+    case "OCCUPIED":
+      return "bg-blue-500 text-white";
+    case "AVAILABLE":
+      return "bg-green-500 text-white";
+    case "MAINTENANCE":
+      return "bg-yellow-400 text-gray-800";
+    default:
+      return "bg-gray-200 text-gray-800";
   }
 };
 
 const getStatusLabel = (status) => {
   switch (status) {
-    case "OCCUPIED": return "Đang thuê";
-    case "AVAILABLE": return "Còn trống";
-    case "MAINTENANCE": return "Bảo trì";
-    default: return status;
+    case "OCCUPIED":
+      return "Đang thuê";
+    case "AVAILABLE":
+      return "Còn trống";
+    case "MAINTENANCE":
+      return "Bảo trì";
+    default:
+      return status;
   }
 };
 
@@ -52,21 +61,32 @@ const RoomManagement = () => {
   // --- STATES ---
   const [rooms, setRooms] = useState([]);
   const [buildings, setBuildings] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [wards, setWards] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [totalRoomsStats, setTotalRoomsStats] = useState({
+    total: 0,
+    occupied: 0,
+    available: 0,
+    maintenance: 0,
+  });
 
-  // Pagination State 
+  // Pagination State (server-side)
   const [pagination, setPagination] = useState({
     totalItems: 0,
     page: 1,
-    pageSize: 5, 
+    pageSize: 10,
     totalPages: 0,
   });
-  const [currentPage, setCurrentPage] = useState(1);
 
-  // Filter States
+  // Filter States (server-side)
   const [searchTerm, setSearchTerm] = useState("");
   const [filterBuilding, setFilterBuilding] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [filterCity, setFilterCity] = useState("");
+  const [filterWard, setFilterWard] = useState("");
+  const [filterMaxCapacity, setFilterMaxCapacity] = useState("");
+  const [sortBy, setSortBy] = useState("");
 
   // Modal States
   const [isRoomFormOpen, setIsRoomFormOpen] = useState(false);
@@ -78,28 +98,46 @@ const RoomManagement = () => {
   const [roomToDelete, setRoomToDelete] = useState(null);
   const [isTypeManagerOpen, setIsTypeManagerOpen] = useState(false);
 
-  // --- FETCH DATA (Sửa logic lấy toàn bộ) ---
+  // --- FETCH DATA (Server-side filtering & pagination) ---
   const fetchRooms = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await roomService.getAll({ page: 1, size: 1000 });
       
-      let items = [];
-      if (response?.data?.items) {
-        items = response.data.items;
-      } else if (Array.isArray(response?.data)) {
-        items = response.data;
-      } else if (Array.isArray(response)) { 
-        items = response;
+      // Build params cho API
+      const params = {
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+      };
+      
+      // Thêm các filter nếu có giá trị
+      if (searchTerm) params.search = searchTerm;
+      
+      // Building: tìm id từ name vì GenericCombobox trả về name
+      if (filterBuilding) {
+        const selectedBuilding = buildings.find(
+          (b) => (b.building_name || b.name) === filterBuilding
+        );
+        if (selectedBuilding) {
+          params.building_id = selectedBuilding.id;
+        }
       }
+      
+      if (filterStatus) params.status = filterStatus;
+      if (filterCity) params.city = filterCity;
+      if (filterWard) params.ward = filterWard;
+      if (filterMaxCapacity) params.max_capacity = parseInt(filterMaxCapacity);
+      if (sortBy) params.sort_by = sortBy;
 
-      setRooms(items);
-      setPagination(prev => ({
+      const response = await roomService.getAll(params);
+      
+      if (response && response.success && response.data) {
+        setRooms(response.data.items || []);
+        setPagination((prev) => ({
           ...prev,
-          totalItems: items.length,
-          totalPages: Math.ceil(items.length / prev.pageSize),
-      }));
-
+          totalItems: response.data.pagination?.totalItems || 0,
+          totalPages: response.data.pagination?.totalPages || 0,
+        }));
+      }
     } catch (error) {
       console.error("Lỗi tải danh sách phòng:", error);
       toast.error("Không thể tải danh sách phòng");
@@ -107,30 +145,118 @@ const RoomManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [
+    pagination.page,
+    pagination.pageSize,
+    searchTerm,
+    filterBuilding,
+    buildings,
+    filterStatus,
+    filterCity,
+    filterWard,
+    filterMaxCapacity,
+    sortBy,
+  ]);
+
+  // Fetch stats (tổng số phòng theo trạng thái - gọi API riêng cho mỗi status)
+  const fetchRoomStats = async () => {
+    try {
+      // Gọi song song 4 API để lấy count theo từng status
+      const [totalRes, occupiedRes, availableRes, maintenanceRes] = await Promise.all([
+        roomService.getAll({ page: 1, pageSize: 1 }),
+        roomService.getAll({ page: 1, pageSize: 1, status: "OCCUPIED" }),
+        roomService.getAll({ page: 1, pageSize: 1, status: "AVAILABLE" }),
+        roomService.getAll({ page: 1, pageSize: 1, status: "MAINTENANCE" }),
+      ]);
+
+      setTotalRoomsStats({
+        total: totalRes?.data?.pagination?.totalItems || 0,
+        occupied: occupiedRes?.data?.pagination?.totalItems || 0,
+        available: availableRes?.data?.pagination?.totalItems || 0,
+        maintenance: maintenanceRes?.data?.pagination?.totalItems || 0,
+      });
+    } catch (error) {
+      console.error("Lỗi tải thống kê:", error);
+    }
+  };
 
   const fetchBuildings = async () => {
     try {
-      const response = await buildingService.getAll();
-      if (response?.data?.items) {
-        setBuildings(response.data.items);
-      } else if (Array.isArray(response?.data)) {
-        setBuildings(response.data);
+      const response = await invoiceService.getBuildingsDropdown();
+      if (response) {
+        setBuildings(response);
       }
     } catch (error) {
       console.error("Lỗi tải tòa nhà:", error);
     }
   };
 
+  const fetchCities = async () => {
+    try {
+      const res = await getCity();
+      
+      if (res) {
+        setCities(res);
+      }
+    } catch (error) {
+      console.error("Lỗi tải thành phố:", error);
+    }
+  };
+
+  // Fetch wards khi city thay đổi
   useEffect(() => {
-    fetchRooms();
+    const fetchWardsData = async () => {
+      if (filterCity) {
+        const selectedCity = cities.find((c) => c.name === filterCity);
+        if (selectedCity) {
+          try {
+            const res = await getWard(selectedCity.id);
+            if (res) {
+              setWards(res);
+            }
+          } catch (error) {
+            console.error("Lỗi tải quận/huyện:", error);
+          }
+        }
+      } else {
+        setWards([]);
+        setFilterWard("");
+      }
+    };
+    fetchWardsData();
+  }, [filterCity, cities]);
+
+  // Initial fetch
+  useEffect(() => {
     fetchBuildings();
+    fetchCities();
+    fetchRoomStats();
+  }, []);
+
+  // Fetch rooms khi filter/pagination thay đổi (debounce search)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchRooms();
+    }, 300); // Debounce 300ms cho search
+
+    return () => clearTimeout(timer);
   }, [fetchRooms]);
 
   // --- FILTER CONFIGURATION ---
-  const buildingOptions = useMemo(() => {
-    return buildings.map(b => ({ id: b.id, name: b.building_name }));
-  }, [buildings]);
+  const buildingOptions = buildings.map((b) => ({
+    id: b.id,
+    name: b.building_name || b.name,
+  }));
+
+  const cityOptions = cities.map((c) => ({
+    id: c.name,
+    name: c.name,
+  }));
+
+  const wardOptions = wards.map((w) => ({
+    id: w.name,
+    name: w.name,
+  }));
 
   const statusOptions = [
     { id: "AVAILABLE", name: "Còn trống" },
@@ -138,11 +264,39 @@ const RoomManagement = () => {
     { id: "MAINTENANCE", name: "Bảo trì" },
   ];
 
+  const capacityOptions = [
+    { id: "1", name: "1 người" },
+    { id: "2", name: "2 người" },
+    { id: "3", name: "3 người" },
+    { id: "4", name: "4 người" },
+    { id: "5", name: "5 người" },
+    { id: "6", name: "6+ người" },
+  ];
+
+  const sortOptions = [
+    { id: "price_asc", name: "Giá tăng dần" },
+    { id: "price_desc", name: "Giá giảm dần" },
+  ];
+
   const filterConfigs = [
+    {
+      key: "city",
+      type: "combobox",
+      placeholder: "Thành phố",
+      options: cityOptions,
+      value: filterCity,
+    },
+    {
+      key: "ward",
+      type: "combobox",
+      placeholder: "Quận/Huyện",
+      options: wardOptions,
+      value: filterWard,
+    },
     {
       key: "building",
       type: "combobox",
-      placeholder: "Lọc theo tòa nhà",
+      placeholder: "Tòa nhà",
       options: buildingOptions,
       value: filterBuilding,
     },
@@ -153,71 +307,70 @@ const RoomManagement = () => {
       options: statusOptions,
       value: filterStatus,
     },
+    {
+      key: "maxCapacity",
+      type: "select",
+      placeholder: "Số người tối đa",
+      options: capacityOptions,
+      value: filterMaxCapacity,
+    },
+    {
+      key: "sortBy",
+      type: "select",
+      placeholder: "Sắp xếp",
+      options: sortOptions,
+      value: sortBy,
+    },
   ];
-
-  // --- FILTER & PAGINATION LOGIC (Client-side) ---
-  
-  // 1. Lọc dữ liệu
-  const filteredRooms = useMemo(() => {
-    if (!Array.isArray(rooms)) return [];
-
-    return rooms.filter((room) => {
-      const roomNumber = room.room_number || "";
-      const representative = room.representative || "";
-      const buildingName = room.building_name || "";
-      const status = room.status || "";
-
-      // Search
-      const matchesSearch =
-        roomNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        representative.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesBuilding = filterBuilding 
-        ? (buildingName || "").toLowerCase() === filterBuilding.toLowerCase() || room.building_id === filterBuilding
-        : true;
-        
-      // Filter Status
-      const matchesStatus = filterStatus ? status === filterStatus : true;
-
-      return matchesSearch && matchesBuilding && matchesStatus;
-    });
-  }, [rooms, searchTerm, filterBuilding, filterStatus]);
-
-  // 2. Cập nhật Total Pages khi Filter thay đổi
-  useEffect(() => {
-      setPagination(prev => ({
-          ...prev,
-          totalItems: filteredRooms.length,
-          totalPages: Math.ceil(filteredRooms.length / prev.pageSize)
-      }));
-      if (Math.ceil(filteredRooms.length / pagination.pageSize) < currentPage) {
-          setCurrentPage(1);
-      }
-  }, [filteredRooms.length, pagination.pageSize]);
-
-  // 3. Cắt trang (Pagination Logic)
-  const paginatedRooms = useMemo(() => {
-    const startIndex = (currentPage - 1) * pagination.pageSize;
-    const endIndex = startIndex + pagination.pageSize;
-    return filteredRooms.slice(startIndex, endIndex);
-  }, [filteredRooms, currentPage, pagination.pageSize]);
-
 
   // --- HANDLERS ---
   const handleFilterChange = (key, value) => {
-    if (key === "building") {
-       setFilterBuilding(value); 
-    } else if (key === "status") {
-      setFilterStatus(value);
+    // Reset về trang 1 khi filter thay đổi
+    setPagination((prev) => ({ ...prev, page: 1 }));
+
+    switch (key) {
+      case "city":
+        setFilterCity(value);
+        setFilterWard(""); // Reset ward khi đổi city
+        break;
+      case "ward":
+        setFilterWard(value);
+        break;
+      case "building":
+        setFilterBuilding(value);
+        break;
+      case "status":
+        setFilterStatus(value);
+        break;
+      case "maxCapacity":
+        setFilterMaxCapacity(value);
+        break;
+      case "sortBy":
+        setSortBy(value);
+        break;
+      default:
+        break;
     }
-    setCurrentPage(1);
+  };
+
+  const handleSearchChange = (value) => {
+    setPagination((prev) => ({ ...prev, page: 1 }));
+    setSearchTerm(value);
   };
 
   const handleClearFilters = () => {
     setSearchTerm("");
     setFilterBuilding("");
     setFilterStatus("");
-    setCurrentPage(1);
+    setFilterCity("");
+    setFilterWard("");
+    setFilterMaxCapacity("");
+    setSortBy("");
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  const handlePageChange = (newPage) => {
+    setPagination((prev) => ({ ...prev, page: newPage }));
   };
 
   const handleOpenAdd = () => {
@@ -283,7 +436,7 @@ const RoomManagement = () => {
           >
             <FaPlus size={10} /> Thêm phòng mới
           </button>
-          
+
           <button
             onClick={() => setIsTypeManagerOpen(true)}
             className="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3 py-2 rounded-lg text-sm transition-all shadow-sm font-medium"
@@ -296,8 +449,8 @@ const RoomManagement = () => {
       {/* REUSABLE FILTER BAR */}
       <FilterBar
         searchValue={searchTerm}
-        onSearchChange={setSearchTerm}
-        searchPlaceholder="Tìm theo số phòng, người đại diện..."
+        onSearchChange={handleSearchChange}
+        searchPlaceholder="Tìm theo số phòng, tên toà nhà..."
         filters={filterConfigs}
         onFilterChange={handleFilterChange}
         onClear={handleClearFilters}
@@ -306,13 +459,18 @@ const RoomManagement = () => {
       {/* STATS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         {[
-          { title: "Tổng số phòng", value: rooms.length },
-          { title: "Đang thuê", value: rooms.filter((r) => r.status === "OCCUPIED").length },
-          { title: "Phòng trống", value: rooms.filter((r) => r.status === "AVAILABLE").length },
-          { title: "Đang bảo trì", value: rooms.filter((r) => r.status === "MAINTENANCE").length },
+          { title: "Tổng số phòng", value: totalRoomsStats.total },
+          { title: "Đang thuê", value: totalRoomsStats.occupied },
+          { title: "Phòng trống", value: totalRoomsStats.available },
+          { title: "Đang bảo trì", value: totalRoomsStats.maintenance },
         ].map((stat, index) => (
-          <div key={index} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-            <h3 className="text-sm font-medium mb-1 text-gray-500">{stat.title}</h3>
+          <div
+            key={index}
+            className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"
+          >
+            <h3 className="text-sm font-medium mb-1 text-gray-500">
+              {stat.title}
+            </h3>
             <p className="text-2xl font-bold text-gray-800">{stat.value}</p>
           </div>
         ))}
@@ -326,50 +484,103 @@ const RoomManagement = () => {
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
-            <thead className="bg-white text-xs font-bold border-b border-gray-200 uppercase">
+            <thead className="hidden md:table-header-group bg-gray-50 text-xs font-bold border-b-2 border-gray-200 uppercase">
               <tr>
-                <th className="p-4">Phòng</th>
-                <th className="p-4">Toà nhà</th>
-                <th className="p-4 text-center">Diện tích (m²)</th>
-                <th className="p-4 text-center">Tối đa (người)</th>
-                <th className="p-4 text-center">Hiện ở</th>
-                <th className="p-4 text-center">Trạng thái</th>
-                <th className="p-4 text-right">Giá thuê</th>
-                <th className="p-4">Đại diện</th>
-                <th className="p-4 text-center">Thao tác</th>
+                <th className="p-3 lg:w-[80px] text-center">Phòng</th>
+                <th className="p-3 lg:w-[200px]">Toà nhà</th>
+                <th className="p-3 lg:w-[80px] text-center">Diện tích (m²)</th>
+                <th className="p-3 lg:w-[100px] text-center">Tối đa (người)</th>
+                <th className="p-3 lg:w-[50px] text-center">Hiện ở</th>
+                <th className="p-3 lg:w-[80px] text-center">Trạng thái</th>
+                <th className="p-3 lg:w-[80px] text-center">Giá thuê</th>
+                <th className="p-3 lg:w-[100px]">Đại diện</th>
+                <th className="p-3 lg:w-[100px] text-center">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="text-sm text-gray-700 divide-y divide-gray-100">
+            <tbody className="text-sm text-gray-700">
               {loading ? (
-                <tr><td colSpan="9" className="p-8 text-center">Đang tải dữ liệu...</td></tr>
-              ) : paginatedRooms.length > 0 ? ( /* ĐỔI currentData THÀNH paginatedRooms */
-                paginatedRooms.map((room) => (
-                  <tr key={room.id} className="hover:bg-gray-50 transition-colors group">
-                    <td 
-                      className="p-4 font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
-                      onClick={() => handleViewDetail(room.id)}
-                    >
-                      {room.room_number}
+                <tr>
+                  <td colSpan="9" className="p-8 text-center">
+                    Đang tải dữ liệu...
+                  </td>
+                </tr>
+              ) : rooms.length > 0 ? (
+                rooms.map((room) => (
+                  <tr
+                    key={room.id}
+                    className="block mb-4 rounded-lg shadow-md md:shadow-none md:table-row hover:bg-gray-50 transition-colors group border md:border-0"
+                  >
+                    <td className="p-3 flex justify-between items-center md:table-cell md:text-center md:font-bold md:text-gray-900 border-b md:border-b-0">
+                      <span className="md:hidden font-bold uppercase text-xs text-gray-500">
+                        Phòng
+                      </span>
+                      <span
+                        className="cursor-pointer hover:text-blue-600 transition-colors"
+                        onClick={() => handleViewDetail(room.id)}
+                      >
+                        {room.room_number}
+                      </span>
                     </td>
-                    <td className="p-4 font-medium text-gray-800">
-                      <div className="flex items-center gap-2">
+                    <td className="p-3 flex justify-between items-center md:table-cell border-b md:border-b-0">
+                      <span className="md:hidden font-bold uppercase text-xs text-gray-500">
+                        Toà nhà
+                      </span>
+                      <div className="flex items-center gap-2 font-medium text-gray-800">
                         <FaBuilding className="text-gray-400 text-xs" />
-                        <span className="truncate max-w-[150px]" title={room.building_name}>
+                        <span
+                          className="truncate max-w-[150px]"
+                          title={room.building_name}
+                        >
                           {room.building_name}
                         </span>
                       </div>
                     </td>
-                    <td className="p-4 text-center">{room.area}</td>
-                    <td className="p-4 text-center">{room.capacity}</td>
-                    <td className="p-4 text-center font-bold text-gray-900">{room.current_occupants || 0}</td>
-                    <td className="p-4 text-center">
-                      <span className={`${getStatusColor(room.status)} px-2 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap tracking-wide shadow-sm`}>
+                    <td className="p-3 flex justify-between items-center md:table-cell md:text-center border-b md:border-b-0">
+                      <span className="md:hidden font-bold uppercase text-xs text-gray-500">
+                        Diện tích (m²)
+                      </span>
+                      {room.area}
+                    </td>
+                    <td className="p-3 flex justify-between items-center md:table-cell md:text-center border-b md:border-b-0">
+                      <span className="md:hidden font-bold uppercase text-xs text-gray-500">
+                        Tối đa (người)
+                      </span>
+                      {room.capacity}
+                    </td>
+                    <td className="p-3 flex justify-between items-center md:table-cell md:text-center font-bold text-gray-900 border-b md:border-b-0">
+                      <span className="md:hidden font-bold uppercase text-xs text-gray-500">
+                        Hiện ở
+                      </span>
+                      {room.current_occupants || 0}
+                    </td>
+                    <td className="p-3 flex justify-between items-center md:table-cell md:text-center border-b md:border-b-0">
+                      <span className="md:hidden font-bold uppercase text-xs text-gray-500">
+                        Trạng thái
+                      </span>
+                      <span
+                        className={`${getStatusColor(
+                          room.status
+                        )} px-2 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap tracking-wide shadow-sm`}
+                      >
                         {getStatusLabel(room.status)}
                       </span>
                     </td>
-                    <td className="p-4 text-right font-medium text-gray-900">{formatCurrency(room.base_price)}</td>
-                    <td className="p-4 text-gray-600">{room.representative || "-"}</td>
-                    <td className="p-4">
+                    <td className="p-3 flex justify-between items-center md:table-cell md:text-right font-medium text-gray-900 border-b md:border-b-0">
+                      <span className="md:hidden font-bold uppercase text-xs text-gray-500">
+                        Giá thuê
+                      </span>
+                      {formatCurrency(room.base_price)}
+                    </td>
+                    <td className="p-3 flex justify-between items-center md:table-cell text-gray-600 border-b md:border-b-0">
+                      <span className="md:hidden font-bold uppercase text-xs text-gray-500">
+                        Đại diện
+                      </span>
+                      {room.representative || "-"}
+                    </td>
+                    <td className="p-3 flex justify-between items-center md:table-cell">
+                      <span className="md:hidden font-bold uppercase text-xs text-gray-500">
+                        Thao tác
+                      </span>
                       <div className="flex justify-center gap-2">
                         <button
                           onClick={() => handleEditClick(room)}
@@ -390,19 +601,26 @@ const RoomManagement = () => {
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan="9" className="p-8 text-center text-gray-500 italic">Không tìm thấy phòng nào phù hợp.</td></tr>
+                <tr>
+                  <td
+                    colSpan="9"
+                    className="p-8 text-center text-gray-500 italic"
+                  >
+                    Không tìm thấy phòng nào phù hợp.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
         </div>
 
-        {/* PAGINATION COMPONENT (Cập nhật props) */}
+        {/* PAGINATION COMPONENT (Server-side) */}
         <Pagination
-          currentPage={currentPage}
+          currentPage={pagination.page}
           totalPages={pagination.totalPages}
           totalItems={pagination.totalItems}
-          onPageChange={setCurrentPage}
-          pageSize={pagination.pageSize} 
+          onPageChange={handlePageChange}
+          pageSize={pagination.pageSize}
           label="phòng"
         />
       </div>

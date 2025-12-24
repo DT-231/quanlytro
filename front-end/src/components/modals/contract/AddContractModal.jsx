@@ -19,6 +19,7 @@ import { useContractData } from "./hooks/useContractData";
 import { useRoomSearch } from "./hooks/useRoomSearch";
 import { useTenantSearch } from "./hooks/useTenantSearch";
 import { useContractSubmit } from "./hooks/useContractSubmit";
+import { contractService } from "@/services/contractService";
 
 // ... imports components (ContractInfoSection, etc.) giữ nguyên ...
 import ContractInfoSection from "./components/ContractInfoSection";
@@ -78,13 +79,58 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
   useEffect(() => {
     setTenantSearchResults(tenants);
   }, [tenants, setTenantSearchResults]);
-  const handleRoomSelect = (room) => {
+
+  // Hàm auto-fill phí dịch vụ từ phòng
+  const handleRoomSelect = async (room) => {
     setSelectedRoom(room);
     if (room) {
       form.setValue("roomId", room.id);
-      const price = room.rental_price || room.price || room.base_price || 0;
-      form.setValue("rentPrice", price);
-      form.setValue("deposit", price);
+      
+      // Fetch thông tin chi tiết phòng để lấy phí dịch vụ mặc định
+      try {
+        const response = await contractService.getRoomInfoForContract(room.id);
+        if (response?.data) {
+          const roomInfo = response.data;
+          
+          // Auto-fill giá thuê và tiền cọc
+          const price = roomInfo.base_price || room.rental_price || room.price || room.base_price || 0;
+          form.setValue("rentPrice", price);
+          form.setValue("deposit", roomInfo.deposit_amount || price);
+          
+          // Auto-fill giá điện, nước
+          if (roomInfo.electricity_price) {
+            form.setValue("electricityPrice", roomInfo.electricity_price);
+          }
+          if (roomInfo.water_price_per_person) {
+            form.setValue("waterPrice", roomInfo.water_price_per_person);
+          }
+          
+          // Auto-fill phí dịch vụ mặc định
+          if (roomInfo.default_service_fees && roomInfo.default_service_fees.length > 0) {
+            const mappedServices = roomInfo.default_service_fees.map((fee, idx) => ({
+              id: Date.now() + idx,
+              name: fee.name,
+              amount: fee.amount || 0,
+              description: fee.description || ""
+            }));
+            setServices(mappedServices);
+            toast.success(`Đã tải ${mappedServices.length} phí dịch vụ mặc định từ phòng`);
+          }
+        } else {
+          // Fallback nếu không fetch được
+          const price = room.rental_price || room.price || room.base_price || 0;
+          form.setValue("rentPrice", price);
+          form.setValue("deposit", price);
+        }
+      } catch (error) {
+        console.error("Error fetching room info:", error);
+        // Fallback
+        const price = room.rental_price || room.price || room.base_price || 0;
+        form.setValue("rentPrice", price);
+        form.setValue("deposit", price);
+      }
+      
+      // Xử lý trạng thái đại diện
       const currentOccupants = room.current_occupants || 0;
       if (currentOccupants === 0) {
         setIsRepresentative(true);
@@ -100,6 +146,11 @@ export default function AddContractModal({ isOpen, onClose, onAddSuccess }) {
       form.setValue("roomId", "");
       setIsRepresentative(false); 
       form.setValue("isRepresentative", false);
+      // Reset về phí dịch vụ mặc định
+      setServices([
+        { id: 1, name: "Phí rác", amount: 20000, description: "Phí thu gom rác hàng tháng" },
+        { id: 2, name: "Phí giữ xe", amount: 50000, description: "Phí giữ xe máy" },
+      ]);
     }
   };
 

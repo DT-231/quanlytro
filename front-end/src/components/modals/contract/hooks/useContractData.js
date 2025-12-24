@@ -14,17 +14,26 @@ export function useContractData(isOpen) {
       setLoadingData(true);
       try {
         const [resRooms, resTenants] = await Promise.all([
+          // Lấy cả AVAILABLE và OCCUPIED để có thể tạo hợp đồng cho phòng ở ghép
           roomService.getAll({ size: 100 }),
           userService.getAll({ size: 100, role_code: "TENANT" }),
         ]);
 
+        let fetchedRooms = [];
         if (resRooms?.data?.items) {
-          setRooms(resRooms.data.items);
+          fetchedRooms = resRooms.data.items;
         } else if (resRooms?.items) {
-          setRooms(resRooms.items);
-        } else {
-          setRooms([]);
+          fetchedRooms = resRooms.items;
         }
+        
+        // Filter phòng có thể tạo hợp đồng: AVAILABLE hoặc OCCUPIED còn chỗ
+        const availableRooms = fetchedRooms.filter((room) => {
+          const currentOccupants = room.current_occupants || 0;
+          const capacity = room.capacity || 1;
+          return room.status === "AVAILABLE" || 
+                 (room.status === "OCCUPIED" && currentOccupants < capacity);
+        });
+        setRooms(availableRooms);
 
         if (resTenants?.data?.items) {
           setTenants(resTenants.data.items);
