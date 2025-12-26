@@ -958,6 +958,7 @@ class RoomService:
                     capacity=room.capacity,
                     current_occupants=current_occupants,
                     is_available=is_available,
+                    description=room.description,
                     primary_photo=primary_photo,
                     created_at=room.created_at
                 ),

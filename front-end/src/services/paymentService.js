@@ -53,6 +53,18 @@ export const paymentService = {
   },
 
   /**
+   * Kiểm tra và sync trạng thái thanh toán từ PayOS.
+   * Dùng khi polling hoặc webhook không hoạt động.
+   * 
+   * @param {string} paymentId - UUID của payment
+   * @returns {Promise<Object>} - { status, message, payment_id, payos_status }
+   */
+  checkAndSyncPaymentStatus: async (paymentId) => {
+    const response = await api.post(`/payments/${paymentId}/check-status`);
+    return response.data?.data || response.data;
+  },
+
+  /**
    * Lấy danh sách payments theo invoice.
    * 
    * @param {string} invoiceId - UUID của invoice

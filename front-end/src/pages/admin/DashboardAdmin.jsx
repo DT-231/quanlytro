@@ -4,10 +4,10 @@
  * Hiển thị:
  * - Thống kê doanh thu, số phòng, phòng trống, sự cố
  * - Filter theo tòa nhà và khoảng thời gian
- * - Hoạt động gần đây (mock data)
- * - Lịch hẹn xem phòng (mock data)
- *
- * TODO: Kết nối API thật cho activities và appointments
+ * - Hoạt động gần đây: thanh toán, yêu cầu hủy HĐ, sự cố, HĐ mới
+ * - Lịch hẹn xem phòng
+ * 
+ * Sử dụng API tổng hợp /dashboard/stats để tối ưu hiệu năng
  */
 import React, { useState, useEffect, useMemo } from "react";
 import { 
@@ -16,17 +16,18 @@ import {
   FaExclamationCircle, 
   FaDoorOpen,
   FaFileContract, 
-  FaUserFriends, 
   FaFileInvoiceDollar, 
   FaFileSignature, 
   FaWrench,
-  FaCalendarAlt 
+  FaCalendarAlt,
+  FaEye,
+  FaBan 
 } from "react-icons/fa";
 import { FiChevronDown, FiCalendar } from "react-icons/fi";
 
 // Services - API calls
-import { roomService } from "@/services/roomService"; 
 import { buildingService } from "@/services/buildingService";
+import { dashboardService } from "@/services/dashboardService";
 
 const Dashboard = () => {
   // ==================================================================================
@@ -34,25 +35,42 @@ const Dashboard = () => {
   // ==================================================================================
   
   // Data từ API
-  const [rooms, setRooms] = useState([]); 
   const [buildings, setBuildings] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filter states
   const [selectedBuildingName, setSelectedBuildingName] = useState("Tất cả toà nhà");
+  const [selectedBuildingId, setSelectedBuildingId] = useState(null);
   const [isBuildingMenuOpen, setIsBuildingMenuOpen] = useState(false);
 
-  // Dữ liệu Sự cố - TODO: Thay bằng API thật từ MaintenanceService
-  const [issues] = useState([
-    { id: 101, status: "Chưa xử lý" },
-    { id: 110, status: "Đã xử lý" },
-    { id: 430, status: "Đang xử lý" },
-    { id: 603, status: "Chưa xử lý" }, 
-  ]);
+  // Dữ liệu Dashboard từ API tổng hợp
+  const [dashboardData, setDashboardData] = useState({
+    room_stats: {
+      total_rooms: 0,
+      empty_rooms: 0,
+      occupied_rooms: 0,
+      revenue: 0
+    },
+    maintenance_stats: {
+      total: 0,
+      pending: 0,
+      in_progress: 0,
+      completed: 0
+    },
+    contract_stats: {
+      total_contracts: 0,
+      active_contracts: 0,
+      expiring_soon: 0,
+      expired_contracts: 0
+    },
+    recent_activities: [],
+    pending_appointments: []
+  });
 
   // State dropdown tháng - TODO: Implement filter theo tháng
   const [isMonthOpen, setIsMonthOpen] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState("Tháng 10");
+  const currentMonth = new Date().getMonth() + 1;
+  const [selectedMonth, setSelectedMonth] = useState(`Tháng ${currentMonth}`);
   const months = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
 
   // ==================================================================================
@@ -64,17 +82,22 @@ const Dashboard = () => {
       try {
         setLoading(true);
         
-        // Gọi song song API Room và Building để tăng performance
-        const [roomRes, buildRes] = await Promise.all([
-          roomService.getAll(),
-          buildingService.getAll()
+        // Gọi API tổng hợp dashboard - CHỈ 1 REQUEST thay vì nhiều
+        const [buildRes, dashRes] = await Promise.all([
+          buildingService.getAll(),
+          dashboardService.getStats({ building_id: selectedBuildingId })
         ]);
 
-        if (roomRes?.data?.items) setRooms(roomRes.data.items);
-        if (buildRes?.data?.items) setBuildings(buildRes.data.items);
+        if (buildRes?.data?.items) {
+          setBuildings(buildRes.data.items);
+        }
+        
+        // Cập nhật toàn bộ dashboard data từ API
+        if (dashRes?.data) {
+          setDashboardData(dashRes.data);
+        }
 
       } catch (error) {
-        // TODO: Hiển thị toast error cho user
         console.error("Lỗi tải dữ liệu Dashboard:", error);
       } finally {
         setLoading(false);
@@ -82,63 +105,49 @@ const Dashboard = () => {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [selectedBuildingId]);
+
+  // Helper format thời gian tương đối
+  const formatRelativeTime = (dateString) => {
+    if (!dateString) return "";
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Vừa xong";
+    if (diffMins < 60) return `${diffMins} phút trước`;
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    if (diffDays < 7) return `${diffDays} ngày trước`;
+    return date.toLocaleDateString('vi-VN');
+  };
 
   // ==================================================================================
   // COMPUTED VALUES (useMemo cho performance)
   // ==================================================================================
 
   /**
-   * Lọc danh sách phòng theo tòa nhà được chọn
-   */
-  const filteredRooms = useMemo(() => {
-    if (selectedBuildingName === "Tất cả toà nhà") return rooms;
-    return rooms.filter(r => r.building_name === selectedBuildingName);
-  }, [rooms, selectedBuildingName]);
-
-  /**
-   * Tính toán thống kê từ danh sách phòng đã lọc
-   * - revenue: Tổng doanh thu từ phòng đang thuê
-   * - totalRooms: Tổng số phòng
-   * - emptyRooms: Số phòng trống
-   * - totalIssues: Số sự cố
+   * Tính toán thống kê từ dashboard data
    */
   const stats = useMemo(() => {
-    const totalRooms = filteredRooms.length;
+    const { room_stats, maintenance_stats, contract_stats, pending_appointments } = dashboardData;
     
-    // Đếm phòng trống (hỗ trợ nhiều format status)
-    const emptyRooms = filteredRooms.filter(r => 
-      r.status === "AVAILABLE" || r.status === "Trống" || r.status === "Còn trống"
-    ).length;
-
-    const totalIssues = issues.length;
-    
-    // Lọc phòng đang thuê để tính doanh thu
-    const occupiedRooms = filteredRooms.filter(r => 
-      r.status === "OCCUPIED" || r.status === "Đang thuê" || r.status === "Đã thuê"
-    );
-
-    // Tính tổng doanh thu từ giá thuê các phòng đang có người ở
-    const revenue = occupiedRooms.reduce((sum, room) => {
-      let price = room.base_price || 0;
-      // Handle trường hợp price là string
-      if (typeof price === 'string') {
-         price = parseFloat(price.replace(/[^0-9.-]+/g,"")); 
-      }
-      return sum + Number(price);
-    }, 0);
-
     return {
-      revenue,
-      revenueTrend: 12.5, // TODO: Tính từ dữ liệu tháng trước
-      totalRooms,
-      emptyRooms,
-      emptyTrend: -5, // TODO: Tính từ dữ liệu tháng trước
-      totalIssues,
-      expiringContracts: 0, 
-      unregisteredTemp: 0,
+      revenue: room_stats.revenue || 0,
+      totalRooms: room_stats.total_rooms || 0,
+      emptyRooms: room_stats.empty_rooms || 0,
+      occupiedRooms: room_stats.occupied_rooms || 0,
+      totalIssues: maintenance_stats.total || 0,
+      pendingIssues: maintenance_stats.pending || 0,
+      inProgressIssues: maintenance_stats.in_progress || 0,
+      expiringContracts: contract_stats.expiring_soon || 0,
+      activeContracts: contract_stats.active_contracts || 0,
+      totalContracts: contract_stats.total_contracts || 0,
+      pendingAppointments: pending_appointments?.length || 0
     };
-  }, [filteredRooms, issues]);
+  }, [dashboardData]);
 
   // Helper format tiền tệ
   const formatCurrency = (amount) => {
@@ -150,9 +159,28 @@ const Dashboard = () => {
     setIsMonthOpen(false);
   };
 
-  const handleSelectBuilding = (name) => {
-    setSelectedBuildingName(name);
+  const handleSelectBuilding = (building) => {
+    if (building === "all") {
+      setSelectedBuildingName("Tất cả toà nhà");
+      setSelectedBuildingId(null);
+    } else {
+      setSelectedBuildingName(building.building_name);
+      setSelectedBuildingId(building.id);
+    }
     setIsBuildingMenuOpen(false);
+  };
+
+  // Format datetime cho lịch hẹn
+  const formatAppointmentTime = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   };
 
   const dateRangeLabel = useMemo(() => {
@@ -163,25 +191,24 @@ const Dashboard = () => {
     return `${format(today)} - ${format(nextMonthDate)}`;
   }, []);
 
-  // --- Mock Data ---
-  const recentActivities = [
-    { id: 1, type: "payment", title: "Thanh toán hóa đơn", desc: "Nguyễn Văn A - Phòng 101 - 5,000,000đ", time: "5 phút trước" },
-    { id: 2, type: "contract", title: "Hợp đồng mới", desc: "Trần Thị B ký hợp đồng Phòng 205", time: "10 phút trước" },
-    { id: 3, type: "issue", title: "Yêu cầu sửa chữa", desc: "Lê Văn C - Phòng 303 - Điều hòa hỏng", time: "30 phút trước" },
-  ];
-
-  const appointments = [
-    { id: 1, name: "Nguyễn thanh tú", phone: "0934970856", time: "14:00 05/11/2025", room: "Phòng 101" },
-    { id: 2, name: "Nguyễn Toàn chung", phone: "0934970856", time: "14:00 05/11/2025", room: "Phòng 205" },
-  ];
-
   const getActivityIcon = (type) => {
     switch (type) {
       case "payment": return <div className="p-3 rounded-lg bg-green-100 text-green-600"><FaFileInvoiceDollar size={20} /></div>;
       case "contract": return <div className="p-3 rounded-lg bg-blue-100 text-blue-600"><FaFileSignature size={20} /></div>;
       case "issue": return <div className="p-3 rounded-lg bg-orange-100 text-orange-600"><FaWrench size={20} /></div>;
+      case "appointment": return <div className="p-3 rounded-lg bg-purple-100 text-purple-600"><FaEye size={20} /></div>;
+      case "termination": return <div className="p-3 rounded-lg bg-red-100 text-red-600"><FaBan size={20} /></div>;
       default: return null;
     }
+  };
+
+  // Format activity description with amount
+  const formatActivityDesc = (activity) => {
+    let desc = activity.description;
+    if (activity.amount && activity.amount > 0) {
+      desc += ` - ${formatCurrency(activity.amount)}`;
+    }
+    return desc;
   };
 
   return (
@@ -204,7 +231,7 @@ const Dashboard = () => {
             {isBuildingMenuOpen && (
               <div className="absolute top-full mt-1 left-0 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
                 <div 
-                  onClick={() => handleSelectBuilding("Tất cả toà nhà")} 
+                  onClick={() => handleSelectBuilding("all")} 
                   className={`px-4 py-2 text-sm cursor-pointer hover:bg-gray-100 transition-colors ${selectedBuildingName === 'Tất cả toà nhà' ? 'font-bold bg-gray-50' : 'text-gray-700'}`}
                 >
                   Tất cả toà nhà
@@ -212,7 +239,7 @@ const Dashboard = () => {
                 {buildings.map((b) => (
                   <div 
                     key={b.id} 
-                    onClick={() => handleSelectBuilding(b.building_name)} 
+                    onClick={() => handleSelectBuilding(b)} 
                     className={`px-4 py-2 text-sm cursor-pointer hover:bg-gray-100 transition-colors ${selectedBuildingName === b.building_name ? 'font-bold bg-gray-50' : 'text-gray-700'}`}
                   >
                     {b.building_name}
@@ -303,8 +330,16 @@ const Dashboard = () => {
           </div>
           <div className="flex items-baseline gap-2">
              <div className="text-2xl font-bold text-gray-900 mb-1">
-                {stats.totalIssues}
+                {loading ? "..." : stats.totalIssues}
              </div>
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            {stats.pendingIssues > 0 && (
+              <span className="text-orange-500 mr-2">Chờ xử lý: {stats.pendingIssues}</span>
+            )}
+            {stats.inProgressIssues > 0 && (
+              <span className="text-blue-500">Đang xử lý: {stats.inProgressIssues}</span>
+            )}
           </div>
         </div>
       </div>
@@ -317,17 +352,23 @@ const Dashboard = () => {
             <FaFileContract className="text-gray-400" size={14} />
           </div>
           <div className="text-2xl font-bold text-gray-900">
-            {stats.expiringContracts}
+            {loading ? "..." : stats.expiringContracts}
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            Tổng HĐ đang hoạt động: {stats.activeContracts}
           </div>
         </div>
 
         <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start mb-2">
-            <span className="text-sm font-medium text-gray-600">Chưa đăng ký tạm trú</span>
-            <FaUserFriends className="text-gray-400" size={16} />
+            <span className="text-sm font-medium text-gray-600">Lịch hẹn chờ xác nhận</span>
+            <FaCalendarAlt className="text-gray-400" size={16} />
           </div>
-          <div className="text-2xl font-bold text-green-500">
-            {stats.unregisteredTemp}
+          <div className="text-2xl font-bold text-blue-500">
+            {loading ? "..." : stats.pendingAppointments}
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            Các lịch hẹn đang chờ duyệt
           </div>
         </div>
       </div>
@@ -340,18 +381,24 @@ const Dashboard = () => {
             <h3 className="text-lg font-bold text-gray-800">Hoạt động gần đây</h3>
           </div>
           <div className="p-5 flex flex-col gap-4">
-            {recentActivities.map((item) => (
-              <div key={item.id} className="flex items-center justify-between group hover:bg-gray-50 p-2 rounded-md transition-colors -mx-2">
-                <div className="flex items-center gap-4">
-                  {getActivityIcon(item.type)}
-                  <div>
-                    <p className="text-sm font-bold text-gray-800">{item.title}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
+            {loading ? (
+              <div className="text-gray-500 text-center py-4">Đang tải...</div>
+            ) : dashboardData.recent_activities.length === 0 ? (
+              <div className="text-gray-500 text-center py-4">Chưa có hoạt động nào</div>
+            ) : (
+              dashboardData.recent_activities.map((item) => (
+                <div key={item.id} className="flex items-center justify-between group hover:bg-gray-50 p-2 rounded-md transition-colors -mx-2">
+                  <div className="flex items-center gap-4">
+                    {getActivityIcon(item.type)}
+                    <div>
+                      <p className="text-sm font-bold text-gray-800">{item.title}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{formatActivityDesc(item)}</p>
+                    </div>
                   </div>
+                  <span className="text-xs text-gray-400 whitespace-nowrap">{formatRelativeTime(item.created_at)}</span>
                 </div>
-                <span className="text-xs text-gray-400 whitespace-nowrap">{item.time}</span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -362,18 +409,24 @@ const Dashboard = () => {
             <FaCalendarAlt className="text-gray-400" />
           </div>
           <div className="p-5 flex flex-col gap-3">
-            {appointments.map((apt) => (
-              <div key={apt.id} className="bg-blue-50/50 p-3 rounded-r-md border-l-4 border-blue-500 flex justify-between items-start hover:bg-blue-100/50 transition-colors">
-                <div>
-                  <p className="text-sm font-bold text-gray-800 mb-0.5">{apt.name}</p>
-                  <p className="text-xs text-gray-500">{apt.phone}</p>
-                  <p className="text-xs text-gray-400 mt-1">{apt.time}</p>
+            {loading ? (
+              <div className="text-gray-500 text-center py-4">Đang tải...</div>
+            ) : dashboardData.pending_appointments.length === 0 ? (
+              <div className="text-gray-500 text-center py-4">Không có lịch hẹn nào</div>
+            ) : (
+              dashboardData.pending_appointments.map((apt) => (
+                <div key={apt.id} className="bg-blue-50/50 p-3 rounded-r-md border-l-4 border-blue-500 flex justify-between items-start hover:bg-blue-100/50 transition-colors">
+                  <div>
+                    <p className="text-sm font-bold text-gray-800 mb-0.5">{apt.full_name}</p>
+                    <p className="text-xs text-gray-500">{apt.phone}</p>
+                    <p className="text-xs text-gray-400 mt-1">{formatAppointmentTime(apt.appointment_datetime)}</p>
+                  </div>
+                  <span className="text-xs font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                    {apt.room_number ? `Phòng ${apt.room_number}` : 'N/A'}
+                  </span>
                 </div>
-                <span className="text-xs font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded">
-                  {apt.room}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>

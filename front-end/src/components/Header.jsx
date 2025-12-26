@@ -20,7 +20,8 @@ import NotificationCenter from './NotificationCenter';
 export default function Header({ user, onLogout, onToggleSidebar }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
-
+  console.log(user);
+  
   // Click outside để đóng dropdown
   useEffect(() => {
     function handleClickOutside(event) {
@@ -72,7 +73,7 @@ export default function Header({ user, onLogout, onToggleSidebar }) {
               className="w-8 h-8 rounded-full bg-gray-200 border overflow-hidden hover:ring-2 hover:ring-gray-300 transition focus:outline-none"
             >
               <img 
-                src="https://github.com/shadcn.png"
+                src= {user.avatar ||"https://github.com/shadcn.png"}
                 alt="Avatar" 
                 className="w-full h-full object-cover"
               />

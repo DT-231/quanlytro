@@ -1,6 +1,11 @@
 import api from "@/lib/api";
 
 export const userService = {
+  getCurrentUser: async () => {
+    const response = await api.get("/auth/me");
+    return response.data;
+  },
+
   createTenant: async (data) => {
     const response = await api.post("/auth/create-tenant", data);
     return response.data;

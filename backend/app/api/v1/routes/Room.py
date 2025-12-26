@@ -27,9 +27,7 @@ from app.core.exceptions import (
 from app.schemas.room_schema import (
     RoomCreate,
     RoomUpdate,
-    RoomListItem,
     RoomDetailOut,
-    RoomPublicListItem,
 )
 from app.services.RoomService import RoomService
 from app.core import response
@@ -125,7 +123,9 @@ router = APIRouter(prefix="/rooms", tags=["Room Management"])
 )
 def list_rooms(
     search: Optional[str] = Query(
-        None, description="Tìm kiếm theo tên phòng, tên tòa nhà, tiện ích"
+        None, 
+        description="Tìm kiếm theo tên phòng, tên tòa nhà, tiện ích",
+        alias="searchValue"  # Support both 'search' and 'searchValue' from frontend
     ),
     building_id: Optional[UUID] = Query(None, description="Lọc theo tòa nhà"),
     city: Optional[str] = Query(None, description="Lọc theo thành phố"),
@@ -438,7 +438,6 @@ def update_room(
     """Cập nhật thông tin phòng với đầy đủ thông tin.
 
     Hỗ trợ partial update - chỉ cần gửi các field muốn thay đổi.
-
     **Cập nhật Utilities**:
     - Gửi `utilities: ["Điều hoà", "Bếp"]` → thay thế toàn bộ utilities cũ
     - Không gửi `utilities` → giữ nguyên utilities hiện tại
@@ -536,109 +535,109 @@ def delete_room(
         raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 
 
-@router.get(
-    "/search/advanced",
-    response_model=Response[dict],
-    status_code=status.HTTP_200_OK,
-    summary="Tìm kiếm phòng nâng cao (Công khai - không cần đăng nhập)",
-    description="Tìm kiếm phòng với nhiều điều kiện: giá, diện tích, sức chứa, tiện ích. API công khai cho khách vãng lai.",
-    responses={
-        200: {
-            "description": "Search successful",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "code": 200,
-                        "message": "Tìm kiếm phòng thành công",
-                        "data": {
-                            "items": [
-                                {
-                                    "id": "uuid",
-                                    "room_number": "101",
-                                    "building_name": "Chung cư Hoàng Anh",
-                                    "area": 35.0,
-                                    "capacity": 2,
-                                    "current_occupants": 0,
-                                    "status": "AVAILABLE",
-                                    "base_price": 5000000,
-                                    "representative": None
-                                }
-                            ],
-                            "total": 15,
-                            "offset": 0,
-                            "limit": 20
-                        }
-                    }
-                }
-            }
-        }
-    }
-)
-def search_rooms(
-    building_id: Optional[UUID] = Query(None, description="Lọc theo tòa nhà"),
-    min_price: Optional[Decimal] = Query(None, ge=0, description="Giá tối thiểu"),
-    max_price: Optional[Decimal] = Query(None, ge=0, description="Giá tối đa"),
-    min_area: Optional[float] = Query(None, gt=0, description="Diện tích tối thiểu (m²)"),
-    max_area: Optional[float] = Query(None, gt=0, description="Diện tích tối đa (m²)"),
-    capacity: Optional[int] = Query(None, ge=1, description="Sức chứa tối thiểu"),
-    room_status: Optional[str] = Query(None, description="Trạng thái phòng", alias="status"),
-    utilities: Optional[str] = Query(None, description="Tiện ích (cách nhau bởi dấu phẩy: 'Điều hoà,Bếp,TV')"),
-    page: int = Query(1, ge=1, description="Số trang (bắt đầu từ 1)"),
-    pageSize: int = Query(20, ge=1, le=100, description="Số lượng mỗi trang (max 100)"),
-    db: Session = Depends(get_db),
-    # KHÔNG có current_user = Depends(get_current_user) - API công khai
-):
-    """Tìm kiếm phòng nâng cao với nhiều điều kiện - API công khai cho khách vãng lai.
+# @router.get(
+#     "/search/advanced",
+#     response_model=Response[dict],
+#     status_code=status.HTTP_200_OK,
+#     summary="Tìm kiếm phòng nâng cao (Công khai - không cần đăng nhập)",
+#     description="Tìm kiếm phòng với nhiều điều kiện: giá, diện tích, sức chứa, tiện ích. API công khai cho khách vãng lai.",
+#     responses={
+#         200: {
+#             "description": "Search successful",
+#             "content": {
+#                 "application/json": {
+#                     "example": {
+#                         "code": 200,
+#                         "message": "Tìm kiếm phòng thành công",
+#                         "data": {
+#                             "items": [
+#                                 {
+#                                     "id": "uuid",
+#                                     "room_number": "101",
+#                                     "building_name": "Chung cư Hoàng Anh",
+#                                     "area": 35.0,
+#                                     "capacity": 2,
+#                                     "current_occupants": 0,
+#                                     "status": "AVAILABLE",
+#                                     "base_price": 5000000,
+#                                     "representative": None
+#                                 }
+#                             ],
+#                             "total": 15,
+#                             "offset": 0,
+#                             "limit": 20
+#                         }
+#                     }
+#                 }
+#             }
+#         }
+#     }
+# )
+# def search_rooms(
+#     building_id: Optional[UUID] = Query(None, description="Lọc theo tòa nhà"),
+#     min_price: Optional[Decimal] = Query(None, ge=0, description="Giá tối thiểu"),
+#     max_price: Optional[Decimal] = Query(None, ge=0, description="Giá tối đa"),
+#     min_area: Optional[float] = Query(None, gt=0, description="Diện tích tối thiểu (m²)"),
+#     max_area: Optional[float] = Query(None, gt=0, description="Diện tích tối đa (m²)"),
+#     capacity: Optional[int] = Query(None, ge=1, description="Sức chứa tối thiểu"),
+#     room_status: Optional[str] = Query(None, description="Trạng thái phòng", alias="status"),
+#     utilities: Optional[str] = Query(None, description="Tiện ích (cách nhau bởi dấu phẩy: 'Điều hoà,Bếp,TV')"),
+#     page: int = Query(1, ge=1, description="Số trang (bắt đầu từ 1)"),
+#     pageSize: int = Query(20, ge=1, le=100, description="Số lượng mỗi trang (max 100)"),
+#     db: Session = Depends(get_db),
+#     # KHÔNG có current_user = Depends(get_current_user) - API công khai
+# ):
+#     """Tìm kiếm phòng nâng cao với nhiều điều kiện - API công khai cho khách vãng lai.
 
-    Query params:
-    - building_id: UUID của tòa nhà (optional)
-    - min_price: Giá thuê tối thiểu (optional)
-    - max_price: Giá thuê tối đa (optional)
-    - min_area: Diện tích tối thiểu m² (optional)
-    - max_area: Diện tích tối đa m² (optional)
-    - capacity: Sức chứa tối thiểu (optional)
-    - status: Trạng thái phòng (AVAILABLE, OCCUPIED, MAINTENANCE, RESERVED)
-    - utilities: Danh sách tiện ích cần có, cách nhau bởi dấu phẩy (ví dụ: "Điều hoà,Bếp,TV")
-    - page: Số trang (default 1)
-    - pageSize: Số lượng mỗi trang (default 20, max 100)
+#     Query params:
+#     - building_id: UUID của tòa nhà (optional)
+#     - min_price: Giá thuê tối thiểu (optional)
+#     - max_price: Giá thuê tối đa (optional)
+#     - min_area: Diện tích tối thiểu m² (optional)
+#     - max_area: Diện tích tối đa m² (optional)
+#     - capacity: Sức chứa tối thiểu (optional)
+#     - status: Trạng thái phòng (AVAILABLE, OCCUPIED, MAINTENANCE, RESERVED)
+#     - utilities: Danh sách tiện ích cần có, cách nhau bởi dấu phẩy (ví dụ: "Điều hoà,Bếp,TV")
+#     - page: Số trang (default 1)
+#     - pageSize: Số lượng mỗi trang (default 20, max 100)
 
-    Returns:
-        {
-            "success": true,
-            "message": "success",
-            "data": {
-                "items": [...],
-                "pagination": {
-                    "totalItems": 15,
-                    "page": 1,
-                    "pageSize": 20,
-                    "totalPages": 1
-                }
-            }
-        }
-    """
-    try:
-        # Parse utilities từ string sang list
-        utilities_list = None
-        if utilities:
-            utilities_list = [u.strip() for u in utilities.split(',') if u.strip()]
+#     Returns:
+#         {
+#             "success": true,
+#             "message": "success",
+#             "data": {
+#                 "items": [...],
+#                 "pagination": {
+#                     "totalItems": 15,
+#                     "page": 1,
+#                     "pageSize": 20,
+#                     "totalPages": 1
+#                 }
+#             }
+#         }
+#     """
+#     try:
+#         # Parse utilities từ string sang list
+#         utilities_list = None
+#         if utilities:
+#             utilities_list = [u.strip() for u in utilities.split(',') if u.strip()]
         
-        room_service = RoomService(db)
-        result = room_service.search_rooms(
-            building_id=building_id,
-            min_price=min_price,
-            max_price=max_price,
-            min_area=min_area,
-            max_area=max_area,
-            capacity=capacity,
-            status=room_status,
-            utilities=utilities_list,
-            page=page,
-            pageSize=pageSize,
-        )
-        return response.success(data=result, message="Tìm kiếm phòng thành công")
-    except ValueError as e:
-        raise BadRequestException(message=str(e))
-    except Exception as e:
-        raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
+#         room_service = RoomService(db)
+#         result = room_service.search_rooms(
+#             building_id=building_id,
+#             min_price=min_price,
+#             max_price=max_price,
+#             min_area=min_area,
+#             max_area=max_area,
+#             capacity=capacity,
+#             status=room_status,
+#             utilities=utilities_list,
+#             page=page,
+#             pageSize=pageSize,
+#         )
+#         return response.success(data=result, message="Tìm kiếm phòng thành công")
+#     except ValueError as e:
+#         raise BadRequestException(message=str(e))
+#     except Exception as e:
+#         raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
 

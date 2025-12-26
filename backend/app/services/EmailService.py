@@ -88,6 +88,9 @@ class EmailService:
         appointment_datetime: str,
         status: str,
         admin_notes: Optional[str] = None,
+        building_address: Optional[str] = None,
+        ward_name: Optional[str] = None,
+        city_name: Optional[str] = None,
     ) -> bool:
         """Gửi email thông báo cập nhật trạng thái lịch hẹn.
 
@@ -99,6 +102,9 @@ class EmailService:
             appointment_datetime: Thời gian hẹn
             status: Trạng thái mới
             admin_notes: Ghi chú của admin
+            building_address: Địa chỉ tòa nhà
+            ward_name: Phường/Xã
+            city_name: Tỉnh/Thành phố
 
         Returns:
             True nếu gửi thành công
@@ -125,6 +131,17 @@ class EmailService:
             <tr>
                 <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Ghi chú từ chủ trọ:</strong></td>
                 <td style="padding: 10px; border-bottom: 1px solid #eee;">{admin_notes}</td>
+            </tr>
+            """
+
+        # Nội dung địa chỉ
+        address_html = ""
+        if building_address or ward_name or city_name:
+            full_address = ", ".join(filter(None, [building_address, ward_name, city_name]))
+            address_html = f"""
+            <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Địa chỉ:</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">{full_address}</td>
             </tr>
             """
 
@@ -166,6 +183,7 @@ class EmailService:
                             <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Tòa nhà:</strong></td>
                             <td style="padding: 10px; border-bottom: 1px solid #eee;">{building_name}</td>
                         </tr>
+                        {address_html}
                         <tr>
                             <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Thời gian hẹn:</strong></td>
                             <td style="padding: 10px; border-bottom: 1px solid #eee;">{appointment_datetime}</td>
@@ -198,6 +216,7 @@ class EmailService:
         Trạng thái: {status_text}
         Phòng: {room_number}
         Tòa nhà: {building_name}
+        {f"Địa chỉ: {', '.join(filter(None, [building_address, ward_name, city_name]))}" if building_address or ward_name or city_name else ""}
         Thời gian hẹn: {appointment_datetime}
         {f"Ghi chú: {admin_notes}" if admin_notes else ""}
         

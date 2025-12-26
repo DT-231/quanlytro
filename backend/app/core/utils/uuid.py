@@ -1,12 +1,25 @@
+"""UUID utility functions.
+
+Module cung cấp các hàm tiện ích để tạo UUID, 
+bao gồm UUIDv7 (time-ordered) cho database performance.
+"""
+
 from __future__ import annotations
 
-import datetime
-from time import timezone
 import uuid
+from datetime import datetime, timezone
 from typing import Final
 
 
-def create_uuid_v7():
+def create_uuid_v7() -> uuid.UUID:
+    """Tạo UUIDv7 (time-ordered UUID).
+    
+    UUIDv7 sử dụng Unix timestamp để đảm bảo thứ tự thời gian,
+    giúp tối ưu index performance trong database.
+    
+    Returns:
+        UUID object với version 7
+    """
     # Get current timestamp in milliseconds
     unix_ts_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
 
@@ -22,23 +35,27 @@ def create_uuid_v7():
 
     # Combine fields into a UUID
     final_bytes = (
-    time_low.to_bytes(4, byteorder="big") +
-    time_mid.to_bytes(2, byteorder="big") +
-    time_high_and_version.to_bytes(2, byteorder="big") +
-    bytes([clock_seq_hi_and_reserved]) +
-    random_bytes[9:]
+        time_low.to_bytes(4, byteorder="big") +
+        time_mid.to_bytes(2, byteorder="big") +
+        time_high_and_version.to_bytes(2, byteorder="big") +
+        bytes([clock_seq_hi_and_reserved]) +
+        random_bytes[9:]
     )
     return uuid.UUID(bytes=final_bytes)
+
 
 def generate_uuid7() -> uuid.UUID:
     """Generate a UUIDv7 value.
 
-    Uses the stdlib uuid.uuid7() where available (Python 3.11+).
-    If not available for some reason, falls back to uuid.uuid4().
+    Uses custom create_uuid_v7() implementation.
+    Falls back to uuid.uuid4() if any error occurs.
+    
+    Returns:
+        UUID object
     """
     try:
         return create_uuid_v7()
-    except AttributeError:
+    except Exception:
         # Fallback: uuid4 provides uniqueness but not time-ordered semantics.
         return uuid.uuid4()
 

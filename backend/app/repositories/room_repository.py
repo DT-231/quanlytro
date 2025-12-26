@@ -202,6 +202,26 @@ class RoomRepository:
         self.db.flush()  # Flush để update nhưng chưa commit
         return room
 
+    def update(self, room: Room, room_update) -> Room:
+        """Cập nhật phòng từ RoomUpdate schema.
+
+        Args:
+            room: Room instance cần update.
+            room_update: RoomUpdate schema hoặc dict chứa dữ liệu mới.
+
+        Returns:
+            Room instance đã được cập nhật.
+        """
+        # Nếu là Pydantic schema, chuyển sang dict
+        update_data = room_update.model_dump(exclude_unset=True) if hasattr(room_update, 'model_dump') else room_update
+        
+        for field, value in update_data.items():
+            if hasattr(room, field):
+                setattr(room, field, value)
+
+        self.db.flush()  # Flush để update nhưng chưa commit
+        return room
+
     def delete(self, room: Room) -> None:
         """Xóa phòng khỏi database.
 
@@ -274,6 +294,8 @@ class RoomRepository:
             self.db.query(
                 Room.id,
                 Room.room_number,
+                Room.room_name,
+                Room.description,
                 Room.area,
                 Room.capacity,
                 Room.status,
@@ -356,6 +378,8 @@ class RoomRepository:
             {
                 "id": row.id,
                 "room_number": row.room_number,
+                "room_name": row.room_name,
+                "description": row.description,
                 "building_name": row.building_name,
                 # 'room_type': RoomTypeSimple(id=row.room_type_id, name=row.room_type_name) if row.room_type_id else None,
                 "room_type": row.room_type_name ,

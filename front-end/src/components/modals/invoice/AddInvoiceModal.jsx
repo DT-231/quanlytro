@@ -86,8 +86,6 @@ const AddInvoiceModal = ({ isOpen, onClose, onAddSuccess, buildings = [] }) => {
 
           {activeTab === "water" && (
             <InvoiceWaterTab 
-              formData={formData}
-              setFormData={setFormData}
               calculations={calculations}
             />
           )}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { contractService } from "@/services/contractService";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,9 +15,15 @@ import {
 } from "@heroicons/react/24/solid";
 
 const ContractListPage = () => {
+  const { refreshUser } = useAuth();
   const [contracts, setContracts] = useState([]);
   const [status, setStatus] = useState("ALL");
   const [loading, setLoading] = useState(false);
+
+  // Refresh user info khi vào trang để đồng bộ role nếu có thay đổi
+  useEffect(() => {
+    refreshUser();
+  }, []);
 
   useEffect(() => {
     const fetchContracts = async () => {
@@ -25,7 +32,6 @@ const ContractListPage = () => {
         const params = status === "ALL" ? {} : { status };
         const response = await contractService.getAll(params);
 
-        
         setContracts(response.data.items);
       } catch (error) {
         console.error("Error fetching contracts:", error);
@@ -55,6 +61,8 @@ const ContractListPage = () => {
         return "secondary";
       case "TERMINATED":
         return "destructive";
+      case "TERMINATION_REQUESTED_BY_LANDLORD":
+        return "warning";
       default:
         return "outline";
     }
@@ -69,6 +77,8 @@ const ContractListPage = () => {
         return "Hết hạn";
       case "TERMINATED":
         return "Đã hủy";
+      case "TERMINATION_REQUESTED_BY_LANDLORD":
+        return "Yêu cầu chấm dứt hợp đồng";
       default:
         return "Không rõ";
     }
@@ -81,29 +91,42 @@ const ContractListPage = () => {
           Hợp đồng của tôi
         </h1>
 
-        <Card>
-          <CardHeader>
+        <Card className="p-4">
+          <CardHeader className="px-0">
             <CardTitle>Danh sách hợp đồng</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0">
             <Tabs defaultValue="ALL" onValueChange={setStatus}>
-              <TabsList className="grid w-full grid-cols-5">
-                {TABS.map(({ label, value, icon }) => (
-                  <TabsTrigger key={value} value={value}>
-                    <div className="flex items-center gap-2">
-                      {React.createElement(icon, { className: "w-5 h-5" })}
-                      {label}
-                    </div>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+              {/* Tabs với scroll ngang trên mobile */}
+              <div className="overflow-x-auto pb-2 -mx-2 px-2">
+                <TabsList className="inline-flex w-auto min-w-full sm:w-full sm:grid sm:grid-cols-5 gap-1 sm:gap-2">
+                  {TABS.map(({ label, value, icon }) => (
+                    <TabsTrigger
+                      key={value}
+                      value={value}
+                      className={
+                        value === "ACTIVE"
+                          ? "data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:border-green-600 hover:bg-green-50"
+                          : ""
+                      }
+                    >
+                      <div className="flex items-center gap-1 sm:gap-2 whitespace-nowrap">
+                        {React.createElement(icon, {
+                          className: "w-4 h-4 sm:w-5 sm:h-5 shrink-0",
+                        })}
+                        <span className="text-xs sm:text-sm">{label}</span>
+                      </div>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
               <TabsContent value={status}>
                 {loading ? (
                   <div className="text-center p-8">
                     <p>Đang tải danh sách hợp đồng...</p>
                   </div>
                 ) : contracts.length > 0 ? (
-                  <div className="mt-4 space-y-4">
+                  <div className="mt-4 space-y-4 flex flex-col gap-2">
                     {contracts.map((contract) => (
                       <Link
                         to={`/member/my-contracts/${contract.id}`}

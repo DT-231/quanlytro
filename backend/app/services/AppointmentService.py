@@ -143,13 +143,21 @@ class AppointmentService:
         # Gửi email thông báo nếu có email và trạng thái thay đổi
         if updated_appointment and update_data.status and appointment.email:
             try:
-                # Lấy thông tin phòng
+                # Lấy thông tin phòng và địa chỉ
                 room_number = "N/A"
                 building_name = "N/A"
+                building_address = None
+                ward_name = None
+                city_name = None
+                
                 if appointment.room:
                     room_number = appointment.room.room_number
                     if appointment.room.building:
                         building_name = appointment.room.building.building_name
+                        if appointment.room.building.address:
+                            building_address = appointment.room.building.address.address_line
+                            ward_name = appointment.room.building.address.ward
+                            city_name = appointment.room.building.address.city
 
                 # Format thời gian
                 apt_time = appointment.appointment_datetime.strftime("%d/%m/%Y lúc %H:%M")
@@ -163,6 +171,9 @@ class AppointmentService:
                     appointment_datetime=apt_time,
                     status=update_data.status,
                     admin_notes=update_data.admin_notes,
+                    building_address=building_address,
+                    ward_name=ward_name,
+                    city_name=city_name,
                 )
             except Exception as email_error:
                 # Log error but don't fail the update

@@ -1,19 +1,35 @@
+"""Auth Service - Business logic layer cho Authentication.
+
+Service xử lý các use case liên quan đến xác thực và phân quyền:
+- Đăng ký tài khoản
+- Đăng nhập
+- Làm mới token
+- Tạo tài khoản tenant
+"""
+
+from __future__ import annotations
+
+from uuid import UUID
+
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from uuid import UUID
 
 from app.repositories import role_repository, user_repository
 from app.schemas.user_schema import UserCreate, UserRegister
 
 
 class AuthService:
+    """Service xử lý business logic cho Authentication.
+    
+    Args:
+        db: SQLAlchemy Session được inject từ FastAPI Depends.
+    """
+    
     def __init__(self, db: Session):
         self.db = db
-        # user_repository in this package is a module; instantiate the class
         self.user_repo = user_repository.UserRepository(db)
         self.role_repo = role_repository.RoleRepository(db)
-        # self.permission_repo = permission_repository(db)
 
     def register_user(self, user_data: UserRegister):
         """
@@ -97,12 +113,13 @@ class AuthService:
         }
 
     def create_tenant_by_landlord(self, tenant_data: UserCreate, created_by: UUID = None):
-        """Chủ nhà tạo tài khoản cho người thuê.
+        """Chủ nhà tạo tài khoản cho người thuê (ban đầu là CUSTOMER).
 
         Flow:
         1. Check email đã tồn tại chưa
-        2. Nếu tồn tại và role=CUSTOMER → upgrade thành TENANT
-        3. Nếu chưa tồn tại → tạo mới với role=TENANT
+        2. Nếu tồn tại và role=CUSTOMER → giữ nguyên, trả về success
+        3. Nếu chưa tồn tại → tạo mới với role=CUSTOMER
+        4. Role sẽ tự động nâng lên TENANT khi ký hợp đồng ACTIVE
 
         Args:
             tenant_data: Thông tin người thuê
@@ -118,30 +135,21 @@ class AuthService:
         # Check if user exists
         existing_user = self.user_repo.get_by_email(tenant_data.email)
 
-        # Get TENANT role
-        tenant_role = (
-            self.db.query(Role).filter(Role.role_code == UserRole.TENANT.value).first()
+        # Get CUSTOMER role
+        customer_role = (
+            self.db.query(Role).filter(Role.role_code == UserRole.CUSTOMER.value).first()
         )
 
-        if not tenant_role:
-            return False, "Role TENANT không tồn tại trong hệ thống", None
+        if not customer_role:
+            return False, "Role CUSTOMER không tồn tại trong hệ thống", None
 
         if existing_user:
             # Check if user is CUSTOMER
-            customer_role = (
-                self.db.query(Role)
-                .filter(Role.role_code == UserRole.CUSTOMER.value)
-                .first()
-            )
-
             if existing_user.role_id == customer_role.id:
-                # Upgrade CUSTOMER to TENANT
-                existing_user.role_id = tenant_role.id
-                self.db.commit()
-                self.db.refresh(existing_user)
+                # User đã tồn tại với role CUSTOMER, giữ nguyên
                 return (
                     True,
-                    "Đã nâng cấp tài khoản từ CUSTOMER lên TENANT",
+                    "Tài khoản đã tồn tại với role CUSTOMER",
                     existing_user,
                 )
             else:
@@ -152,11 +160,11 @@ class AuthService:
                     None,
                 )
 
-        # Create new user with TENANT role
+        # Create new user with CUSTOMER role
         hashed = get_password_hash(tenant_data.password)
         data = tenant_data.model_dump(exclude={'avatar', 'cccd_front', 'cccd_back'})
         data["password"] = hashed
-        data["role_id"] = tenant_role.id  # Force TENANT role
+        data["role_id"] = customer_role.id  # Force CUSTOMER role
 
         try:
             user_obj = self.user_repo.create_user(user_in=data)
@@ -178,7 +186,7 @@ class AuthService:
                     # Log error but don't fail user creation
                     print(f"Warning: Failed to upload documents: {str(e)}")
             
-            return True, "Đã tạo tài khoản người thuê mới thành công", user_obj
+            return True, "Đã tạo tài khoản CUSTOMER mới thành công (sẽ tự động nâng lên TENANT khi có hợp đồng)", user_obj
         except IntegrityError as e:
             self.db.rollback()
             # Xử lý lỗi duplicate key
@@ -232,6 +240,62 @@ class AuthService:
         self.db.refresh(user)
 
         return True, "Đã nâng cấp lên TENANT", user
+
+    def downgrade_tenant_to_customer(self, user_id):
+        """
+        Hạ cấp TENANT về CUSTOMER khi không còn hợp đồng hoạt động.
+
+        Args:
+            user_id: UUID của user cần downgrade
+
+        Returns:
+            Tuple (success, message, user_obj)
+        """
+        from app.models.role import Role
+        from app.core.Enum.userEnum import UserRole
+        from app.models.contract import Contract
+        from app.core.Enum.contractEnum import ContractStatus
+
+        user = self.user_repo.get_by_id(user_id)
+        if not user:
+            return False, "User không tồn tại", None
+
+        # Get roles
+        customer_role = (
+            self.db.query(Role)
+            .filter(Role.role_code == UserRole.CUSTOMER.value)
+            .first()
+        )
+        tenant_role = (
+            self.db.query(Role).filter(Role.role_code == UserRole.TENANT.value).first()
+        )
+
+        if not customer_role or not tenant_role:
+            return False, "Role không tồn tại trong hệ thống", None
+
+        # Check if user is TENANT
+        if user.role_id != tenant_role.id:
+            return False, f"User không phải TENANT, không thể hạ cấp", None
+
+        # Check if user has any ACTIVE contracts
+        active_contracts = (
+            self.db.query(Contract)
+            .filter(
+                Contract.tenant_id == user_id,
+                Contract.status == ContractStatus.ACTIVE.value
+            )
+            .count()
+        )
+
+        if active_contracts > 0:
+            return False, f"User còn {active_contracts} hợp đồng đang hoạt động, không thể hạ về CUSTOMER", None
+
+        # Downgrade to CUSTOMER
+        user.role_id = customer_role.id
+        self.db.commit()
+        self.db.refresh(user)
+
+        return True, "Đã hạ cấp về CUSTOMER", user
 
     def refresh_access_token(self, refresh_token: str):
         """Validate refresh token and issue a new access token."""

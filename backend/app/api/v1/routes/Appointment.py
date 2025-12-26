@@ -20,6 +20,7 @@ from app.schemas.appointment_schema import (
     AppointmentUpdate,
     AppointmentResponse,
     AppointmentListResponse,
+    AppointmentDetailResponse,
 )
 from app.services.AppointmentService import AppointmentService
 from app.core import response
@@ -126,6 +127,12 @@ def get_appointments(
                 apt_dict["room_number"] = apt.room.room_number
                 if apt.room.building:
                     apt_dict["building_name"] = apt.room.building.building_name
+                    # Thêm thông tin địa chỉ từ address
+                    if apt.room.building.address:
+                        apt_dict["building_address"] = apt.room.building.address.address_line
+                        apt_dict["ward_name"] = apt.room.building.address.ward
+                        apt_dict["district_name"] = None  # Address model không có district
+                        apt_dict["city_name"] = apt.room.building.address.city
             appointment_list.append(apt_dict)
 
         return response.success(
@@ -178,6 +185,12 @@ def get_pending_appointments(
                 apt_dict["room_number"] = apt.room.room_number
                 if apt.room.building:
                     apt_dict["building_name"] = apt.room.building.building_name
+                    # Thêm thông tin địa chỉ từ address
+                    if apt.room.building.address:
+                        apt_dict["building_address"] = apt.room.building.address.address_line
+                        apt_dict["ward_name"] = apt.room.building.address.ward
+                        apt_dict["district_name"] = None  # Address model không có district
+                        apt_dict["city_name"] = apt.room.building.address.city
             appointment_list.append(apt_dict)
 
         return response.success(
@@ -227,9 +240,12 @@ def get_my_appointments(
                 apt_dict["room_number"] = apt.room.room_number
                 if apt.room.building:
                     apt_dict["building_name"] = apt.room.building.building_name
-                    # Thêm địa chỉ nếu có
+                    # Thêm thông tin địa chỉ từ address
                     if apt.room.building.address:
-                        apt_dict["address"] = apt.room.building.address.address_line
+                        apt_dict["building_address"] = apt.room.building.address.address_line
+                        apt_dict["ward_name"] = apt.room.building.address.ward
+                        apt_dict["district_name"] = None  # Address model không có district
+                        apt_dict["city_name"] = apt.room.building.address.city
             appointment_list.append(apt_dict)
 
         return response.success(
@@ -247,7 +263,7 @@ def get_my_appointments(
 
 @router.get(
     "/{appointment_id}",
-    response_model=Response[AppointmentResponse],
+    response_model=Response[AppointmentDetailResponse],
     status_code=status.HTTP_200_OK,
     summary="Xem chi tiết appointment (Admin only)",
     description="API lấy thông tin chi tiết của một appointment",
@@ -274,8 +290,20 @@ def get_appointment(
                 message="Không tìm thấy appointment",
             )
 
+        # Chuyển sang dict và thêm thông tin room/building
+        apt_dict = AppointmentDetailResponse.model_validate(appointment).model_dump()
+        if appointment.room:
+            apt_dict["room_number"] = appointment.room.room_number
+            if appointment.room.building:
+                apt_dict["building_name"] = appointment.room.building.building_name
+                if appointment.room.building.address:
+                    apt_dict["building_address"] = appointment.room.building.address.address_line
+                    apt_dict["ward_name"] = appointment.room.building.address.ward
+                    apt_dict["district_name"] = None
+                    apt_dict["city_name"] = appointment.room.building.address.city
+
         return response.success(
-            data=AppointmentResponse.model_validate(appointment),
+            data=apt_dict,
             message="Lấy thông tin appointment thành công",
         )
     except BadRequestException:

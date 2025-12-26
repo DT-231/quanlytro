@@ -1,0 +1,182 @@
+[
+    {
+        "building_code": "BLD-1-4180",
+        "building_name": "Nhà trọ Minh Tâm Garden",
+        "description": "Tòa nhà cao cấp tại Quận Đống Đa, Tp. Hà Nội. Vị trí đắc địa, tiện ích vượt trội.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "164 Đường Minh Tâm",
+            "ward": "Quận Đống Đa",
+            "city": "Tp. Hà Nội",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-1-2013",
+        "building_name": "Khu trọ Thị xã Sơn Tây Xanh",
+        "description": "Tòa nhà cao cấp tại Thị xã Sơn Tây, Tp. Hà Nội. Vị trí đắc địa, tiện ích vượt trội.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "686 Đường Minh Tâm",
+            "ward": "Thị xã Sơn Tây",
+            "city": "Tp. Hà Nội",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-1-6588",
+        "building_name": "Tòa nhà Hoàng Anh Tower",
+        "description": "Tòa nhà cao cấp tại Huyện Chương Mỹ, Tp. Hà Nội. Vị trí đắc địa, tiện ích vượt trội.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "377 Đường Hoàng Anh",
+            "ward": "Huyện Chương Mỹ",
+            "city": "Tp. Hà Nội",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-1-1123",
+        "building_name": "Chung cư Tp. Hà Nội Luxury",
+        "description": "Tòa nhà cao cấp tại Huyện Mê Linh, Tp. Hà Nội. Vị trí đắc địa, tiện ích vượt trội.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "123 Đường Minh Tâm",
+            "ward": "Huyện Mê Linh",
+            "city": "Tp. Hà Nội",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-1-5124",
+        "building_name": "Chung cư Tp. Hà Nội Luxury",
+        "description": "Tòa nhà cao cấp tại Quận Long Biên, Tp. Hà Nội. Vị trí đắc địa, tiện ích vượt trội.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "939 Đường Phúc Lộc",
+            "ward": "Quận Long Biên",
+            "city": "Tp. Hà Nội",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-32-5629",
+        "building_name": "Building Hải Đăng Plaza",
+        "description": "Tòa nhà cao cấp tại Quận Sơn Trà, Tp. Đà Nẵng. Vị trí đắc địa, tiện ích vượt trội.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "337 Đường Hải Đăng",
+            "ward": "Quận Sơn Trà",
+            "city": "Tp. Đà Nẵng",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-32-7233",
+        "building_name": "Apartment Huyện Hòa Vang Elite",
+        "description": "Tòa nhà cao cấp tại Huyện Hòa Vang, Tp. Đà Nẵng. Vị trí đắc địa, tiện ích vượt trội.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "611 Đường Hải Đăng",
+            "ward": "Huyện Hòa Vang",
+            "city": "Tp. Đà Nẵng",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-32-7295",
+        "building_name": "Khu trọ Huyện Hòa Vang Xanh",
+        "description": "Tòa nhà cao cấp tại Huyện Hòa Vang, Tp. Đà Nẵng. Vị trí đắc địa, tiện ích vượt trội.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "27 Đường Ngọc Bích",
+            "ward": "Huyện Hòa Vang",
+            "city": "Tp. Đà Nẵng",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-32-3562",
+        "building_name": "Căn hộ dịch vụ Huyện Hòa Vang Central",
+        "description": "Tòa nhà cao cấp tại Huyện Hòa Vang, Tp. Đà Nẵng. Vị trí đắc địa, tiện ích vượt trội.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "733 Đường Thanh Xuân",
+            "ward": "Huyện Hòa Vang",
+            "city": "Tp. Đà Nẵng",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-32-7757",
+        "building_name": "Khu trọ Quận Ngũ Hành Sơn Xanh",
+        "description": "Tòa nhà cao cấp tại Quận Ngũ Hành Sơn, Tp. Đà Nẵng. Vị trí đắc địa, tiện ích vượt trội.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "518 Đường An Bình",
+            "ward": "Quận Ngũ Hành Sơn",
+            "city": "Tp. Đà Nẵng",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-50-7881",
+        "building_name": "Building Phúc Lộc Plaza",
+        "description": "Tòa nhà cao cấp tại Quận 11, Tp. Hồ Chí Minh. Vị trí đắc địa, tiện ích vượt trội.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "526 Đường Phúc Lộc",
+            "ward": "Quận 11",
+            "city": "Tp. Hồ Chí Minh",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-50-6276",
+        "building_name": "Nhà trọ Phúc Lộc Garden",
+        "description": "Tòa nhà cao cấp tại Quận 12, Tp. Hồ Chí Minh. Vị trí đắc địa, tiện ích vượt trội.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "512 Đường Phúc Lộc",
+            "ward": "Quận 12",
+            "city": "Tp. Hồ Chí Minh",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-50-1193",
+        "building_name": "Chung cư Tp. Hồ Chí Minh Luxury",
+        "description": "Tòa nhà cao cấp tại Quận Phú Nhuận, Tp. Hồ Chí Minh. Vị trí đắc địa, tiện ích vượt trội.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "290 Đường Minh Tâm",
+            "ward": "Quận Phú Nhuận",
+            "city": "Tp. Hồ Chí Minh",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-50-2765",
+        "building_name": "Apartment Quận Tân Bình Elite",
+        "description": "Tòa nhà cao cấp tại Quận Tân Bình, Tp. Hồ Chí Minh. Vị trí đắc địa, tiện ích vượt trội.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "315 Đường Phúc Lộc",
+            "ward": "Quận Tân Bình",
+            "city": "Tp. Hồ Chí Minh",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-50-8302",
+        "building_name": "Apartment Thành phố Thủ Đức Elite",
+        "description": "Tòa nhà cao cấp tại Thành phố Thủ Đức, Tp. Hồ Chí Minh. Vị trí đắc địa, tiện ích vượt trội.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "729 Đường An Bình",
+            "ward": "Thành phố Thủ Đức",
+            "city": "Tp. Hồ Chí Minh",
+            "country": "Vietnam"
+        }
+    }
+]

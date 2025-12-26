@@ -217,6 +217,39 @@ def get_payment(
         )
 
 
+@router.post(
+    "/{payment_id}/check-status",
+    response_model=Response,
+    status_code=status.HTTP_200_OK,
+    summary="Kiểm tra và cập nhật trạng thái thanh toán từ PayOS",
+    description="""
+    Kiểm tra trạng thái thanh toán trực tiếp từ PayOS và cập nhật vào database.
+    Dùng khi webhook không hoạt động hoặc cần sync thủ công.
+    """
+)
+async def check_and_sync_payment_status(
+    payment_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    service: PaymentService = Depends(get_payment_service)
+):
+    """Kiểm tra và sync trạng thái thanh toán từ PayOS."""
+    try:
+        result = await service.check_and_sync_payos_status(payment_id)
+        return Response(
+            success=True,
+            message="Đã kiểm tra và cập nhật trạng thái thanh toán",
+            data=result
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error checking payment status: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
 @router.get(
     "/invoice/{invoice_id}",
     response_model=Response[list],

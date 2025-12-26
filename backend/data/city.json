@@ -1,147 +1,380 @@
-{
-  "total": 63,
-  "data": [
+[
     {
-      "id": "89",
-      "name": "An Giang",
-      "type": 2,
-      "typeText": "Tỉnh",
-      "slug": "ANGIANG"
+        "id": 28,
+        "name": "Hà Tĩnh",
+        "isNew": null,
+        "newId": 217
     },
     {
-      "id": "77",
-      "name": "Bà Rịa - Vũng Tàu",
-      "type": 2,
-      "typeText": "Tỉnh",
-      "slug": "BARIAVUNGTAU"
+        "id": 31,
+        "name": "Thừa Thiên Huế",
+        "isNew": null,
+        "newId": 219
     },
     {
-      "id": "24",
-      "name": "Bắc Giang",
-      "type": 2,
-      "typeText": "Tỉnh",
-      "slug": "BACGIANG"
+        "id": 46,
+        "name": "Tây Ninh",
+        "isNew": null,
+        "newId": null
     },
     {
-      "id": "6",
-      "name": "Bắc Kạn",
-      "type": 2,
-      "typeText": "Tỉnh",
-      "slug": "BACKAN"
+        "id": 44,
+        "name": "Lâm Đồng",
+        "isNew": null,
+        "newId": 223
     },
     {
-      "id": "95",
-      "name": "Bạc Liêu",
-      "type": 2,
-      "typeText": "Tỉnh",
-      "slug": "BACLIEU"
+        "id": 48,
+        "name": "Đồng Nai",
+        "isNew": null,
+        "newId": 212
     },
     {
-      "id": "27",
-      "name": "Bắc Ninh",
-      "type": 2,
-      "typeText": "Tỉnh",
-      "slug": "BACNINH"
+        "id": 43,
+        "name": "Đắk Nông",
+        "isNew": null,
+        "newId": 223
     },
     {
-      "id": "83",
-      "name": "Bến Tre",
-      "type": 2,
-      "typeText": "Tỉnh",
-      "slug": "BENTRE"
+        "id": 61,
+        "name": "Sóc Trăng",
+        "isNew": null,
+        "newId": 207
     },
     {
-      "id": "74",
-      "name": "Bình Dương",
-      "type": 2,
-      "typeText": "Tỉnh",
-      "slug": "BINHDUONG"
+        "id": 49,
+        "name": "Bà Rịa - Vũng Tàu",
+        "isNew": null,
+        "newId": 218
     },
     {
-      "id": "70",
-      "name": "Bình Phước",
-      "type": 2,
-      "typeText": "Tỉnh",
-      "slug": "BINHPHUOC"
+        "id": 21,
+        "name": "Hưng Yên",
+        "isNew": null,
+        "newId": 220
     },
     {
-      "id": "60",
-      "name": "Bình Thuận",
-      "type": 2,
-      "typeText": "Tỉnh",
-      "slug": "BINHTHUAN"
+        "id": 3,
+        "name": "Cao Bằng",
+        "isNew": null,
+        "newId": 208
     },
     {
-      "id": "52",
-      "name": "Bình Định",
-      "type": 2,
-      "typeText": "Tỉnh",
-      "slug": "BINHDINH"
+        "id": 12,
+        "name": "Thái Nguyên",
+        "isNew": null,
+        "newId": null
     },
     {
-      "id": "96",
-      "name": "Cà Mau",
-      "type": 2,
-      "typeText": "Tỉnh",
-      "slug": "CAMAU"
+        "id": 24,
+        "name": "Nam Định",
+        "isNew": null,
+        "newId": null
     },
     {
-      "id": "92",
-      "name": "Cần Thơ",
-      "type": 1,
-      "typeText": "Trung ương",
-      "slug": "CANTHO"
+        "id": 25,
+        "name": "Ninh Bình",
+        "isNew": null,
+        "newId": null
     },
     {
-      "id": "4",
-      "name": "Cao Bằng",
-      "type": 2,
-      "typeText": "Tỉnh",
-      "slug": "CAOBANG"
+        "id": 33,
+        "name": "Quảng Nam",
+        "isNew": null,
+        "newId": 210
     },
     {
-      "id": "64",
-      "name": "Gia Lai",
-      "type": 2,
-      "typeText": "Tỉnh",
-      "slug": "GIALAI"
+        "id": 36,
+        "name": "Phú Yên",
+        "isNew": null,
+        "newId": 209
     },
     {
-      "id": "2",
-      "name": "Hà Giang",
-      "type": 2,
-      "typeText": "Tỉnh",
-      "slug": "HAGIANG"
+        "id": 41,
+        "name": "Gia Lai",
+        "isNew": null,
+        "newId": 214
     },
     {
-      "id": "35",
-      "name": "Hà Nam",
-      "type": 2,
-      "typeText": "Tỉnh",
-      "slug": "HANAM"
+        "id": 11,
+        "name": "Hòa Bình",
+        "isNew": null,
+        "newId": null
     },
     {
-      "id": "1",
-      "name": "Hà Nội",
-      "type": 1,
-      "typeText": "Trung ương",
-      "slug": "HANOI"
+        "id": 27,
+        "name": "Nghệ An",
+        "isNew": null,
+        "newId": null
     },
     {
-      "id": "42",
-      "name": "Hà Tĩnh",
-      "type": 2,
-      "typeText": "Tỉnh",
-      "slug": "HATINH"
+        "id": 39,
+        "name": "Bình Thuận",
+        "isNew": null,
+        "newId": 223
     },
     {
-      "id": "30",
-      "name": "Hải Dương",
-      "type": 2,
-      "typeText": "Tỉnh",
-      "slug": "HAIDUONG"
+        "id": 42,
+        "name": "Đắk Lắk",
+        "isNew": null,
+        "newId": 209
+    },
+    {
+        "id": 47,
+        "name": "Bình Dương",
+        "isNew": null,
+        "newId": 218
+    },
+    {
+        "id": 51,
+        "name": "Long An",
+        "isNew": null,
+        "newId": null
+    },
+    {
+        "id": 56,
+        "name": "Đồng Tháp",
+        "isNew": null,
+        "newId": 213
+    },
+    {
+        "id": 19,
+        "name": "Hải Dương",
+        "isNew": null,
+        "newId": 215
+    },
+    {
+        "id": 20,
+        "name": "Tp. Hải Phòng",
+        "isNew": null,
+        "newId": 215
+    },
+    {
+        "id": 55,
+        "name": "Vĩnh Long",
+        "isNew": null,
+        "newId": null
+    },
+    {
+        "id": 9,
+        "name": "Sơn La",
+        "isNew": null,
+        "newId": null
+    },
+    {
+        "id": 1,
+        "name": "Tp. Hà Nội",
+        "isNew": null,
+        "newId": 216
+    },
+    {
+        "id": 5,
+        "name": "Tuyên Quang",
+        "isNew": null,
+        "newId": null
+    },
+    {
+        "id": 57,
+        "name": "An Giang",
+        "isNew": null,
+        "newId": 204
+    },
+    {
+        "id": 13,
+        "name": "Lạng Sơn",
+        "isNew": null,
+        "newId": 224
+    },
+    {
+        "id": 32,
+        "name": "Tp. Đà Nẵng",
+        "isNew": null,
+        "newId": 210
+    },
+    {
+        "id": 54,
+        "name": "Trà Vinh",
+        "isNew": null,
+        "newId": null
+    },
+    {
+        "id": 14,
+        "name": "Quảng Ninh",
+        "isNew": null,
+        "newId": null
+    },
+    {
+        "id": 18,
+        "name": "Bắc Ninh",
+        "isNew": null,
+        "newId": 205
+    },
+    {
+        "id": 50,
+        "name": "Tp. Hồ Chí Minh",
+        "isNew": null,
+        "newId": 218
+    },
+    {
+        "id": 6,
+        "name": "Lào Cai",
+        "isNew": null,
+        "newId": null
+    },
+    {
+        "id": 10,
+        "name": "Yên Bái",
+        "isNew": null,
+        "newId": null
+    },
+    {
+        "id": 26,
+        "name": "Thanh Hóa",
+        "isNew": null,
+        "newId": null
+    },
+    {
+        "id": 30,
+        "name": "Quảng Trị",
+        "isNew": null,
+        "newId": null
+    },
+    {
+        "id": 53,
+        "name": "Bến Tre",
+        "isNew": null,
+        "newId": null
+    },
+    {
+        "id": 60,
+        "name": "Hậu Giang",
+        "isNew": null,
+        "newId": 207
+    },
+    {
+        "id": 29,
+        "name": "Quảng Bình",
+        "isNew": null,
+        "newId": null
+    },
+    {
+        "id": 37,
+        "name": "Khánh Hòa",
+        "isNew": null,
+        "newId": 221
+    },
+    {
+        "id": 63,
+        "name": "Cà Mau",
+        "isNew": null,
+        "newId": 206
+    },
+    {
+        "id": 34,
+        "name": "Quảng Ngãi",
+        "isNew": null,
+        "newId": null
+    },
+    {
+        "id": 40,
+        "name": "Kon Tum",
+        "isNew": null,
+        "newId": null
+    },
+    {
+        "id": 52,
+        "name": "Tiền Giang",
+        "isNew": null,
+        "newId": 213
+    },
+    {
+        "id": 17,
+        "name": "Vĩnh Phúc",
+        "isNew": null,
+        "newId": null
+    },
+    {
+        "id": 62,
+        "name": "Bạc Liêu",
+        "isNew": null,
+        "newId": 206
+    },
+    {
+        "id": 4,
+        "name": "Bắc Kạn",
+        "isNew": null,
+        "newId": null
+    },
+    {
+        "id": 16,
+        "name": "Phú Thọ",
+        "isNew": null,
+        "newId": null
+    },
+    {
+        "id": 45,
+        "name": "Bình Phước",
+        "isNew": null,
+        "newId": 212
+    },
+    {
+        "id": 2,
+        "name": "Hà Giang",
+        "isNew": null,
+        "newId": null
+    },
+    {
+        "id": 8,
+        "name": "Lai Châu",
+        "isNew": null,
+        "newId": 222
+    },
+    {
+        "id": 23,
+        "name": "Hà Nam",
+        "isNew": null,
+        "newId": null
+    },
+    {
+        "id": 15,
+        "name": "Bắc Giang",
+        "isNew": null,
+        "newId": 205
+    },
+    {
+        "id": 7,
+        "name": "Điện Biên",
+        "isNew": null,
+        "newId": 211
+    },
+    {
+        "id": 22,
+        "name": "Thái Bình",
+        "isNew": null,
+        "newId": 220
+    },
+    {
+        "id": 35,
+        "name": "Bình Định",
+        "isNew": null,
+        "newId": 214
+    },
+    {
+        "id": 38,
+        "name": "Ninh Thuận",
+        "isNew": null,
+        "newId": 221
+    },
+    {
+        "id": 58,
+        "name": "Kiên Giang",
+        "isNew": null,
+        "newId": 204
+    },
+    {
+        "id": 59,
+        "name": "Tp. Cần Thơ",
+        "isNew": null,
+        "newId": 207
     }
-  ],
-  "code": "success",
-  "message": null
-}
+]

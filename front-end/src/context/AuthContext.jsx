@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { userService } from '@/services/userService';
 
 const AuthContext = createContext();
 
@@ -24,7 +25,7 @@ export function AuthProvider({ children }) {
           setUser(parsedUser);
           setToken(parsedToken);
         }
-      } catch (error) {
+      } catch {
         console.warn('Phát hiện dữ liệu đăng nhập lỗi, tiến hành reset session.');
         localStorage.removeItem('user');
         localStorage.removeItem('token');
@@ -55,6 +56,21 @@ export function AuthProvider({ children }) {
     window.location.href = '/'; 
   };
 
+  const refreshUser = async () => {
+    try {
+      const response = await userService.getCurrentUser();
+      if (response?.data) {
+        const updatedUser = response.data;
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        return updatedUser;
+      }
+    } catch (error) {
+      console.error('Error refreshing user:', error);
+      return null;
+    }
+  };
+
   const getAccessToken = () => token?.access_token || null;
   const getRefreshToken = () => token?.refresh_token || null;
 
@@ -64,6 +80,7 @@ export function AuthProvider({ children }) {
       token, 
       login, 
       logout, 
+      refreshUser,
       loading, 
       getAccessToken, 
       getRefreshToken 

@@ -7,17 +7,34 @@ Thư mục này chứa tất cả các SQLAlchemy models cho hệ thống quản
 ### Base Model
 - `base.py`: Chứa BaseModel với UUID primary key và timestamps
 
-### Main Models
-- `user.py`: Model User với các roles (admin, tenant, visitor)
+### User & Role Models
+- `user.py`: Model User với các roles (admin, tenant, customer)
+- `role.py`: Model Role cho phân quyền
+- `user_document.py`: Model UserDocument cho tài liệu người dùng (CCCD, avatar)
+
+### Address & Building Models
+- `address.py`: Model Address cho địa chỉ
+- `building.py`: Model Building cho tòa nhà
+- `building_photo.py`: Model BuildingPhoto cho ảnh tòa nhà
+
+### Room Models
 - `room.py`: Model Room với thông tin phòng trọ
+- `room_type.py`: Model RoomType cho loại phòng
+- `room_utility.py`: Model RoomUtility cho tiện ích phòng
+- `room_photo.py`: Model RoomPhoto cho ảnh phòng
+
+### Business Models
 - `contract.py`: Model Contract cho hợp đồng thuê
+- `contract_document.py`: Model ContractDocument cho tài liệu hợp đồng
+- `contract_pending_change.py`: Model ContractPendingChange cho thay đổi hợp đồng chờ duyệt
 - `invoice.py`: Model Invoice cho hóa đơn
+- `invoice_proof.py`: Model InvoiceProof cho chứng từ hóa đơn
 - `payment.py`: Model Payment cho thanh toán
 - `maintenance_request.py`: Model MaintenanceRequest cho yêu cầu bảo trì
+- `maintenance_photo.py`: Model MaintenancePhoto cho ảnh bảo trì
 - `notification.py`: Model Notification cho thông báo
 - `review.py`: Model Review cho đánh giá
-- `room_utility.py`: Model RoomUtility cho tiện ích phòng
-- `media_file.py`: Model MediaFile cho file đính kèm
+- `appointment.py`: Model Appointment cho lịch hẹn xem phòng
 
 
 ## Đặc điểm chính

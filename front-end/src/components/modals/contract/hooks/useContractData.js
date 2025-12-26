@@ -16,7 +16,7 @@ export function useContractData(isOpen) {
         const [resRooms, resTenants] = await Promise.all([
           // Lấy cả AVAILABLE và OCCUPIED để có thể tạo hợp đồng cho phòng ở ghép
           roomService.getAll({ size: 100 }),
-          userService.getAll({ size: 100, role_code: "TENANT" }),
+          userService.getAll({ size: 100 }),
         ]);
 
         let fetchedRooms = [];
@@ -25,13 +25,15 @@ export function useContractData(isOpen) {
         } else if (resRooms?.items) {
           fetchedRooms = resRooms.items;
         }
-        
+
         // Filter phòng có thể tạo hợp đồng: AVAILABLE hoặc OCCUPIED còn chỗ
         const availableRooms = fetchedRooms.filter((room) => {
           const currentOccupants = room.current_occupants || 0;
           const capacity = room.capacity || 1;
-          return room.status === "AVAILABLE" || 
-                 (room.status === "OCCUPIED" && currentOccupants < capacity);
+          return (
+            room.status === "AVAILABLE" ||
+            (room.status === "OCCUPIED" && currentOccupants < capacity)
+          );
         });
         setRooms(availableRooms);
 

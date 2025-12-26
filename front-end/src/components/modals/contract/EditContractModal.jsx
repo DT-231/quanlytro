@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // --- 1. SCHEMA VALIDATION ---
 // Các trường là optional, nhưng nếu nhập thì phải đúng định dạng số/ngày
@@ -57,7 +56,6 @@ export default function EditContractModal({
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [fullContractData, setFullContractData] = useState(null);
 
   // --- 2. INIT FORM ---
   const form = useForm({

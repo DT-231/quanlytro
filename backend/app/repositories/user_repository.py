@@ -13,7 +13,7 @@ class UserRepository:
         self.db = db
 
     def get_by_id(self, user_id: UUID) -> Optional[User]:
-        """Lấy user theo ID với eager loading role.
+        """Lấy user theo ID với eager loading role và user_documents.
         
         Args:
             user_id: UUID của user
@@ -23,7 +23,7 @@ class UserRepository:
         """
         return (
             self.db.query(User)
-            .options(joinedload(User.role))
+            .options(joinedload(User.role), joinedload(User.user_documents))
             .filter(User.id == user_id)
             .first()
         )

@@ -171,16 +171,7 @@ const InvoiceManagement = () => {
      navigate(`/admin/invoices/${invoiceId}`);
   };
 
-  // 1. Logic lọc tìm kiếm 
-  const filteredInvoices = useMemo(() => {
-      if (!debounceSearchValue) return invoices;
-      return invoices.filter(i => 
-        (i.tenant_name && i.tenant_name.toLowerCase().includes(debounceSearchValue.toLowerCase())) ||
-        (i.room_number && i.room_number.toLowerCase().includes(debounceSearchValue.toLowerCase()))
-      );
-  }, [invoices, debounceSearchValue]);
-
-  // 2. LOGIC CẮT TRANG 
+  // LOGIC CẮT TRANG 
   const paginatedInvoices = useMemo(() => {
       const startIndex = (currentPage - 1) * pagination.pageSize;
       const endIndex = startIndex + pagination.pageSize;

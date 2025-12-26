@@ -134,14 +134,15 @@ class ContractService:
                 room_update = RoomUpdate(status=RoomStatus.RESERVED.value)
                 self.room_repo.update(room, room_update)
         
-        # 7. Upgrade tenant từ CUSTOMER → TENANT (nếu là CUSTOMER)
-        from app.services.AuthService import AuthService
-        auth_service = AuthService(self.db)
-        ok, msg, upgraded_tenant = auth_service.upgrade_customer_to_tenant(data.tenant_id)
-        if ok:
-            print(f"✅ Upgraded user {data.tenant_id} to TENANT: {msg}")
-        else:
-            print(f"ℹ️ User {data.tenant_id} not upgraded: {msg}")
+        # 7. Upgrade tenant từ CUSTOMER → TENANT chỉ khi hợp đồng ACTIVE
+        if contract_status == ContractStatus.ACTIVE.value:
+            from app.services.AuthService import AuthService
+            auth_service = AuthService(self.db)
+            ok, msg, upgraded_tenant = auth_service.upgrade_customer_to_tenant(data.tenant_id)
+            if ok:
+                print(f"✅ Upgraded user {data.tenant_id} to TENANT: {msg}")
+            else:
+                print(f"ℹ️ User {data.tenant_id} not upgraded: {msg}")
         
         # 8. Convert ORM sang Pydantic schema
         return ContractOut.model_validate(contract_orm)
@@ -322,12 +323,30 @@ class ContractService:
                         if room.status in [RoomStatus.OCCUPIED.value, RoomStatus.RESERVED.value]:
                             room_update = RoomUpdate(status=RoomStatus.AVAILABLE.value)
                             self.room_repo.update(room, room_update)
+                    
+                    # Downgrade tenant về CUSTOMER nếu không còn hợp đồng ACTIVE nào
+                    from app.services.AuthService import AuthService
+                    auth_service = AuthService(self.db)
+                    ok, msg, downgraded_tenant = auth_service.downgrade_tenant_to_customer(contract_orm.tenant_id)
+                    if ok:
+                        print(f"✅ Downgraded user {contract_orm.tenant_id} to CUSTOMER: {msg}")
+                    else:
+                        print(f"ℹ️ User {contract_orm.tenant_id} not downgraded: {msg}")
                 
                 # Nếu hợp đồng chuyển sang ACTIVE (từ PENDING), chuyển phòng sang OCCUPIED
                 elif new_status == ContractStatus.ACTIVE.value and old_status == ContractStatus.PENDING.value:
                     if room.status in [RoomStatus.AVAILABLE.value, RoomStatus.RESERVED.value]:
                         room_update = RoomUpdate(status=RoomStatus.OCCUPIED.value)
                         self.room_repo.update(room, room_update)
+                    
+                    # Upgrade tenant từ CUSTOMER → TENANT khi chuyển sang ACTIVE
+                    from app.services.AuthService import AuthService
+                    auth_service = AuthService(self.db)
+                    ok, msg, upgraded_tenant = auth_service.upgrade_customer_to_tenant(contract_orm.tenant_id)
+                    if ok:
+                        print(f"✅ Upgraded user {contract_orm.tenant_id} to TENANT: {msg}")
+                    else:
+                        print(f"ℹ️ User {contract_orm.tenant_id} not upgraded: {msg}")
                 
                 # Nếu hợp đồng chuyển sang PENDING (từ ACTIVE - trường hợp hiếm)
                 elif new_status == ContractStatus.PENDING.value and old_status == ContractStatus.ACTIVE.value:
@@ -341,6 +360,15 @@ class ContractService:
                     if remaining_tenants == 0 and room.status == RoomStatus.OCCUPIED.value:
                         room_update = RoomUpdate(status=RoomStatus.RESERVED.value)
                         self.room_repo.update(room, room_update)
+                    
+                    # Downgrade tenant về CUSTOMER nếu không còn hợp đồng ACTIVE nào
+                    from app.services.AuthService import AuthService
+                    auth_service = AuthService(self.db)
+                    ok, msg, downgraded_tenant = auth_service.downgrade_tenant_to_customer(contract_orm.tenant_id)
+                    if ok:
+                        print(f"✅ Downgraded user {contract_orm.tenant_id} to CUSTOMER: {msg}")
+                    else:
+                        print(f"ℹ️ User {contract_orm.tenant_id} not downgraded: {msg}")
         
         # 5. Get lại với relations
         contract_orm = self.contract_repo.get_by_id_with_relations(contract_id)
@@ -401,8 +429,21 @@ class ContractService:
                     room_update = RoomUpdate(status=RoomStatus.AVAILABLE.value)
                     self.room_repo.update(room, room_update)
         
+        # Lưu tenant_id trước khi xóa hợp đồng
+        tenant_id = contract_orm.tenant_id
+        
         # Xóa hợp đồng
         self.contract_repo.delete(contract_orm)
+        
+        # Downgrade tenant về CUSTOMER nếu không còn hợp đồng ACTIVE nào
+        # (Phải làm sau khi xóa hợp đồng để đếm chính xác số hợp đồng còn lại)
+        from app.services.AuthService import AuthService
+        auth_service = AuthService(self.db)
+        ok, msg, downgraded_tenant = auth_service.downgrade_tenant_to_customer(tenant_id)
+        if ok:
+            print(f"✅ Downgraded user {tenant_id} to CUSTOMER: {msg}")
+        else:
+            print(f"ℹ️ User {tenant_id} not downgraded: {msg}")
     
     def confirm_contract(self, contract_id: UUID, tenant_id: UUID) -> ContractOut:
         """Tenant xác nhận hợp đồng PENDING → chuyển sang ACTIVE.
@@ -434,7 +475,18 @@ class ContractService:
         
         # Chuyển sang ACTIVE
         update_data = ContractUpdate(status=ContractStatus.ACTIVE.value)
-        return self.update_contract(contract_id, update_data)
+        updated_contract = self.update_contract(contract_id, update_data)
+        
+        # Upgrade tenant từ CUSTOMER → TENANT khi confirm hợp đồng
+        from app.services.AuthService import AuthService
+        auth_service = AuthService(self.db)
+        ok, msg, upgraded_tenant = auth_service.upgrade_customer_to_tenant(contract_orm.tenant_id)
+        if ok:
+            print(f"✅ Upgraded user {contract_orm.tenant_id} to TENANT: {msg}")
+        else:
+            print(f"ℹ️ User {contract_orm.tenant_id} not upgraded: {msg}")
+        
+        return updated_contract
     
     def reject_contract(self, contract_id: UUID, tenant_id: UUID) -> None:
         """Tenant từ chối hợp đồng PENDING → xóa hợp đồng.

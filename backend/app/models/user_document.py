@@ -5,7 +5,7 @@ Model này lưu trữ tài liệu cá nhân của người dùng theo database s
 
 from __future__ import annotations
 
-from sqlalchemy import Column, String, ForeignKey
+from sqlalchemy import Column, String, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -21,7 +21,7 @@ class UserDocument(BaseModel):
     
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     document_type = Column(String(20), nullable=False)  # AVATAR, CCCD_FRONT, CCCD_BACK
-    url = Column(String(500), nullable=False)
+    url = Column(Text, nullable=False)  # Changed from String(500) to Text for base64 images
     uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     
     # Relationships

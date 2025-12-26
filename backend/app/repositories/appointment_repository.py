@@ -30,9 +30,14 @@ class AppointmentRepository:
 
     def get_by_id(self, appointment_id: UUID) -> Optional[Appointment]:
         """Lấy appointment theo ID với thông tin room và building."""
+        from app.models.address import Address
         stmt = (
             select(Appointment)
-            .options(selectinload(Appointment.room).selectinload(Room.building))
+            .options(
+                selectinload(Appointment.room)
+                .selectinload(Room.building)
+                .selectinload(Building.address)
+            )
             .where(Appointment.id == appointment_id)
         )
         result = self.session.execute(stmt)
@@ -48,9 +53,14 @@ class AppointmentRepository:
         to_date: Optional[datetime] = None,
     ) -> List[Appointment]:
         """Lấy danh sách appointments với filter."""
+        from app.models.address import Address
         stmt = (
             select(Appointment)
-            .options(selectinload(Appointment.room).selectinload(Room.building))
+            .options(
+                selectinload(Appointment.room)
+                .selectinload(Room.building)
+                .selectinload(Building.address)
+            )
             .order_by(Appointment.appointment_datetime.desc())
         )
 
@@ -74,9 +84,14 @@ class AppointmentRepository:
 
     def get_pending_appointments(self) -> List[Appointment]:
         """Lấy danh sách appointments đang chờ xử lý."""
+        from app.models.address import Address
         stmt = (
             select(Appointment)
-            .options(selectinload(Appointment.room).selectinload(Room.building))
+            .options(
+                selectinload(Appointment.room)
+                .selectinload(Room.building)
+                .selectinload(Building.address)
+            )
             .where(Appointment.status == AppointmentStatus.PENDING)
             .order_by(Appointment.appointment_datetime.asc())
         )
@@ -143,6 +158,7 @@ class AppointmentRepository:
         Returns:
             List appointments khớp với email hoặc phone
         """
+        from app.models.address import Address
         stmt = (
             select(Appointment)
             .options(

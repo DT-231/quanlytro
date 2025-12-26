@@ -281,13 +281,25 @@ export default function AppointmentManagementPage() {
             >
               <CardHeader className="p-2">
                 <div className="flex justify-between items-start">
-                  <div>
+                  <div className="flex-1">
                     <CardTitle className="text-lg">
                       {appointment.full_name}
                     </CardTitle>
-                    <CardDescription>
-                      Phòng {appointment.room_number} -{" "}
-                      {appointment.building_name}
+                    <CardDescription className="mt-1">
+                      <div className="space-y-1">
+                        <div>
+                          Phòng {appointment.room_number} - {appointment.building_name}
+                        </div>
+                        {(appointment.building_address || appointment.ward_name || appointment.city_name) && (
+                          <div className="text-xs text-gray-500">
+                            {[
+                              appointment.building_address,
+                              appointment.ward_name,
+                              appointment.city_name
+                            ].filter(Boolean).join(", ")}
+                          </div>
+                        )}
+                      </div>
                     </CardDescription>
                   </div>
                   {getStatusBadge(appointment.status)}
@@ -370,7 +382,7 @@ export default function AppointmentManagementPage() {
                     variant={currentPage === pageNum ? "default" : "outline"}
                     size="sm"
                     onClick={() => handlePageChange(pageNum)}
-                    className="min-w-[36px]"
+                    className="min-w-9"
                   >
                     {pageNum}
                   </Button>
@@ -429,6 +441,30 @@ export default function AppointmentManagementPage() {
               <div className="space-y-3">
                 <h3 className="font-semibold text-lg">Thông tin lịch hẹn</h3>
                 <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <Label className="text-gray-500">Phòng</Label>
+                    <p className="font-medium">
+                      Phòng {selectedAppointment.room_number || "N/A"}
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-gray-500">Tòa nhà</Label>
+                    <p className="font-medium">
+                      {selectedAppointment.building_name || "N/A"}
+                    </p>
+                  </div>
+                  {(selectedAppointment.building_address || selectedAppointment.ward_name || selectedAppointment.city_name) && (
+                    <div className="col-span-2">
+                      <Label className="text-gray-500">Địa chỉ</Label>
+                      <p className="font-medium">
+                        {[
+                          selectedAppointment.building_address,
+                          selectedAppointment.ward_name,
+                          selectedAppointment.city_name
+                        ].filter(Boolean).join(", ")}
+                      </p>
+                    </div>
+                  )}
                   <div className="col-span-2">
                     <Label className="text-gray-500">Thời gian hẹn</Label>
                     <p className="font-medium">

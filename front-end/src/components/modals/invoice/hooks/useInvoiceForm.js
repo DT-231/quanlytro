@@ -8,7 +8,7 @@ const DEFAULT_PRICES = {
   WATER_PERSON: 100000,
 };
 
-export const useInvoiceForm = ({ isOpen, buildings, onSuccess, onClose }) => {
+export const useInvoiceForm = ({ isOpen, onSuccess, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [rooms, setRooms] = useState([]);
   const [roomDetail, setRoomDetail] = useState(null);

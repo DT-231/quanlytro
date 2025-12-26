@@ -10,7 +10,7 @@ VN_TZ = timezone(timedelta(hours=7))
 class AppointmentCreate(BaseModel):
     """Schema để tạo lịch hẹn xem phòng mới."""
     full_name: str = Field(..., min_length=2, max_length=100, description="Họ và tên người đặt lịch")
-    phone: str = Field(..., min_length=10, max_length=20, description="Số điện thoại liên hệ")
+    phone: Optional[str] = Field(None, max_length=20, description="Số điện thoại liên hệ")
     email: Optional[EmailStr] = Field(None, description="Email (không bắt buộc)")
     room_id: UUID = Field(..., description="ID của phòng muốn xem")
     appointment_datetime: datetime = Field(..., description="Thời gian muốn xem phòng")
@@ -58,7 +58,7 @@ class AppointmentResponse(BaseModel):
     """Schema response cho appointment."""
     id: UUID
     full_name: str
-    phone: str
+    phone: Optional[str]
     email: Optional[str]
     room_id: UUID
     appointment_datetime: datetime
@@ -78,14 +78,45 @@ class AppointmentListResponse(BaseModel):
     """Schema response cho danh sách appointments."""
     id: UUID
     full_name: str
-    phone: str
+    phone: Optional[str]
     email: Optional[str]
     room_id: UUID
     room_number: Optional[str] = None  # Sẽ join từ Room
     building_name: Optional[str] = None  # Sẽ join từ Building
+    building_address: Optional[str] = None  # Địa chỉ đầy đủ của tòa nhà
+    ward_name: Optional[str] = None  # Phường/Xã
+    district_name: Optional[str] = None  # Quận/Huyện
+    city_name: Optional[str] = None  # Tỉnh/Thành phố
     appointment_datetime: datetime
     status: str
     created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AppointmentDetailResponse(BaseModel):
+    """Schema response chi tiết cho appointment (bao gồm thông tin room và building)."""
+    id: UUID
+    full_name: str
+    phone: Optional[str]
+    email: Optional[str]
+    room_id: UUID
+    appointment_datetime: datetime
+    notes: Optional[str]
+    status: str
+    handled_by: Optional[UUID]
+    handled_at: Optional[datetime]
+    admin_notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+    # Thông tin room và building
+    room_number: Optional[str] = None
+    building_name: Optional[str] = None
+    building_address: Optional[str] = None
+    ward_name: Optional[str] = None
+    district_name: Optional[str] = None
+    city_name: Optional[str] = None
 
     class Config:
         from_attributes = True

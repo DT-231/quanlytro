@@ -122,13 +122,20 @@ class PaymentService:
         try:
             description = f"{room_code}-{invoice.invoice_number}"
             
+            # Return URL và Cancel URL cho frontend
+            frontend_url = "http://localhost:5173"  # Hoặc lấy từ settings
+            return_url = f"{frontend_url}/payment/success"
+            cancel_url = f"{frontend_url}/payment/success"
+            
             payos_response = payos_service.create_payment_link(
                 order_code=order_code,
                 amount=int(total_amount),  # PayOS requires int (VND)
                 description=description,
                 buyer_name=None,  # Can get from payer info if needed
                 buyer_email=None,
-                buyer_phone=None
+                buyer_phone=None,
+                return_url=return_url,
+                cancel_url=cancel_url
             )
             
             # 5. Update payment with PayOS info
@@ -262,6 +269,92 @@ class PaymentService:
         self.db.refresh(payment)
         
         return PaymentResponse.model_validate(payment)
+    
+    async def check_and_sync_payos_status(self, payment_id: uuid.UUID) -> Dict[str, Any]:
+        """
+        Kiểm tra trạng thái thanh toán từ PayOS và sync vào database.
+        Dùng cho polling khi webhook không hoạt động.
+        
+        Args:
+            payment_id: UUID của payment
+            
+        Returns:
+            Dict chứa trạng thái mới
+        """
+        # 1. Lấy payment từ DB
+        payment = self.repo.get_by_payment_id(payment_id)
+        if not payment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Payment {payment_id} not found"
+            )
+        
+        # 2. Kiểm tra đã completed chưa
+        if payment.status == Payment.PaymentStatus.COMPLETED:
+            return {
+                "status": "completed",
+                "message": "Payment already completed",
+                "payment_id": str(payment.payment_id)
+            }
+        
+        # 3. Kiểm tra có phải banking payment không
+        if payment.method != Payment.PaymentMethod.BANKING:
+            return {
+                "status": str(payment.status.value),
+                "message": "Not a PayOS payment, cannot sync",
+                "payment_id": str(payment.payment_id)
+            }
+        
+        # 4. Lấy order_code từ banking_transaction_id
+        order_code = payment.banking_transaction_id
+        if not order_code:
+            return {
+                "status": "error",
+                "message": "No PayOS order code found",
+                "payment_id": str(payment.payment_id)
+            }
+        
+        # 5. Gọi PayOS để check status
+        try:
+            payos_status = payos_service.check_payment_status(int(order_code))
+            
+            # 6. Nếu đã thanh toán trên PayOS, update DB
+            if payos_status.get("is_paid") or payos_status.get("status") == "PAID":
+                payment.status = Payment.PaymentStatus.COMPLETED
+                payment.paid_at = datetime.now()
+                payment.note = f"Synced from PayOS - Payment confirmed"
+                
+                # Cập nhật invoice status
+                invoice = self.db.query(Invoice).filter(Invoice.id == payment.invoice_id).first()
+                if invoice:
+                    invoice.status = InvoiceStatus.PAID.value
+                
+                self.db.commit()
+                
+                logger.info(f"Payment {payment_id} synced to COMPLETED from PayOS")
+                
+                return {
+                    "status": "completed",
+                    "message": "Payment confirmed and synced from PayOS",
+                    "payment_id": str(payment.payment_id),
+                    "payos_status": payos_status.get("status")
+                }
+            
+            # Vẫn pending
+            return {
+                "status": "pending",
+                "message": "Payment not yet confirmed on PayOS",
+                "payment_id": str(payment.payment_id),
+                "payos_status": payos_status.get("status")
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to sync PayOS status: {e}")
+            return {
+                "status": "error",
+                "message": f"Failed to check PayOS status: {str(e)}",
+                "payment_id": str(payment.payment_id)
+            }
     
     async def handle_payos_webhook(
         self,

@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { invoiceService } from "@/services/invoiceService";
 import { paymentService } from "@/services/paymentService";
 import { Button } from "@/components/ui/button";
+import PayOSEmbedded from "@/components/PayOSEmbedded";
 
 /**
  * Trang chi tiết hoá đơn cho người thuê (TENANT).
@@ -29,12 +30,13 @@ const MyInvoiceDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // State
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState(null); // 'banking' | 'cod'
   const [processing, setProcessing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentData, setPaymentData] = useState(null); // Store full payment response
+  const [showEmbeddedPayment, setShowEmbeddedPayment] = useState(false); // Show embedded form
 
   // COD note (tuỳ chọn)
   const [codNote, setCodNote] = useState("");
@@ -124,7 +126,7 @@ const MyInvoiceDetailPage = () => {
 
   /**
    * Handle Banking payment (PayOS).
-   * Thanh toán thành công => cập nhật trạng thái ngay.
+   * Tạo payment link và hiển thị QR code trong modal
    */
   const handleBankingPayment = async () => {
     if (!invoice) return;
@@ -135,16 +137,11 @@ const MyInvoiceDetailPage = () => {
         invoice_id: invoice.id,
       });
 
-      // Mở link thanh toán PayOS
+      // Lưu toàn bộ payment data để hiển thị QR
       if (response.checkout_url) {
-        window.open(response.checkout_url, "_blank");
-        toast.success("Đang chuyển đến trang thanh toán PayOS...");
-        
-        // Sau khi thanh toán xong, webhook sẽ cập nhật trạng thái
-        // Refresh invoice sau vài giây
-        setTimeout(() => {
-          window.location.reload();
-        }, 3000);
+        setPaymentData(response);
+        setShowEmbeddedPayment(true);
+        toast.success("Vui lòng quét mã QR để thanh toán");
       }
     } catch (error) {
       console.error("Banking payment error:", error);
@@ -153,6 +150,27 @@ const MyInvoiceDetailPage = () => {
       setProcessing(false);
       setShowPaymentModal(false);
     }
+  };
+
+  /**
+   * Handle PayOS Embedded callbacks
+   */
+  const handleClosePayment = () => {
+    setShowEmbeddedPayment(false);
+    setPaymentData(null);
+    // Refresh invoice để kiểm tra trạng thái mới
+    window.location.reload();
+  };
+
+  /**
+   * Handle payment success từ polling
+   */
+  const handlePaymentSuccess = () => {
+    setShowEmbeddedPayment(false);
+    setPaymentData(null);
+    toast.success("Thanh toán thành công! Hoá đơn đã được cập nhật.");
+    // Refresh invoice để cập nhật trạng thái
+    window.location.reload();
   };
 
   /**
@@ -478,6 +496,46 @@ const MyInvoiceDetailPage = () => {
         </div>
       </div>
 
+      {/* PayOS Embedded Payment Modal */}
+      {showEmbeddedPayment && paymentData && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold">
+                Thanh toán hoá đơn #{invoice?.invoice_number}
+              </h2>
+              <button
+                onClick={handleClosePayment}
+                className="text-gray-500 hover:text-gray-700 text-2xl font-light w-8 h-8 flex items-center justify-center"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <PayOSEmbedded
+                qrCode={paymentData.qr_code}
+                checkoutUrl={paymentData.checkout_url}
+                amount={paymentData.amount}
+                description={paymentData.description}
+                paymentId={paymentData.payment_id}
+                onPaymentSuccess={handlePaymentSuccess}
+                pollingInterval={3000}
+              />
+              
+              <div className="mt-6 flex justify-center">
+                <button
+                  onClick={handleClosePayment}
+                  className="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Payment Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -490,8 +548,8 @@ const MyInvoiceDetailPage = () => {
               <div className="space-y-4">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-sm text-blue-800">
-                    Bạn sẽ được chuyển đến trang thanh toán PayOS. 
-                    Sau khi thanh toán thành công, hoá đơn sẽ được cập nhật trạng thái tự động.
+                    Form thanh toán sẽ hiển thị ngay trên trang này.
+                    Bạn có thể quét mã QR hoặc chuyển khoản theo thông tin hiển thị.
                   </p>
                 </div>
 

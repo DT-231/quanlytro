@@ -275,6 +275,7 @@ class RoomListItem(BaseModel):
 
     id: uuid.UUID
     room_number: str
+    room_name: Optional[str] = Field(None, description="Tên phòng")
     room_type: Optional[str] = Field(None, description="Tên loại phòng")
     building_name: str  # Tên tòa nhà từ relationship
     area: Optional[float] = None
@@ -282,6 +283,7 @@ class RoomListItem(BaseModel):
     current_occupants: int = 0  # Số người đang ở (từ contract active)
     status: str
     base_price: Decimal
+    description: Optional[str] = Field(None, description="Mô tả phòng")
     representative: Optional[str] = None  # Tên người đại diện (từ contract)
 
     model_config = {"from_attributes": True}
@@ -305,6 +307,7 @@ class RoomPublicListItem(BaseModel):
     base_price: Decimal
     area: Optional[float] = None
     capacity: int
+    description:Optional[str] = None
     current_occupants: int = Field(0, description="Số người đang ở trong phòng")
     is_available: bool = Field(..., description="Phòng còn trống không (chưa full)")
     primary_photo: Optional[str] = Field(

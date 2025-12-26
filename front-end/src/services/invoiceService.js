@@ -43,7 +43,10 @@ export const invoiceService = {
       try {
          const fb = await api.get("/invoices/buildings");
          return normalizeData(fb);
-      } catch (e) { return []; }
+      } catch {
+        // Fallback silently
+        return [];
+      }
     }
   },
 

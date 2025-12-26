@@ -20,8 +20,11 @@ const Pagination = ({
   currentPage,
   totalPages,
   onPageChange,
+  // eslint-disable-next-line no-unused-vars
   totalItems = 0,
+  // eslint-disable-next-line no-unused-vars
   pageSize = 20, 
+  // eslint-disable-next-line no-unused-vars
   itemName = "kết quả",
 }) => {
   /**
@@ -32,10 +35,6 @@ const Pagination = ({
       onPageChange(page);
     }
   };
-
-  // Tính toán item đang hiển thị (cho future use nếu muốn show "1-20 / 100")
-  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const endItem = Math.min(currentPage * pageSize, totalItems);
   
   // Tính startPage để luôn show 5 số trang (nếu có đủ)
   let startPage = 1;

@@ -21,7 +21,7 @@ class Appointment(BaseModel):
     
     # Thông tin người đặt lịch
     full_name = Column(String(100), nullable=False)
-    phone = Column(String(20), nullable=False)
+    phone = Column(String(20), nullable=True)
     email = Column(String(100), nullable=True)
     
     # Thông tin đặt lịch

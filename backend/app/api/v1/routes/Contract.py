@@ -36,7 +36,7 @@ from app.core.exceptions import (
 )
 
 
-router = APIRouter(prefix="/api/v1/contracts", tags=["Contracts"])
+router = APIRouter(prefix="/contracts", tags=["Contracts"])
 
 
 @router.get(
@@ -731,7 +731,7 @@ async def reject_contract(
 
 # ========== PENDING UPDATE CONFIRM/REJECT ==========
 
-@router.post("/{contract_id}/confirm-update", response_model=Response[ContractOut])
+@router.post("/{contract_id}/confirm-update", response_model=Response[ContractOut] )
 async def confirm_contract_update(
     contract_id: UUID,
     session: Session = Depends(get_db),
@@ -837,3 +837,4 @@ async def get_pending_changes(
         raise BadRequestException(message=str(e))
     except Exception as e:
         raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")
+

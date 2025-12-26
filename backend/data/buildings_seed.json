@@ -1,0 +1,242 @@
+[
+    {
+        "building_code": "BLD-2525",
+        "building_name": "Tổ hợp Thành phố Bạc Liêu Smart",
+        "description": "Tòa nhà hiện đại tại Thành phố Bạc Liêu, Bạc Liêu. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "373 Đường Sơn Trà",
+            "ward": "Thành phố Bạc Liêu",
+            "city": "Bạc Liêu",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-9640",
+        "building_name": "Building Minh Tâm Plaza",
+        "description": "Tòa nhà hiện đại tại Huyện Đông Hải, Bạc Liêu. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "83 Đường Minh Tâm",
+            "ward": "Huyện Đông Hải",
+            "city": "Bạc Liêu",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-4320",
+        "building_name": "Khu trọ Huyện Hưng Hà Xanh",
+        "description": "Tòa nhà hiện đại tại Huyện Hưng Hà, Thái Bình. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "109 Đường Kim Long",
+            "ward": "Huyện Hưng Hà",
+            "city": "Thái Bình",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-7370",
+        "building_name": "Chung cư Thái Bình Luxury",
+        "description": "Tòa nhà hiện đại tại Thành phố Thái Bình, Thái Bình. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "432 Đường Thịnh Vượng",
+            "ward": "Thành phố Thái Bình",
+            "city": "Thái Bình",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-7765",
+        "building_name": "Building An Bình Plaza",
+        "description": "Tòa nhà hiện đại tại Huyện Bảo Lâm, Lâm Đồng. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "366 Đường An Bình",
+            "ward": "Huyện Bảo Lâm",
+            "city": "Lâm Đồng",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-7872",
+        "building_name": "Khu trọ Huyện Đức Trọng Xanh",
+        "description": "Tòa nhà hiện đại tại Huyện Đức Trọng, Lâm Đồng. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "363 Đường Phúc Lộc",
+            "ward": "Huyện Đức Trọng",
+            "city": "Lâm Đồng",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-7871",
+        "building_name": "Homestay Bình Phước Dream",
+        "description": "Tòa nhà hiện đại tại Huyện Bù Gia Mập, Bình Phước. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "421 Đường Phúc Lộc",
+            "ward": "Huyện Bù Gia Mập",
+            "city": "Bình Phước",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-2739",
+        "building_name": "Căn hộ dịch vụ Huyện Thới Lai Central",
+        "description": "Tòa nhà hiện đại tại Huyện Thới Lai, Tp. Cần Thơ. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "318 Đường Sơn Trà",
+            "ward": "Huyện Thới Lai",
+            "city": "Tp. Cần Thơ",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-5572",
+        "building_name": "Căn hộ dịch vụ Thành phố Nam Định Central",
+        "description": "Tòa nhà hiện đại tại Thành phố Nam Định, Nam Định. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "250 Đường Thịnh Vượng",
+            "ward": "Thành phố Nam Định",
+            "city": "Nam Định",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-5910",
+        "building_name": "Khu nhà ở Nam Định Riverside",
+        "description": "Tòa nhà hiện đại tại Huyện Xuân Trường, Nam Định. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "437 Đường Minh Tâm",
+            "ward": "Huyện Xuân Trường",
+            "city": "Nam Định",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-2901",
+        "building_name": "Tòa nhà Phúc Lộc Tower",
+        "description": "Tòa nhà hiện đại tại Huyện Lương Sơn, Hòa Bình. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "96 Đường Phúc Lộc",
+            "ward": "Huyện Lương Sơn",
+            "city": "Hòa Bình",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-7400",
+        "building_name": "Apartment Huyện Vị Thủy Elite",
+        "description": "Tòa nhà hiện đại tại Huyện Vị Thủy, Hậu Giang. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "423 Đường Kim Long",
+            "ward": "Huyện Vị Thủy",
+            "city": "Hậu Giang",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-9124",
+        "building_name": "Căn hộ dịch vụ Thị xã Thuận Thành Central",
+        "description": "Tòa nhà hiện đại tại Thị xã Thuận Thành, Bắc Ninh. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "150 Đường Thịnh Vượng",
+            "ward": "Thị xã Thuận Thành",
+            "city": "Bắc Ninh",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-7191",
+        "building_name": "Building Hải Đăng Plaza",
+        "description": "Tòa nhà hiện đại tại Thị xã Thuận Thành, Bắc Ninh. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "234 Đường Hải Đăng",
+            "ward": "Thị xã Thuận Thành",
+            "city": "Bắc Ninh",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-1156",
+        "building_name": "Chung cư Khánh Hòa Luxury",
+        "description": "Tòa nhà hiện đại tại Thành phố Cam Ranh, Khánh Hòa. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "469 Đường Thanh Xuân",
+            "ward": "Thành phố Cam Ranh",
+            "city": "Khánh Hòa",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-4214",
+        "building_name": "Tòa nhà Thịnh Vượng Tower",
+        "description": "Tòa nhà hiện đại tại Huyện Vân Canh, Bình Định. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "221 Đường Thịnh Vượng",
+            "ward": "Huyện Vân Canh",
+            "city": "Bình Định",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-2684",
+        "building_name": "Khu nhà ở Bình Định Riverside",
+        "description": "Tòa nhà hiện đại tại Huyện Hoài Ân, Bình Định. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "182 Đường Thanh Xuân",
+            "ward": "Huyện Hoài Ân",
+            "city": "Bình Định",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-7272",
+        "building_name": "Homestay Điện Biên Dream",
+        "description": "Tòa nhà hiện đại tại Huyện Điện Biên Đông, Điện Biên. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "86 Đường Kim Long",
+            "ward": "Huyện Điện Biên Đông",
+            "city": "Điện Biên",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-1111",
+        "building_name": "Building Thịnh Vượng Plaza",
+        "description": "Tòa nhà hiện đại tại Huyện Quang Bình, Hà Giang. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "316 Đường Thịnh Vượng",
+            "ward": "Huyện Quang Bình",
+            "city": "Hà Giang",
+            "country": "Vietnam"
+        }
+    },
+    {
+        "building_code": "BLD-9351",
+        "building_name": "Căn hộ dịch vụ Huyện Bắc Mê Central",
+        "description": "Tòa nhà hiện đại tại Huyện Bắc Mê, Hà Giang. Đầy đủ tiện nghi, an ninh 24/7.",
+        "status": "ACTIVE",
+        "address": {
+            "address_line": "45 Đường Hải Đăng",
+            "ward": "Huyện Bắc Mê",
+            "city": "Hà Giang",
+            "country": "Vietnam"
+        }
+    }
+]

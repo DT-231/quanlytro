@@ -47,6 +47,9 @@ import MyInvoiceDetailPage from "./pages/member/invoice/MyInvoiceDetailPage";
 import ContractDetailPage from "./pages/member/contract/ContractDetailPage";
 import MyAppointmentPage from "./pages/member/MyAppointmentPage";
 
+// Payment Pages
+import PaymentSuccessPage from "./pages/payment/PaymentSuccessPage";
+
 // Account Settings
 import AccountProfile from "./pages/member/account/AccountProfile";
 import AccountChangePassword from "./pages/member/account/AccountChangePassword";
@@ -74,6 +77,9 @@ const router = createBrowserRouter([
       { path: "forgot-password", element: <ForgotPasswordPage /> },
       { path: "/room/:id", element: <RoomDetailPage /> },
       { path: "my-appointments", element: <MyAppointmentsPage /> },
+      
+      // Payment callback
+      { path: "payment/success", element: <PaymentSuccessPage /> },
       
       // --- MEMBER ROUTES: Yêu cầu đăng nhập (TENANT, CUSTOMER) ---
       {

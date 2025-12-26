@@ -99,11 +99,10 @@ const StatusBadge = ({ status }) => {
 const ContractDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   
   const [contract, setContract] = useState(null);
   const [roomDetails, setRoomDetails] = useState(null);
-  const [pendingChanges, setPendingChanges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -185,6 +184,10 @@ const ContractDetailPage = () => {
       const response = await contractService.approveTermination(id);
       if (response?.data) {
         toast.success("Đã đồng ý chấm dứt hợp đồng!");
+        
+        // Refresh user để cập nhật role từ TENANT -> CUSTOMER nếu không còn hợp đồng ACTIVE
+        await refreshUser();
+        
         fetchContractDetails();
       } else {
         toast.error(response?.message || "Không thể phê duyệt");
@@ -204,6 +207,10 @@ const ContractDetailPage = () => {
       const response = await contractService.confirmContract(id);
       if (response?.data) {
         toast.success("Đã xác nhận hợp đồng! Hợp đồng đã được kích hoạt.");
+        
+        // Refresh user để cập nhật role từ CUSTOMER -> TENANT
+        await refreshUser();
+        
         fetchContractDetails();
       } else {
         toast.error(response?.message || "Không thể xác nhận hợp đồng");
@@ -219,7 +226,7 @@ const ContractDetailPage = () => {
   const handleRejectContract = async () => {
     setActionLoading(true);
     try {
-      const response = await contractService.rejectContract(id);
+      await contractService.rejectContract(id);
       toast.success("Đã từ chối hợp đồng!");
       navigate("/member/my-contracts");
     } catch (err) {

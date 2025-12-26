@@ -15,7 +15,6 @@ export function useTenantSearch(tenants) {
       try {
         const res = await userService.getAll({ 
           size: 50, 
-          role_code: "TENANT",
           search: tenantQuery
         });
 

@@ -47,7 +47,7 @@ const AccountManagement = () => {
       const params = {
         page: 1,
         size: 1000, 
-        role_code: "TENANT",
+        role_code: null,
       };
 
       const res = await userService.getAll(params);

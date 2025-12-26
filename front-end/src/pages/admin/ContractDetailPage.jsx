@@ -101,7 +101,7 @@ const StatusBadge = ({ status }) => {
 const ContractDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   
   const [contract, setContract] = useState(null);
   const [roomDetails, setRoomDetails] = useState(null);
@@ -194,6 +194,13 @@ const ContractDetailPage = () => {
       const response = await contractService.delete(id);
       if (response) {
         toast.success("Xóa hợp đồng thành công!");
+        
+        // Refresh user để cập nhật role nếu xóa hợp đồng của chính mình
+        // Backend sẽ tự động downgrade TENANT -> CUSTOMER nếu không còn hợp đồng ACTIVE
+        if (contract?.tenant_id === user?.id) {
+          await refreshUser();
+        }
+        
         navigate("/admin/contracts");
       } else {
         toast.error("Không thể xóa hợp đồng");
@@ -230,6 +237,13 @@ const ContractDetailPage = () => {
       const response = await contractService.approveTermination(id);
       if (response?.data) {
         toast.success("Đã phê duyệt chấm dứt hợp đồng!");
+        
+        // Refresh user để cập nhật role từ TENANT -> CUSTOMER nếu không còn hợp đồng ACTIVE
+        // (Nếu đây là admin phê duyệt cho tenant, tenant sẽ được downgrade tự động)
+        if (user?.role_name !== "Admin" && user?.role_name !== "ADMIN") {
+          await refreshUser();
+        }
+        
         fetchContractDetails();
       } else {
         toast.error(response?.message || "Không thể phê duyệt");

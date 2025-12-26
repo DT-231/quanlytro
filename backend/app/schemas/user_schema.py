@@ -1,7 +1,7 @@
 from __future__ import annotations
 import email
 
-from pydantic import BaseModel, Field, EmailStr, model_validator
+from pydantic import BaseModel, Field, EmailStr, model_validator, field_validator
 from typing import Optional
 from datetime import date, datetime
 import uuid
@@ -108,7 +108,7 @@ class UserUpdate(BaseModel):
 
     first_name: Optional[str] = Field(None, min_length=2, max_length=50)
     last_name: Optional[str] = Field(None, min_length=2, max_length=50)
-    email: Optional[EmailStr]
+    email: Optional[EmailStr] = None
     phone: Optional[str] = Field(None, max_length=13)
     cccd: Optional[str] = Field(None, max_length=20)
     date_of_birth: Optional[date] = None
@@ -149,6 +149,46 @@ class UserOut(BaseModel):
     documents: Optional[list[dict]] = []  # Danh sách tài liệu (avatar, CCCD)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def extract_role_info(cls, data):
+        """Extract role_name from role relationship."""
+        if isinstance(data, dict):
+            # Already a dict, check for role
+            if 'role' in data and data['role']:
+                role = data['role']
+                if hasattr(role, 'role_name'):
+                    data['role_name'] = role.role_name
+                elif isinstance(role, dict) and 'role_name' in role:
+                    data['role_name'] = role['role_name']
+        else:
+            # ORM object
+            if hasattr(data, 'role') and data.role:
+                if not hasattr(data, 'role_name') or data.role_name is None:
+                    # Set role_name from relationship
+                    if hasattr(data.role, 'role_name'):
+                        # Create a dict to modify
+                        data_dict = {
+                            'id': data.id,
+                            'first_name': data.first_name,
+                            'last_name': data.last_name,
+                            'email': data.email,
+                            'phone': data.phone,
+                            'cccd': data.cccd,
+                            'date_of_birth': data.date_of_birth,
+                            'gender': data.gender,
+                            'hometown': data.hometown,
+                            'status': data.status,
+                            'is_temporary_residence': data.is_temporary_residence,
+                            'temporary_residence_date': data.temporary_residence_date,
+                            'role_name': data.role.role_name,
+                            'documents': [],
+                            'created_at': data.created_at,
+                            'updated_at': data.updated_at,
+                        }
+                        return data_dict
+        return data
 
     model_config = {
         "from_attributes": True,

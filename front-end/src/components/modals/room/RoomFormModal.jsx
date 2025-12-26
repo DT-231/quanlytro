@@ -43,7 +43,7 @@ export default function RoomFormModal({
     onSubmit,
   } = useRoomForm({ isOpen, onClose, onSuccess, initialData });
 
-  const TabButton = ({ id, label, icon: Icon }) => (
+  const TabButton = ({ id, label, icon: TabIcon }) => (
     <button
       type="button"
       onClick={() => setActiveTab(id)}
@@ -54,7 +54,7 @@ export default function RoomFormModal({
             : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/50"
         }`}
     >
-      <Icon size={16} /> {label}
+      <TabIcon size={16} /> {label}
     </button>
   );
 

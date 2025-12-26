@@ -35,7 +35,7 @@ export const contractService = {
    * Lấy danh sách hợp đồng với filter và pagination
    */
   getAll: async (params) => {
-    return safeRequest(api.get("/api/v1/contracts/", { params }));
+    return safeRequest(api.get("/contracts/", { params }));
   },
 
   /**
@@ -43,7 +43,7 @@ export const contractService = {
    * @returns {Promise<Object>} {total_contracts, active_contracts, expiring_soon, expired_contracts}
    */
   getStats: async () => {
-    return safeRequest(api.get("/api/v1/contracts/stats"));
+    return safeRequest(api.get("/contracts/stats"));
   },
 
   /**
@@ -52,7 +52,7 @@ export const contractService = {
    * @returns {Promise<object>} - Danh sách phòng với capacity và current_occupants
    */
   getAvailableRooms: async (buildingId) => {
-    return safeRequest(api.get(`/api/v1/contracts/available-rooms/${buildingId}`));
+    return safeRequest(api.get(`/contracts/available-rooms/${buildingId}`));
   },
 
   /**
@@ -62,23 +62,23 @@ export const contractService = {
    * @returns {Promise<object>} - Thông tin phòng với default_service_fees
    */
   getRoomInfoForContract: async (roomId) => {
-    return safeRequest(api.get(`/api/v1/contracts/room-info/${roomId}`));
+    return safeRequest(api.get(`/contracts/room-info/${roomId}`));
   },
 
   create: async (contractData) => {
-    return safeRequest(api.post("/api/v1/contracts/", contractData));
+    return safeRequest(api.post("/contracts/", contractData));
   },
 
   update: async (id, contractData) => {
-    return safeRequest(api.put(`/api/v1/contracts/${id}`, contractData));
+    return safeRequest(api.put(`/contracts/${id}`, contractData));
   },
 
   delete: async (id) => {
-    return safeRequest(api.delete(`/api/v1/contracts/${id}`));
+    return safeRequest(api.delete(`/contracts/${id}`));
   },
 
   getById: async (id) => {
-    return safeRequest(api.get(`/api/v1/contracts/${id}`));
+    return safeRequest(api.get(`/contracts/${id}`));
   },
 
   // ========== Termination Operations ==========
@@ -89,7 +89,7 @@ export const contractService = {
    * @returns {Promise<object>} - Hợp đồng đã cập nhật
    */
   requestTermination: async (id) => {
-    return safeRequest(api.post(`/api/v1/contracts/${id}/request-termination`));
+    return safeRequest(api.post(`/contracts/${id}/request-termination`));
   },
 
   /**
@@ -98,7 +98,7 @@ export const contractService = {
    * @returns {Promise<object>} - Hợp đồng đã cập nhật
    */
   approveTermination: async (id) => {
-    return safeRequest(api.post(`/api/v1/contracts/${id}/approve-termination`));
+    return safeRequest(api.post(`/contracts/${id}/approve-termination`));
   },
 
   // ========== Contract Confirm/Reject (Tenant) ==========
@@ -109,7 +109,7 @@ export const contractService = {
    * @returns {Promise<object>} - Hợp đồng đã kích hoạt
    */
   confirmContract: async (id) => {
-    return safeRequest(api.post(`/api/v1/contracts/${id}/confirm`));
+    return safeRequest(api.post(`/contracts/${id}/confirm`));
   },
 
   /**
@@ -118,7 +118,7 @@ export const contractService = {
    * @returns {Promise<object>} - Kết quả
    */
   rejectContract: async (id) => {
-    return safeRequest(api.post(`/api/v1/contracts/${id}/reject`));
+    return safeRequest(api.post(`/contracts/${id}/reject`));
   },
 
   // ========== Pending Update Confirm/Reject ==========
@@ -129,7 +129,7 @@ export const contractService = {
    * @returns {Promise<object>} - Hợp đồng sau khi áp dụng thay đổi
    */
   confirmUpdate: async (id) => {
-    return safeRequest(api.post(`/api/v1/contracts/${id}/confirm-update`));
+    return safeRequest(api.post(`/contracts/${id}/confirm-update`));
   },
 
   /**
@@ -138,7 +138,7 @@ export const contractService = {
    * @returns {Promise<object>} - Hợp đồng giữ nguyên
    */
   rejectUpdate: async (id) => {
-    return safeRequest(api.post(`/api/v1/contracts/${id}/reject-update`));
+    return safeRequest(api.post(`/contracts/${id}/reject-update`));
   },
 
   /**
@@ -147,7 +147,7 @@ export const contractService = {
    * @returns {Promise<object>} - Danh sách pending changes
    */
   getPendingChanges: async (id) => {
-    return safeRequest(api.get(`/api/v1/contracts/${id}/pending-changes`));
+    return safeRequest(api.get(`/contracts/${id}/pending-changes`));
   },
 
   // ========== Room Tenants Info ==========
@@ -158,7 +158,7 @@ export const contractService = {
    * @returns {Promise<object>} - Thông tin người thuê
    */
   getRoomTenants: async (roomId) => {
-    return safeRequest(api.get(`/api/v1/contracts/room/${roomId}/tenants`));
+    return safeRequest(api.get(`/contracts/room/${roomId}/tenants`));
   },
 
   // ========== Helper APIs ==========

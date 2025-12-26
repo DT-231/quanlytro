@@ -11,6 +11,7 @@ import {
   FaEye,
 } from "react-icons/fa";
 import { Toaster, toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 
 // Services
 import { contractService } from "@/services/contractService";
@@ -30,6 +31,8 @@ import useDebounce from "@/hooks/useDebounce";
 
 const ContractManagement = () => {
   const navigate = useNavigate();
+  const { user, refreshUser } = useAuth();
+  
   // --- STATES ---
   const [contracts, setContracts] = useState([]); // Chứa TOÀN BỘ data
   const [buildings, setBuildings] = useState([]);
@@ -275,12 +278,17 @@ const ContractManagement = () => {
     if (!contractToDelete) return;
     try {
       const response = await contractService.delete(contractToDelete.id);
-      if ( response.success) {
+        
+        // Refresh user để cập nhật role nếu xóa hợp đồng của chính mình
+        // Backend sẽ tự động downgrade TENANT -> CUSTOMER nếu không còn hợp đồng ACTIVE
+        if (contractToDelete.tenant_id === user?.id) {
+          await refreshUser();
+        }
+      if (response.success) {
         toast.success(`Đã xóa hợp đồng: ${contractToDelete.contract_number}`);
       } else if (contractToDelete.status === "ACTIVE") {
-
         toast.error("Không thể xoá hợp đồng đang hoạt động");
-      }else{
+      } else {
         toast.error("Xóa hợp đồng thất bại.");
       }
       fetchContracts();
@@ -310,11 +318,12 @@ const ContractManagement = () => {
       const statusLabels = {
         ACTIVE: "đang hoạt động",
         EXPIRED: "đã hết hạn",
-        TERMINATED: "đã chấm dứt"
+        TERMINATED: "đã chấm dứt",
       };
       toast.error(
-        `Không thể chỉnh sửa hợp đồng ${contract.contract_number} vì hợp đồng ${statusLabels[contract.status]}. ` +
-        `Chỉ có thể sửa hợp đồng ở trạng thái "Chờ ký".`
+        `Không thể chỉnh sửa hợp đồng ${contract.contract_number} vì hợp đồng ${
+          statusLabels[contract.status]
+        }. ` + `Chỉ có thể sửa hợp đồng ở trạng thái "Chờ ký".`
       );
       return;
     }
@@ -346,6 +355,8 @@ const ContractManagement = () => {
         return "bg-red-600 text-white";
       case "TERMINATED":
         return "bg-gray-500 text-white";
+      case "TERMINATION_REQUESTED_BY_TENANT":
+        return "bg-yellow-400 text-yellow-800";
       default:
         return "bg-gray-200 text-gray-800";
     }
@@ -361,6 +372,8 @@ const ContractManagement = () => {
         return "Đã kết thúc";
       case "PENDING":
         return "Chờ ký";
+      case "TERMINATION_REQUESTED_BY_TENANT":
+        return "Đang yêu cầu chấm dứt hợp đồng";
       default:
         return status || "---";
     }

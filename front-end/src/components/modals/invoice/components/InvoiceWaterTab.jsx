@@ -1,7 +1,7 @@
 import React from "react";
 import { FaUserFriends, FaInfoCircle } from "react-icons/fa";
 
-const InvoiceWaterTab = ({ formData, setFormData, calculations }) => {
+const InvoiceWaterTab = ({ calculations }) => {
   const formatVND = (val) => new Intl.NumberFormat('vi-VN').format(val || 0);
 
   return (

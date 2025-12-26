@@ -1,0 +1,37 @@
+[
+    {
+        "id": 365,
+        "name": "Huyện Hòa Vang",
+        "provinceId": 32
+    },
+    {
+        "id": 360,
+        "name": "Quận Hải Châu",
+        "provinceId": 32
+    },
+    {
+        "id": 361,
+        "name": "Quận Thanh Khê",
+        "provinceId": 32
+    },
+    {
+        "id": 685,
+        "name": "Quận Cẩm Lệ",
+        "provinceId": 32
+    },
+    {
+        "id": 362,
+        "name": "Quận Sơn Trà",
+        "provinceId": 32
+    },
+    {
+        "id": 363,
+        "name": "Quận Ngũ Hành Sơn",
+        "provinceId": 32
+    },
+    {
+        "id": 364,
+        "name": "Quận Liên Chiểu",
+        "provinceId": 32
+    }
+]

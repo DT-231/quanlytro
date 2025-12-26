@@ -1,11 +1,9 @@
-from typing import Generic
-from annotated_types import T
 from fastapi import APIRouter, Depends
 from email_validator import validate_email
-from app.infrastructure.db.session import get_db
 from sqlalchemy.orm import Session
-from app.core import response
 
+from app.infrastructure.db.session import get_db
+from app.core import response
 from app.schemas.auth_schema import TokenRefreshRequest, Token
 from app.schemas.user_schema import UserCreate, UserLogin, UserRegister, UserOut
 from app.services.AuthService import AuthService
@@ -145,14 +143,15 @@ async def create_tenant(
     current_user=Depends(get_current_user),
 ):
     """
-    Chủ nhà tạo tài khoản cho người thuê (TENANT).
+    Chủ nhà tạo tài khoản cho người thuê (ban đầu là CUSTOMER).
 
     **Chỉ ADMIN/Landlord mới được dùng API này.**
 
     Flow:
-    - Nếu email đã tồn tại với role CUSTOMER → nâng cấp lên TENANT
-    - Nếu email chưa tồn tại → tạo mới với role TENANT
-    - Nếu đã là TENANT hoặc ADMIN → báo lỗi
+    - Nếu email đã tồn tại với role CUSTOMER → giữ nguyên
+    - Nếu email chưa tồn tại → tạo mới với role CUSTOMER
+    - Khi ký hợp đồng hoặc có hợp đồng ACTIVE → tự động nâng lên TENANT
+    - Khi không còn hợp đồng ACTIVE nào → tự động hạ về CUSTOMER
 
     Body:
     - **first_name**: Tên
@@ -196,18 +195,57 @@ async def get_current_user_info(
     
     Trả về:
     - Thông tin cá nhân (first_name, last_name, email, phone, cccd, ...)
-    - Role (role_name)
+    - Role (role_name và role)
     - Trạng thái (status)
     - Thời gian tạo/cập nhật
     
     **Yêu cầu**: Bearer token hợp lệ
     """
     try:
+        # Ensure role is loaded
+        if current_user.role:
+            # Manually set role_name and role (role_code)
+            role_name = current_user.role.role_name
+            role_code = current_user.role.role_code
+        else:
+            role_name = None
+            role_code = None
+        
+        # Load user documents (avatar, CCCD, etc.)
+        documents = []
+        if current_user.user_documents:
+            for doc in current_user.user_documents:
+                documents.append({
+                    'id': str(doc.id),
+                    'type': doc.document_type,
+                    'url': doc.url,
+                    'created_at': doc.created_at.isoformat() if doc.created_at else None,
+                })
+        
         # Convert User ORM sang UserOut schema
-        user_out = UserOut.model_validate(current_user)
+        user_dict = {
+            'id': current_user.id,
+            'first_name': current_user.first_name,
+            'last_name': current_user.last_name,
+            'email': current_user.email,
+            'phone': current_user.phone,
+            'cccd': current_user.cccd,
+            'date_of_birth': current_user.date_of_birth,
+            'gender': current_user.gender,
+            'hometown': current_user.hometown,
+            'status': current_user.status,
+            'is_temporary_residence': current_user.is_temporary_residence,
+            'temporary_residence_date': current_user.temporary_residence_date,
+            'role_name': role_name,
+            'role': role_code,  # Thêm role_code để đồng nhất với login response
+            'documents': documents,
+            'created_at': current_user.created_at,
+            'updated_at': current_user.updated_at,
+        }
+        
         return response.success(
             message="Lấy thông tin người dùng thành công",
-            data=user_out,
+            data=user_dict,
         )
     except Exception as e:
         raise InternalServerException(message=f"Lỗi hệ thống: {str(e)}")

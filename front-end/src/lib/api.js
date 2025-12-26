@@ -35,7 +35,9 @@ api.interceptors.request.use(
         if (parsed && parsed.access_token) {
           tokenToUse = parsed.access_token;
         }
-      } catch (e) {}
+      } catch {
+        // Token is not JSON, use as-is
+      }
       if (tokenToUse && typeof tokenToUse === "string") {
         config.headers.Authorization = `Bearer ${tokenToUse}`;
       }
@@ -55,6 +57,17 @@ api.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
+
+    // Bỏ qua interceptor cho các endpoint auth (login, register, refresh)
+    const authEndpoints = ['/auth/login', '/auth/register', '/auth/refresh'];
+    const isAuthEndpoint = authEndpoints.some(endpoint => 
+      originalRequest.url?.includes(endpoint)
+    );
+    
+    if (isAuthEndpoint) {
+      // Với auth endpoints, trả về lỗi trực tiếp không xử lý
+      return Promise.reject(error);
+    }
 
     // Nếu lỗi 401 và chưa retry
     if (error.response?.status === 401 && !originalRequest._retry) {

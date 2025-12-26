@@ -300,13 +300,13 @@ const RoomDetailPage = () => {
             {/* Sticky Pricing Card */}
             <div className="lg:sticky lg:top-4 space-y-4">
               {/* Price Card */}
-              <Card className="border-2 border-black shadow-lg">
-                <CardHeader className="pb-2">
+              <Card className="border-2 border-black shadow-lg p-4 gap-2">
+                <CardHeader className="pb-2 px-0">
                   <CardTitle className="text-2xl font-bold text-center">
                     {formatPrice(roomInfor?.base_price)} <span className="text-base font-normal text-gray-500">VNĐ/tháng</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 px-0">
                   <Separator />
                   
                   {/* Pricing Details */}
